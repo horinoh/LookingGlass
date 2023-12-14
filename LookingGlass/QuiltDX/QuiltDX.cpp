@@ -1,10 +1,13 @@
-// Borderless.cpp : Defines the entry point for the application.
+// QuiltDX.cpp : Defines the entry point for the application.
 //
 
 #include "framework.h"
-#include "Borderless.h"
+#include "QuiltDX.h"
 
 #include "../BorderlessWin.h"
+#include "../Holo.h"
+
+QuiltDX* Inst = nullptr;
 
 #define MAX_LOADSTRING 100
 
@@ -31,7 +34,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_BORDERLESS, szWindowClass, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_QUILTDX, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
@@ -40,7 +43,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_BORDERLESS));
+    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_QUILTDX));
 
     MSG msg;
 
@@ -75,10 +78,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_BORDERLESS));
+    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_QUILTDX));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_BORDERLESS);
+    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_QUILTDX);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -146,6 +149,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
+        if (nullptr == Inst) {
+            Inst = new QuiltDX();
+            Inst->OnCreate(hWnd, hInst, TEXT("QuiltDX"));
+        }
+        break;
+    case WM_SIZE:
+        if (nullptr != Inst) {}
+        break;
+    case WM_EXITSIZEMOVE:
+        if (nullptr != Inst) {
+            Inst->OnExitSizeMove(hWnd, hInst);
+        }
         break;
     case WM_KEYDOWN:
         switch (wParam) {
@@ -160,19 +175,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_NCCALCSIZE:
-        //!< クライアント領域のサイズを再計算する
         if (wParam && BorderlessWin::IsBorderless(hWnd)) {
             BorderlessWin::AdjustBorderlessRect(hWnd, reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0]);
         }
         else {
             return DefWindowProc(hWnd, message, wParam, lParam);
-        }   
+        }
         break;
     case WM_NCHITTEST:
-        //!< カーソルとのヒットを検出して、ドラッグ、サイズ変更を処理する
         if (BorderlessWin::IsBorderless(hWnd)) {
-            //!< ここではドラッグ可能、リサイズ可能
-            return BorderlessWin::GetBorderlessHit(hWnd, POINT({ .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) }), true, true);
+            return BorderlessWin::GetBorderlessHit(hWnd, POINT({ .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) }), true, false);
+        }
+        break;
+    case WM_TIMER:
+        if (nullptr != Inst) {
+            Inst->OnTimer(hWnd, hInst);
         }
         break;
     case WM_PAINT:
@@ -180,10 +197,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: Add any drawing code that uses hdc here...
+            if (nullptr != Inst) {
+                Inst->OnPaint(hWnd, hInst);
+            }
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+        if (nullptr != Inst) { 
+            Inst->OnDestroy(hWnd, hInst);
+            delete Inst;
+        }
         PostQuitMessage(0);
         break;
     default:
