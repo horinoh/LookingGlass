@@ -2,6 +2,14 @@
 
 #include <Windows.h>
 
+#include <vector>
+#include <array>
+#include <cassert>
+#include <iterator>
+#include <numeric>
+#include <bitset>
+#include <algorithm>
+
 #include <d3d12.h>
 #include <DXGI1_6.h>
 #include <DirectXColors.h>
@@ -35,7 +43,7 @@ public:
 		CreateDevice(hWnd);
 		CreateCommandQueue();
 		CreateFence();
-		CreateSwapchain(hWnd, DXGI_FORMAT_R8G8B8A8_UNORM);
+		CreateSwapChain(hWnd, DXGI_FORMAT_R8G8B8A8_UNORM);
 		CreateCommandList();
 		CreateGeometry();
 		CreateConstantBuffer();
@@ -49,7 +57,7 @@ public:
 		OnExitSizeMove(hWnd, hInstance);
 	}
 	virtual void OnExitSizeMove(HWND hWnd, HINSTANCE hInstance) {
-		#define TIMER_ID 1000 //!< ‰½‚Å‚à—Ç‚¢
+#define TIMER_ID 1000 //!< ‰½‚Å‚à—Ç‚¢
 		KillTimer(hWnd, TIMER_ID);
 		{
 			GetClientRect(hWnd, &Rect);
@@ -78,7 +86,11 @@ public:
 	
 	virtual void CreateSwapChain(HWND hWnd, const DXGI_FORMAT ColorFormat, const UINT Width, const UINT Height);
 	virtual void GetSwapChainResource();
-	virtual void CreateSwapchain(HWND hWnd, const DXGI_FORMAT ColorFormat);
+	virtual void CreateSwapChain(HWND hWnd, const DXGI_FORMAT ColorFormat) {
+		CreateSwapChain(hWnd, ColorFormat, Rect.right - Rect.left, Rect.bottom - Rect.top);
+		GetSwapChainResource();
+	}
+	//virtual void ResizeSwapChain(const UINT Width, const UINT Height);
 
 	virtual void CreateDirectCommandList();
 	virtual void CreateBundleCommandList();
@@ -97,7 +109,20 @@ public:
 	virtual void CreateShaderTable() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
-	//virtual void PopulateCommandList([[maybe_unused]] const size_t i) {}
+	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
+		const std::array RBs = {
+			D3D12_RESOURCE_BARRIER({
+				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+				.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
+					.pResource = Resource,
+					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+					.StateBefore = Before, .StateAfter = After
+				})
+			})
+		};
+		GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
+	}
 	virtual void PopulateCommandList(const size_t i) {
 		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
@@ -120,22 +145,7 @@ public:
 	virtual void Present();
 	virtual void Draw();
 
-
-	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
-		const std::array RBs = {
-			D3D12_RESOURCE_BARRIER({
-				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-				.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
-					.pResource = Resource,
-					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-					.StateBefore = Before, .StateAfter = After
-				})
-			})
-		};
-		GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
-	}
-
+	
 protected:
 	RECT Rect;
 

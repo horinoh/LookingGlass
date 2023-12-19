@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Borderless", "Borderless\Bo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QuiltDX", "QuiltDX\QuiltDX.vcxproj", "{BD606571-8AAB-48D1-8A1D-63B03B1BE65D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QuiltVK", "QuiltVK\QuiltVK.vcxproj", "{19EAC00F-C207-430D-8196-F6279E308771}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{BD606571-8AAB-48D1-8A1D-63B03B1BE65D}.Release|x64.Build.0 = Release|x64
 		{BD606571-8AAB-48D1-8A1D-63B03B1BE65D}.Release|x86.ActiveCfg = Release|Win32
 		{BD606571-8AAB-48D1-8A1D-63B03B1BE65D}.Release|x86.Build.0 = Release|Win32
+		{19EAC00F-C207-430D-8196-F6279E308771}.Debug|x64.ActiveCfg = Debug|x64
+		{19EAC00F-C207-430D-8196-F6279E308771}.Debug|x64.Build.0 = Debug|x64
+		{19EAC00F-C207-430D-8196-F6279E308771}.Debug|x86.ActiveCfg = Debug|Win32
+		{19EAC00F-C207-430D-8196-F6279E308771}.Debug|x86.Build.0 = Debug|Win32
+		{19EAC00F-C207-430D-8196-F6279E308771}.Release|x64.ActiveCfg = Release|x64
+		{19EAC00F-C207-430D-8196-F6279E308771}.Release|x64.Build.0 = Release|x64
+		{19EAC00F-C207-430D-8196-F6279E308771}.Release|x86.ActiveCfg = Release|Win32
+		{19EAC00F-C207-430D-8196-F6279E308771}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

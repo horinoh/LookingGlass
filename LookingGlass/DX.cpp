@@ -140,12 +140,6 @@ void DX::GetSwapChainResource()
 		CDH.ptr += IncSize;
 	}
 }
-void DX::CreateSwapchain(HWND hWnd, const DXGI_FORMAT ColorFormat)
-{
-	CreateSwapChain(hWnd, ColorFormat, Rect.right - Rect.left, Rect.bottom - Rect.top);
-
-	GetSwapChainResource();
-}
 void DX::CreateDirectCommandList()
 {
 	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, COM_PTR_UUIDOF_PUTVOID(DirectCommandAllocators.emplace_back())));
