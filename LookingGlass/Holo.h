@@ -90,22 +90,22 @@ public:
 				if ("standard" == TypeStr) {
 					QuiltColumn = 4;
 					QuiltRow = 8;
-					//!< 2048x2048
+					QuiltSize = 2048; //!< 512x256 x 4 x 8
 				}
 				else if ("8k" == TypeStr) {
 					QuiltColumn = 5;
 					QuiltRow = 9;
-					//!< 8192x8192
+					QuiltSize = 8192; //!< 1638x910 x 5 x 9
 				}
 				else if ("portrait" == TypeStr) {
 					QuiltColumn = 8;
 					QuiltRow = 6;
-					//!< 3360x3360
+					QuiltSize = 3360; //!< 420x560 x 8 x 6
 				}
 				else {
 					QuiltColumn = 5;
 					QuiltRow = 9;
-					//!< 4096x4096
+					QuiltSize = 4096; //!< 819x455 x 5 x 9
 				}
 				//!< QuiltTotalは hpc_GetDevicePropertyInvView(DeviceIndex) ? 1 : -1 を乗算して、符号込みにしてからシェーダに渡す #TODO
 				QuiltTotal = QuiltColumn * QuiltRow;
@@ -205,9 +205,10 @@ public:
 protected:
 	int DeviceIndex = -1;
 
-	int QuiltColumn = 5;
-	int QuiltRow = 9;
+	int QuiltColumn = 8;
+	int QuiltRow = 6;
 	int QuiltTotal = QuiltColumn * QuiltRow;
+	int QuiltSize = 3360;
 
 	float Pitch = 246.866f;
 	float Tilt = -0.185377f;

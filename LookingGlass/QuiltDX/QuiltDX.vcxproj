@@ -67,11 +67,13 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Prop\DX_TEX.props" />
     <Import Project="..\Prop\HOLO.props" />
+    <Import Project="..\Prop\HLSL.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Prop\DX_TEX.props" />
     <Import Project="..\Prop\HOLO.props" />
+    <Import Project="..\Prop\HLSL.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -135,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\DX.h" />
+    <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="QuiltDX.h" />
@@ -144,6 +147,7 @@
   <ItemGroup>
     <ClCompile Include="..\BorderlessWin.cpp" />
     <ClCompile Include="..\DX.cpp" />
+    <ClCompile Include="..\DXImage.cpp" />
     <ClCompile Include="..\Holo.cpp" />
     <ClCompile Include="QuiltDX.cpp" />
   </ItemGroup>
@@ -153,6 +157,20 @@
   <ItemGroup>
     <Image Include="QuiltDX.ico" />
     <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="QuiltDX.ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="QuiltDX.vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

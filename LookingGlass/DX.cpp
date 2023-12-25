@@ -2,6 +2,7 @@
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 void DX::CreateDevice([[maybe_unused]] HWND hWnd)
 {
@@ -161,6 +162,90 @@ void DX::CreateBundleCommandList()
 		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_GET(BundleCommandAllocators[0]), nullptr, COM_PTR_UUIDOF_PUTVOID(BundleCommandLists.emplace_back())));
 		VERIFY_SUCCEEDED(BundleCommandLists.back()->Close());
 	}
+}
+
+template<> void DX::SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<D3D12_ROOT_PARAMETER>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags)
+{
+	D3D12_FEATURE_DATA_ROOT_SIGNATURE FDRS = { .HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0 };
+	VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, reinterpret_cast<void*>(&FDRS), sizeof(FDRS)));
+	assert(FDRS.HighestVersion >= D3D_ROOT_SIGNATURE_VERSION_1_0 && "");
+
+	COM_PTR<ID3DBlob> ErrorBlob;
+	const D3D12_ROOT_SIGNATURE_DESC RSD = {
+		.NumParameters = static_cast<UINT>(size(RPs)), .pParameters = data(RPs),
+		.NumStaticSamplers = static_cast<UINT>(size(SSDs)), .pStaticSamplers = data(SSDs),
+		.Flags = Flags
+	};
+	const D3D12_VERSIONED_ROOT_SIGNATURE_DESC VRSD = { .Version = D3D_ROOT_SIGNATURE_VERSION_1_0, .Desc_1_0 = RSD, };
+	VERIFY_SUCCEEDED(D3D12SerializeVersionedRootSignature(&VRSD, COM_PTR_PUT(Blob), COM_PTR_PUT(ErrorBlob)));
+}
+
+void DX::CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
+	ID3D12Device* Device, ID3D12RootSignature* RS,
+	const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT,
+	const std::vector<D3D12_RENDER_TARGET_BLEND_DESC>& RTBDs,
+	const D3D12_RASTERIZER_DESC& RD,
+	const D3D12_DEPTH_STENCIL_DESC& DSD,
+	const D3D12_SHADER_BYTECODE VS, const D3D12_SHADER_BYTECODE PS, const D3D12_SHADER_BYTECODE DS, const D3D12_SHADER_BYTECODE HS, const D3D12_SHADER_BYTECODE GS,
+	const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs,
+	const std::vector<DXGI_FORMAT>& RTVFormats,
+	LPCWSTR Name)
+{
+	assert((VS.pShaderBytecode != nullptr && VS.BytecodeLength) && "");
+
+	//!< キャッシュドパイプラインステート (CachedPipelineState)
+	//!< (VK の VkGraphicsPipelineCreateInfo.basePipelineHandle, basePipelineIndex 相当?)
+	COM_PTR<ID3DBlob> CachedBlob;
+	if (nullptr != PST) {
+		VERIFY_SUCCEEDED(PST->GetCachedBlob(COM_PTR_PUT(CachedBlob)));
+	}
+
+	//!< DXでは「パッチコントロールポイント」個数の指定はIASetPrimitiveTopology()の引数として「コマンドリスト作成時」に指定する、VKとは結構異なるので注意
+	//!< GCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);	
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC GPSD = {
+		.pRootSignature = RS,
+		.VS = VS, .PS = PS, .DS = DS, .HS = HS, .GS = GS,
+		.StreamOutput = D3D12_STREAM_OUTPUT_DESC({
+			.pSODeclaration = nullptr, .NumEntries = 0,
+			.pBufferStrides = nullptr, .NumStrides = 0,
+			.RasterizedStream = 0
+			}),
+		.BlendState = D3D12_BLEND_DESC({
+			.AlphaToCoverageEnable = TRUE,		//!< マルチサンプルを考慮したアルファテスト(AlphaToCoverageEnable)、アルファが0の箇所には無駄に書き込まない
+			.IndependentBlendEnable = FALSE,	//!< マルチレンダーターゲットにそれぞれ別のブレンドステートを割り当てる(IndependentBlendEnable)
+			.RenderTarget = {}
+			}),
+		.SampleMask = D3D12_DEFAULT_SAMPLE_MASK,
+		.RasterizerState = RD,
+		.DepthStencilState = DSD,
+		.InputLayout = D3D12_INPUT_LAYOUT_DESC({.pInputElementDescs = data(IEDs), .NumElements = static_cast<UINT>(size(IEDs)) }),
+		.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
+		.PrimitiveTopologyType = PTT,
+		.NumRenderTargets = static_cast<UINT>(size(RTVFormats)), .RTVFormats = {},
+		.DSVFormat = DSD.DepthEnable ? DXGI_FORMAT_D24_UNORM_S8_UINT : DXGI_FORMAT_UNKNOWN,
+		.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
+		.NodeMask = 0, //!< マルチGPUの場合に使用(1つしか使わない場合は0で良い)
+		.CachedPSO = D3D12_CACHED_PIPELINE_STATE({.pCachedBlob = nullptr != CachedBlob ? CachedBlob->GetBufferPointer() : nullptr, .CachedBlobSizeInBytes = nullptr != CachedBlob ? CachedBlob->GetBufferSize() : 0 }),
+#if defined(_DEBUG) && defined(USE_WARP)
+		//!< パイプラインがデバッグ用付加情報ありでコンパイルされる、WARP時のみ使用可能
+		.Flags = D3D12_PIPELINE_STATE_FLAG_TOOL_DEBUG
+#else
+		.Flags = D3D12_PIPELINE_STATE_FLAG_NONE
+#endif
+	};
+
+	//!< レンダーターゲット数分だけ必要なもの
+	assert(size(RTBDs) <= _countof(GPSD.BlendState.RenderTarget) && "");
+	std::ranges::copy(RTBDs, GPSD.BlendState.RenderTarget);
+	//!< TRUE == IndependentBlendEnable の場合はレンダーターゲットの分だけ用意すること (If TRUE == IndependentBlendEnable, need NumRenderTarget elements)
+	assert((false == GPSD.BlendState.IndependentBlendEnable || size(RTBDs) == GPSD.NumRenderTargets) && "");
+	assert(GPSD.NumRenderTargets <= _countof(GPSD.RTVFormats) && "");
+	std::ranges::copy(RTVFormats, GPSD.RTVFormats);
+
+	assert((0 == GPSD.DS.BytecodeLength || 0 == GPSD.HS.BytecodeLength || GPSD.PrimitiveTopologyType == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH) && "");
+
+	VERIFY_SUCCEEDED(Device->CreateGraphicsPipelineState(&GPSD, COM_PTR_UUIDOF_PUTVOID(PST)));
 }
 
 void DX::CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth, const FLOAT MaxDepth)

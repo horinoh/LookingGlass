@@ -9,10 +9,16 @@
 #include <numeric>
 #include <bitset>
 #include <algorithm>
+#include <format>
+#include <fstream>
+#include <fstream>
+#include <filesystem>
+#include <thread>
 
 #include <d3d12.h>
 #include <DXGI1_6.h>
 #include <DirectXColors.h>
+#include <d3dcompiler.h>
 
 #include <winrt/base.h>
 #define COM_PTR winrt::com_ptr
@@ -23,6 +29,14 @@
 #define COM_PTR_RESET(_x) _x = nullptr
 #define COM_PTR_AS(_x, _y) winrt::copy_to_abi(_x, *_y.put_void());
 #define COM_PTR_COPY(_x, _y) _x.copy_from(COM_PTR_GET(_y))
+
+#define SHADER_ROOT_ACCESS_DENY_ALL (D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS)
+//#define SHADER_ROOT_ACCESS_VS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS)
+//#define SHADER_ROOT_ACCESS_GS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS)
+#define SHADER_ROOT_ACCESS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS)
+//#define SHADER_ROOT_ACCESS_GS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS))
+//#define SHADER_ROOT_ACCESS_DS_GS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS))
+//#define SHADER_ROOT_ACCESS_MS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS)
 
 #define VERIFY_SUCCEEDED(x) (x)
 
@@ -103,26 +117,26 @@ public:
 	virtual void CreateConstantBuffer() {}
 	virtual void CreateTexture() {}
 	virtual void CreateStaticSampler() {}
+	
+	template<typename T = D3D12_ROOT_PARAMETER> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
 	virtual void CreateRootSignature() {}
+
+	static void CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
+		ID3D12Device* Device, ID3D12RootSignature* RS,
+		const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT,
+		const std::vector<D3D12_RENDER_TARGET_BLEND_DESC>& RTBDs,
+		const D3D12_RASTERIZER_DESC& RD,
+		const D3D12_DEPTH_STENCIL_DESC& DSD,
+		const D3D12_SHADER_BYTECODE VS, const D3D12_SHADER_BYTECODE PS, const D3D12_SHADER_BYTECODE DS, const D3D12_SHADER_BYTECODE HS, const D3D12_SHADER_BYTECODE GS,
+		const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs,
+		const std::vector<DXGI_FORMAT>& RTVFormats,
+		LPCWSTR Name = nullptr);
 	virtual void CreatePipelineState() {}
+	
 	virtual void CreateDescriptor() {}
 	virtual void CreateShaderTable() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
-	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
-		const std::array RBs = {
-			D3D12_RESOURCE_BARRIER({
-				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-				.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
-					.pResource = Resource,
-					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-					.StateBefore = Before, .StateAfter = After
-				})
-			})
-		};
-		GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
-	}
 	virtual void PopulateCommandList(const size_t i) {
 		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
@@ -145,7 +159,290 @@ public:
 	virtual void Present();
 	virtual void Draw();
 
-	
+protected:
+	static bool IsDDS(const std::filesystem::path& Path) {
+		std::ifstream In(data(Path.string()), std::ios::in | std::ios::binary);
+		if (!In.fail()) {
+			std::array<uint32_t, 2> Header = { 0, 0 };
+			In.read(reinterpret_cast<char*>(data(Header)), sizeof(Header));
+			In.close();
+			return 0x20534444 == Header[0] && 124 == Header[1];
+		}
+		return false;
+	}
+	static void CreateBufferResource(ID3D12Resource** Resource, ID3D12Device* Device, const size_t Size, const D3D12_RESOURCE_FLAGS RF, const D3D12_HEAP_TYPE HT, const D3D12_RESOURCE_STATES RS, const void* Source = nullptr) {
+		const D3D12_RESOURCE_DESC RD = {
+			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+			.Alignment = 0,
+			.Width = Size, .Height = 1, 
+			.DepthOrArraySize = 1, .MipLevels = 1,
+			.Format = DXGI_FORMAT_UNKNOWN,
+			.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
+			.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+			.Flags = RF
+		};
+		const D3D12_HEAP_PROPERTIES HP = {
+			.Type = HT,
+			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+			.CreationNodeMask = 0, 
+			.VisibleNodeMask = 0 
+		};
+		VERIFY_SUCCEEDED(Device->CreateCommittedResource(&HP, D3D12_HEAP_FLAG_NONE, &RD, RS, nullptr, IID_PPV_ARGS(Resource)));
+		if (nullptr != Source) {
+			BYTE* Data;
+			VERIFY_SUCCEEDED((*Resource)->Map(0, nullptr, reinterpret_cast<void**>(&Data))); {
+				memcpy(Data, Source, Size);
+			} (*Resource)->Unmap(0, nullptr);
+		}
+	}
+	static void CreateBufferResource(ID3D12Resource** Resource, ID3D12Device* Device, const std::vector<D3D12_SUBRESOURCE_DATA>& SRDs, const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& PSFs, const std::vector<UINT>& NumRows, const std::vector<UINT64>& RowSizeInBytes, const UINT64 TotalBytes) {
+		const D3D12_RESOURCE_DESC RD = {
+			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+			.Alignment = 0,
+			.Width = TotalBytes, .Height = 1,
+			.DepthOrArraySize = 1, .MipLevels = 1,
+			.Format = DXGI_FORMAT_UNKNOWN,
+			.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
+			.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+			.Flags = D3D12_RESOURCE_FLAG_NONE
+		};
+		constexpr D3D12_HEAP_PROPERTIES HP = {
+			.Type = D3D12_HEAP_TYPE_UPLOAD,
+			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+			.CreationNodeMask = 0, .VisibleNodeMask = 0
+		};
+		VERIFY_SUCCEEDED(Device->CreateCommittedResource(&HP, D3D12_HEAP_FLAG_NONE, &RD, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(Resource)));
+
+		BYTE* Data;
+		VERIFY_SUCCEEDED((*Resource)->Map(0, nullptr, reinterpret_cast<void**>(&Data))); {
+			for (auto i = 0; i < size(PSFs); ++i) {
+				const auto NR = NumRows[i];
+				const auto RSIB = RowSizeInBytes[i];
+				const D3D12_MEMCPY_DEST MCD = {
+					.pData = Data + PSFs[i].Offset,
+					.RowPitch = PSFs[i].Footprint.RowPitch,
+					.SlicePitch = static_cast<SIZE_T>(PSFs[i].Footprint.RowPitch) * NR
+				};
+				const auto& SRD = SRDs[i];
+				for (UINT j = 0; j < PSFs[i].Footprint.Depth; ++j) {
+					auto Dst = reinterpret_cast<BYTE*>(MCD.pData) + MCD.SlicePitch * j;
+					const auto Src = reinterpret_cast<const BYTE*>(SRD.pData) + SRD.SlicePitch * j;
+					for (UINT k = 0; k < NR; ++k) {
+						memcpy(Dst + MCD.RowPitch * k, Src + SRD.RowPitch * k, RSIB);
+					}
+				}
+			}
+		} (*Resource)->Unmap(0, nullptr);
+	}
+	static void CreateTextureResource(ID3D12Resource** Resource, ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const UINT16 MipLevels, DXGI_FORMAT Format, const D3D12_RESOURCE_FLAGS RF, const D3D12_RESOURCE_STATES RS) {
+		constexpr D3D12_HEAP_PROPERTIES HP = {
+			.Type = D3D12_HEAP_TYPE_DEFAULT,
+			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+			.CreationNodeMask = 0, .VisibleNodeMask = 0
+		};
+		const D3D12_RESOURCE_DESC RD = {
+			.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+			.Alignment = 0,
+			.Width = Width, .Height = Height,
+			.DepthOrArraySize = DepthOrArraySize,
+			.MipLevels = MipLevels,
+			.Format = Format,
+			.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
+			.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+			.Flags = RF
+		};
+		assert(!(RD.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) && "非 RENDER_TARGET, DEPTH_STENCIL の場合、pOptimizedClearValue を使用しない");
+		VERIFY_SUCCEEDED(Device->CreateCommittedResource(&HP, D3D12_HEAP_FLAG_NONE, &RD, RS, nullptr, IID_PPV_ARGS(Resource)));
+	}
+	static void ExecuteAndWait(ID3D12CommandQueue* CQ, ID3D12CommandList* CL, ID3D12Fence* Fence) {
+		const std::array CLs = { CL };
+		CQ->ExecuteCommandLists(static_cast<UINT>(size(CLs)), data(CLs));
+		WaitForFence(CQ, Fence);
+	}
+	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
+		const std::array RBs = {
+			D3D12_RESOURCE_BARRIER({
+				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+				.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
+					.pResource = Resource,
+					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+					.StateBefore = Before, .StateAfter = After
+				})
+			})
+		};
+		GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
+	}
+
+	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& PSFs, const D3D12_RESOURCE_STATES RS) {
+		for (UINT i = 0; i < size(PSFs); ++i) {
+			const D3D12_TEXTURE_COPY_LOCATION TCL_Dst = {
+				.pResource = Dst,
+				.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+				.SubresourceIndex = i
+			};
+			const D3D12_TEXTURE_COPY_LOCATION TCL_Src = {
+				.pResource = Src,
+				.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+				.PlacedFootprint = PSFs[i]
+			};
+			//const D3D12_BOX Box = { .left = static_cast<UINT>(PSFs[i].Offset), .top = 0, .front = 0, .right = static_cast<UINT>(PSFs[i].Offset) + PSFs[i].Footprint.Width, .bottom = 1, .back = 1, };
+			GCL->CopyTextureRegion(&TCL_Dst, 0, 0, 0, &TCL_Src, nullptr);
+		}
+		{
+			const std::array RBs = {
+				D3D12_RESOURCE_BARRIER({
+					.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+					.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+					.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
+						.pResource = Dst,
+						.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+						.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST, .StateAfter = RS
+					})
+				})
+			};
+			GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
+		}
+	}
+
+	void CreatePipelineState_VsPs_Input(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {
+		//!< ブレンド (Blend)
+//!< 例) 
+//!< ブレンド	: Src * A + Dst * (1 - A)	= Src:D3D12_BLEND_SRC_ALPHA, Dst:D3D12_BLEND_INV_SRC_ALPHA, Op:D3D12_BLEND_OP_ADD
+//!< 加算		: Src * 1 + Dst * 1			= Src:D3D12_BLEND_ONE, Dst:D3D12_BLEND_ONE, Op:D3D12_BLEND_OP_ADD
+//!< 乗算		: Src * 0 + Dst * Src		= Src:D3D12_BLEND_ZERO, Dst:D3D12_BLEND_SRC_COLOR, Op:D3D12_BLEND_OP_ADD
+		const std::vector RTBDs = {
+			D3D12_RENDER_TARGET_BLEND_DESC({
+				.BlendEnable = FALSE, .LogicOpEnable = FALSE, //!< ブレンド有効かどうか、論理演算有効かどうか (同時にTRUEにはできない)
+				.SrcBlend = D3D12_BLEND_ONE, .DestBlend = D3D12_BLEND_ZERO, .BlendOp = D3D12_BLEND_OP_ADD, //!< ブレンド Src(新規), Dst(既存), Op
+				.SrcBlendAlpha = D3D12_BLEND_ONE, .DestBlendAlpha = D3D12_BLEND_ZERO, .BlendOpAlpha = D3D12_BLEND_OP_ADD, //!< アルファ Src(新規), Dst(既存), Op
+				.LogicOp = D3D12_LOGIC_OP_NOOP, //!< 論理演算
+				.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL, //!< 書き込み時のマスク値
+			}),
+		};
+		constexpr D3D12_DEPTH_STENCILOP_DESC DSOD = {
+			.StencilFailOp = D3D12_STENCIL_OP_KEEP,			//!< ステンシルテスト失敗時
+			.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,	//!< ステンシルテスト成功、デプステスト失敗時
+			.StencilPassOp = D3D12_STENCIL_OP_KEEP,			//!< ステンシルテスト成功、デプステスト成功時
+			.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS		//!< 既存のステンシル値との比較方法
+		};
+		//!< (アルファブレンド等で)「テスト」は有効だが「ライト」は無効にするような場合は D3D12_DEPTH_WRITE_MASK_ZERO にする
+		const D3D12_DEPTH_STENCIL_DESC DSD = {
+			.DepthEnable = DepthEnable, .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL, .DepthFunc = D3D12_COMPARISON_FUNC_LESS,
+			.StencilEnable = FALSE, .StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK, .StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK,
+			.FrontFace = DSOD, .BackFace = DSOD
+		};
+		const std::vector RTVs = { DXGI_FORMAT_R8G8B8A8_UNORM };
+
+		std::vector<std::thread> Threads;
+		//!< メンバ関数をスレッドで使用したい場合は、以下のようにthisを引数に取る形式を使用すればよい
+		//std::thread::thread(&DXExt::Func, this, Arg0, Arg1,...);
+		Threads.emplace_back(std::thread::thread(DX::CreatePipelineStateVsPsDsHsGs, std::ref(PipelineStates.emplace_back()), COM_PTR_GET(Device), COM_PTR_GET(RootSignatures[0]), PTT, RTBDs, RD, DSD, SBCs[0], SBCs[1], NullSBC, NullSBC, NullSBC, IEDs, RTVs, nullptr));
+
+		for (auto& i : Threads) { i.join(); }
+	}
+	void CreatePipelineState_VsPs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {  
+		CreatePipelineState_VsPs_Input(PTT, RD, DepthEnable, {}, SBCs);
+	}
+
+	class ResourceBase
+	{
+	public:
+		COM_PTR<ID3D12Resource> Resource;
+		ResourceBase& Create(ID3D12Device* Device, const size_t Size, const D3D12_HEAP_TYPE HT, const void* Source = nullptr) {
+			DX::CreateBufferResource(COM_PTR_PUT(Resource), Device, Size, D3D12_RESOURCE_FLAG_NONE, HT, D3D12_RESOURCE_STATE_GENERIC_READ, Source);
+			return *this;
+		}
+		void PopulateCopyCommand(ID3D12GraphicsCommandList* GCL, const size_t Size, ID3D12Resource* Upload, const D3D12_RESOURCE_STATES RS = D3D12_RESOURCE_STATE_GENERIC_READ) {
+			GCL->CopyBufferRegion(COM_PTR_GET(Resource), 0, Upload, 0, Size);
+			{
+				const std::array RBs = {
+					D3D12_RESOURCE_BARRIER({
+						.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+						.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+						.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
+							.pResource = COM_PTR_GET(Resource),
+							.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+							.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST, .StateAfter = RS
+						})
+					})
+				};
+				GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
+			}
+		}
+		void ExecuteCopyCommand(ID3D12Device* Device, ID3D12CommandAllocator* CA, ID3D12GraphicsCommandList* GCL, ID3D12CommandQueue* CQ, ID3D12Fence* Fence, const size_t Size, const void* Source, const D3D12_RESOURCE_STATES RS = D3D12_RESOURCE_STATE_GENERIC_READ) {
+			UploadResource Upload;
+			Upload.Create(Device, Size, Source);
+			VERIFY_SUCCEEDED(GCL->Reset(CA, nullptr)); {
+				PopulateCopyCommand(GCL, Size, COM_PTR_GET(Upload.Resource), RS);
+			} VERIFY_SUCCEEDED(GCL->Close());
+			DX::ExecuteAndWait(CQ, GCL, Fence);
+		}
+	};
+	class DefaultResource : public ResourceBase
+	{
+	private:
+		using Super = ResourceBase;
+	public:
+		DefaultResource& Create(ID3D12Device* Device, const size_t Size) {
+			DX::CreateBufferResource(COM_PTR_PUT(Resource), Device, Size, D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON);
+			return *this;
+		}
+	};
+	class UploadResource : public ResourceBase
+	{
+	private:
+		using Super = ResourceBase;
+	public:
+		UploadResource& Create(ID3D12Device* Device, const size_t Size, const void* Source = nullptr) {
+			DX::CreateBufferResource(COM_PTR_PUT(Resource), Device, Size, D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ, Source);
+			return *this;
+		}
+	};
+	class IndirectBuffer : public DefaultResource
+	{
+	private:
+		using Super = DefaultResource;
+	protected:
+		IndirectBuffer& Create(ID3D12Device* Device, const size_t Size, const D3D12_INDIRECT_ARGUMENT_TYPE Type) {
+			Super::Create(Device, Size);
+			const std::array IADs = { D3D12_INDIRECT_ARGUMENT_DESC({.Type = Type }), };
+			const D3D12_COMMAND_SIGNATURE_DESC CSD = { .ByteStride = static_cast<UINT>(Size), .NumArgumentDescs = static_cast<const UINT>(size(IADs)), .pArgumentDescs = data(IADs), .NodeMask = 0 };
+			Device->CreateCommandSignature(&CSD, nullptr, COM_PTR_UUIDOF_PUTVOID(CommandSignature));
+			return *this;
+		}
+	public:
+		COM_PTR<ID3D12CommandSignature> CommandSignature;
+		IndirectBuffer& Create(ID3D12Device* Device, const D3D12_DRAW_INDEXED_ARGUMENTS& DIA) { return Create(Device, sizeof(DIA), D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED); }
+		IndirectBuffer& Create(ID3D12Device* Device, const D3D12_DRAW_ARGUMENTS& DA) { return Create(Device, sizeof(DA), D3D12_INDIRECT_ARGUMENT_TYPE_DRAW); }
+		IndirectBuffer& Create(ID3D12Device* Device, const D3D12_DISPATCH_ARGUMENTS& DA) { return Create(Device, sizeof(DA), D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH); }
+	};
+	class TextureBase : public ResourceBase
+	{
+	private:
+		using Super = ResourceBase;
+	public:
+		void Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format) {
+			DX::CreateTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, Format, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST);
+		}
+	};
+	class Texture : public TextureBase
+	{
+	private:
+		using Super = TextureBase;
+	public:
+		D3D12_SHADER_RESOURCE_VIEW_DESC SRV;
+		void Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format) {
+			DX::CreateTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, Format, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST);
+			SRV = DepthOrArraySize == 1 ?
+				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2D = D3D12_TEX2D_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) }) :
+				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2DArray = D3D12_TEX2D_ARRAY_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .FirstArraySlice = 0, .ArraySize = DepthOrArraySize, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) });
+		}
+	};
+
 protected:
 	RECT Rect;
 
@@ -168,6 +465,26 @@ protected:
 	std::vector<COM_PTR<ID3D12CommandAllocator>> BundleCommandAllocators;
 	std::vector<COM_PTR<ID3D12GraphicsCommandList>> BundleCommandLists;
 
+	std::vector<IndirectBuffer> IndirectBuffers;
+	//std::vector<ConstantBuffer> ConstantBuffers;
+
+	//std::vector<Texture> Textures;
+	//std::vector<DepthTexture> DepthTextures;
+	//std::vector<RenderTexture> RenderTextures;
+	std::vector<D3D12_STATIC_SAMPLER_DESC> StaticSamplerDescs;
+
+	std::vector<COM_PTR<ID3D12RootSignature>> RootSignatures;
+	
+	std::vector<COM_PTR<ID3D12PipelineState>> PipelineStates;
+
+	//!< first にヒープ、second にハンドル
+	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>>> CbvSrvUavDescs;
+	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>>> RtvDescs;
+	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>>> DsvDescs;
+
 	std::vector<D3D12_VIEWPORT> Viewports;
 	std::vector<D3D12_RECT> ScissorRects;
+
+protected:
+	const D3D12_SHADER_BYTECODE NullSBC = { .pShaderBytecode = nullptr, .BytecodeLength = 0 };
 };

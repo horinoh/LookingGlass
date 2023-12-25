@@ -67,11 +67,13 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Prop\HOLO.props" />
     <Import Project="..\Prop\VK.props" />
+    <Import Project="..\Prop\GLI.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Prop\VK.props" />
     <Import Project="..\Prop\HOLO.props" />
+    <Import Project="..\Prop\GLI.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -136,6 +138,7 @@
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="..\VK.h" />
+    <ClInclude Include="..\VKImage.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="QuiltVK.h" />
     <ClInclude Include="Resource.h" />
@@ -145,6 +148,7 @@
     <ClCompile Include="..\BorderlessWin.cpp" />
     <ClCompile Include="..\Holo.cpp" />
     <ClCompile Include="..\VK.cpp" />
+    <ClCompile Include="..\VKImage.cpp" />
     <ClCompile Include="QuiltVK.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -153,6 +157,22 @@
   <ItemGroup>
     <Image Include="QuiltVK.ico" />
     <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="QuiltVK.frag">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </CustomBuild>
+    <CustomBuild Include="QuiltVK.vert">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
