@@ -98,7 +98,9 @@ public:
 	public:
 		GLITexture& Create(const VkDevice Dev, const VkPhysicalDeviceMemoryProperties PDMP, const std::filesystem::path& Path) {
 			assert(std::filesystem::exists(Path) && "");
-			GliTexture = gli::load(data(Path.string()));
+			if (IsDDS(Path) || IsKTX(Path)) {
+				GliTexture = gli::load(data(Path.string()));
+			}
 			assert(!GliTexture.empty() && "Load image failed");
 
 			const auto Format = ToVkFormat(GliTexture.format());

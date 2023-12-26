@@ -26,6 +26,15 @@ public:
 		};
 		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA).ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), sizeof(DA), &DA);
 	}
+	virtual void CreateConstantBuffer() override {
+		//... DirectX::XMStoreFloat4x4(&DST, SRC);
+
+		DXGI_SWAP_CHAIN_DESC1 SCD;
+		SwapChain->GetDesc1(&SCD);
+		for (UINT i = 0; i < SCD.BufferCount; ++i) {
+			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(int));
+		}
+	}
 	virtual void CreateTexture() override {
 		const auto DCA = DirectCommandAllocators[0];
 		const auto DCL = DirectCommandLists[0];
@@ -40,7 +49,7 @@ public:
 			.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
 			.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
 			.MinLOD = 0.0f, .MaxLOD = 1.0f,
-			.ShaderRegister = 0, .RegisterSpace = 0, .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL //!< register(t0, space0)
+			.ShaderRegister = 0, .RegisterSpace = 0, .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 		}));
 	}
 	virtual void CreateRootSignature() override {
@@ -90,11 +99,24 @@ public:
 		VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 
 		auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+		auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+		const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
 		const auto& Tex = XTKTextures[0];
 		Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
-
-		auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 		Handle.emplace_back(GDH);
+		CDH.ptr += IncSize;
+		GDH.ptr += IncSize;
+
+		DXGI_SWAP_CHAIN_DESC1 SCD;
+		SwapChain->GetDesc1(&SCD);
+		for (UINT i = 0; i < SCD.BufferCount; ++i) {
+			const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = ConstantBuffers[i].Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(ConstantBuffers[i].Resource->GetDesc().Width) };
+			Device->CreateConstantBufferView(&CBVD, CDH);
+			Handle.emplace_back(GDH);
+			CDH.ptr += IncSize;
+			GDH.ptr += IncSize;
+		}
 	}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);

@@ -136,6 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
+    <ClInclude Include="..\Common.h" />
     <ClInclude Include="..\DX.h" />
     <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\Holo.h" />

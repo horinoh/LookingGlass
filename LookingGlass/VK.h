@@ -10,8 +10,6 @@
 #include <bitset>
 #include <algorithm>
 #include <format>
-#include <fstream>
-#include <filesystem>
 #include <thread>
 
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -50,11 +48,7 @@ namespace Colors
 
 #define VERIFY_SUCCEEDED(x) (x)
 
-#ifdef _DEBUG
-#define LOG(x) OutputDebugStringA((x))
-#else
-#define LOG(x)
-#endif
+#include "Common.h"
 
 class VK
 {
@@ -624,6 +618,16 @@ protected:
 			Super::SubmitCopyCommand(Device, PDMP, CB, Queue, Size, Source, VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
 		}
 	};
+	class UniformBuffer : public BufferMemory
+	{
+	private:
+		using Super = BufferMemory;
+	public:
+		UniformBuffer& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const size_t Size, const void* Source = nullptr) {
+			VK::CreateBufferMemory(&Buffer, &DeviceMemory, Device, PDMP, Size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, Source);
+			return *this;
+		}
+	};
 	class Texture : public DeviceMemoryBase
 	{
 	private:
@@ -718,7 +722,7 @@ protected:
 	std::vector<VkCommandBuffer> SecondaryCommandBuffers;
 
 	std::vector<IndirectBuffer> IndirectBuffers;
-	//std::vector<UniformBuffer> UniformBuffers;
+	std::vector<UniformBuffer> UniformBuffers;
 
 	//std::vector<Texture> Textures;
 	//std::vector<DepthTexture> DepthTextures;

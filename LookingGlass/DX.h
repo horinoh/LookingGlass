@@ -11,8 +11,6 @@
 #include <algorithm>
 #include <format>
 #include <fstream>
-#include <fstream>
-#include <filesystem>
 #include <thread>
 
 #include <d3d12.h>
@@ -40,11 +38,7 @@
 
 #define VERIFY_SUCCEEDED(x) (x)
 
-#ifdef _DEBUG
-#define LOG(x) OutputDebugStringA((x))
-#else
-#define LOG(x)
-#endif
+#include "Common.h"
 
 class DX
 {
@@ -160,16 +154,6 @@ public:
 	virtual void Draw();
 
 protected:
-	static bool IsDDS(const std::filesystem::path& Path) {
-		std::ifstream In(data(Path.string()), std::ios::in | std::ios::binary);
-		if (!In.fail()) {
-			std::array<uint32_t, 2> Header = { 0, 0 };
-			In.read(reinterpret_cast<char*>(data(Header)), sizeof(Header));
-			In.close();
-			return 0x20534444 == Header[0] && 124 == Header[1];
-		}
-		return false;
-	}
 	static void CreateBufferResource(ID3D12Resource** Resource, ID3D12Device* Device, const size_t Size, const D3D12_RESOURCE_FLAGS RF, const D3D12_HEAP_TYPE HT, const D3D12_RESOURCE_STATES RS, const void* Source = nullptr) {
 		const D3D12_RESOURCE_DESC RD = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
@@ -420,6 +404,16 @@ protected:
 		IndirectBuffer& Create(ID3D12Device* Device, const D3D12_DRAW_ARGUMENTS& DA) { return Create(Device, sizeof(DA), D3D12_INDIRECT_ARGUMENT_TYPE_DRAW); }
 		IndirectBuffer& Create(ID3D12Device* Device, const D3D12_DISPATCH_ARGUMENTS& DA) { return Create(Device, sizeof(DA), D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH); }
 	};
+	class ConstantBuffer : public UploadResource
+	{
+	private:
+		using Super = UploadResource;
+	public:
+		ConstantBuffer& Create(ID3D12Device* Device, const size_t Size, const void* Source = nullptr) {
+			Super::Create(Device, RoundUp256(Size), Source);
+			return *this;
+		}
+	};
 	class TextureBase : public ResourceBase
 	{
 	private:
@@ -466,7 +460,7 @@ protected:
 	std::vector<COM_PTR<ID3D12GraphicsCommandList>> BundleCommandLists;
 
 	std::vector<IndirectBuffer> IndirectBuffers;
-	//std::vector<ConstantBuffer> ConstantBuffers;
+	std::vector<ConstantBuffer> ConstantBuffers;
 
 	//std::vector<Texture> Textures;
 	//std::vector<DepthTexture> DepthTextures;
