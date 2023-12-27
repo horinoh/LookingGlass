@@ -100,6 +100,12 @@ public:
 	}
 	virtual void OnTimer(HWND hWnd, HINSTANCE hInstance) { SendMessage(hWnd, WM_PAINT, 0, 0); }
 	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance) { Draw(); }
+	//!< 解放前に、終了を待たなくてはならないものを待つ
+	virtual void OnPreDestroy() {
+		if (VK_NULL_HANDLE != Device) [[likely]] {
+			VERIFY_SUCCEEDED(vkDeviceWaitIdle(Device));
+		}
+	}
 	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance);
 
 public:
@@ -366,6 +372,27 @@ protected:
 		VERIFY_SUCCEEDED(vkQueueSubmit(Queue, static_cast<uint32_t>(size(SIs)), data(SIs), VK_NULL_HANDLE));
 		VERIFY_SUCCEEDED(vkQueueWaitIdle(Queue));
 	}
+	static void CopyToHostVisibleDeviceMemory(const VkDevice Dev, const VkDeviceMemory DM, const VkDeviceSize Offset, const VkDeviceSize Size, const void* Source, const VkDeviceSize MappedRangeOffset = 0, const VkDeviceSize MappedRangeSize = VK_WHOLE_SIZE) {
+		if (Size && nullptr != Source) [[likely]] {
+			const std::array MMRs = {
+				VkMappedMemoryRange({
+					.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+					.pNext = nullptr,
+					.memory = DM,
+					.offset = MappedRangeOffset,
+					.size = MappedRangeSize
+				})
+			};
+			void* Data;
+			VERIFY_SUCCEEDED(vkMapMemory(Dev, DM, Offset, /*Size*/MappedRangeSize, static_cast<VkMemoryMapFlags>(0), &Data)); {
+				memcpy(Data, Source, Size);
+				//!< メモリコンテンツが変更されたことをドライバへ知らせる(vkMapMemory()した状態でやること)
+				//!< デバイスメモリ確保時に VK_MEMORY_PROPERTY_HOST_COHERENT_BIT を指定した場合は必要ない CreateDeviceMemory(..., VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+				VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Dev, static_cast<uint32_t>(size(MMRs)), data(MMRs)));
+				//VERIFY_SUCCEEDED(vkInvalidateMappedMemoryRanges(Device, static_cast<uint32_t>(size(MMRs)), data(MMRs)));
+			} vkUnmapMemory(Dev, DM);
+		}
+	}
 
 	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs, const uint32_t Levels, const uint32_t Layers) {
 		constexpr std::array<VkMemoryBarrier, 0> MBs = {};
@@ -413,6 +440,34 @@ protected:
 		}
 	}
 
+	void CreateRenderPass_None() {
+		constexpr std::array<VkAttachmentReference, 0> InPreAtts = {};
+		constexpr std::array ColAtts = { VkAttachmentReference({.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }), };
+		constexpr std::array ResAtts = { VkAttachmentReference({.attachment = VK_ATTACHMENT_UNUSED, .layout = VK_IMAGE_LAYOUT_UNDEFINED }), };
+		assert(size(ColAtts) == size(ResAtts) && "");
+		constexpr std::array<uint32_t, 0> PreAtts = {};
+		VK::CreateRenderPass(RenderPasses.emplace_back(), 
+			{
+				VkAttachmentDescription({
+					.flags = 0,
+					.format = ColorFormat,
+					.samples = VK_SAMPLE_COUNT_1_BIT,
+					.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .storeOp = VK_ATTACHMENT_STORE_OP_STORE,	//!< 「開始時に何もしない」「終了時に保存」		
+					.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,	
+					.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+				}),
+			}, 
+			{
+				VkSubpassDescription({
+					.flags = 0,
+					.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+					.inputAttachmentCount = static_cast<uint32_t>(size(InPreAtts)), .pInputAttachments = data(InPreAtts),
+					.colorAttachmentCount = static_cast<uint32_t>(size(ColAtts)), .pColorAttachments = data(ColAtts), .pResolveAttachments = data(ResAtts),
+					.pDepthStencilAttachment = nullptr,																							
+					.preserveAttachmentCount = static_cast<uint32_t>(size(PreAtts)), .pPreserveAttachments = data(PreAtts)
+				}),
+			}, {});
+	}
 	//!< レンダーパスでの画面クリアを行う
 	void CreateRenderPass_Clear() {
 		constexpr std::array<VkAttachmentReference, 0> InpAtts = {};
@@ -439,8 +494,7 @@ protected:
 					.pDepthStencilAttachment = nullptr,
 					.preserveAttachmentCount = static_cast<uint32_t>(size(PreAtts)), .pPreserveAttachments = data(PreAtts)
 				}),
-			},
-			{});
+			}, {});
 	}
 	void CreatePipeline_VsFs_Input(const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::vector<VkVertexInputBindingDescription>& VIBDs, const std::vector<VkVertexInputAttributeDescription>& VIADs, const std::array<VkPipelineShaderStageCreateInfo, 2>& PSSCIs) {
 		const VkPipelineDepthStencilStateCreateInfo PDSSCI = {

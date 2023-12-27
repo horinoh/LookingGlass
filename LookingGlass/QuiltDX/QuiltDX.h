@@ -27,12 +27,11 @@ public:
 		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA).ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), sizeof(DA), &DA);
 	}
 	virtual void CreateConstantBuffer() override {
-		//... DirectX::XMStoreFloat4x4(&DST, SRC);
-
 		DXGI_SWAP_CHAIN_DESC1 SCD;
 		SwapChain->GetDesc1(&SCD);
 		for (UINT i = 0; i < SCD.BufferCount; ++i) {
-			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(int));
+			auto& CB = ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
+			CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
 		}
 	}
 	virtual void CreateTexture() override {
@@ -57,6 +56,9 @@ public:
 		constexpr std::array DRs_Srv = {
 			D3D12_DESCRIPTOR_RANGE({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV, .NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND })
 		};
+		constexpr std::array DRs_Cbv = {
+			D3D12_DESCRIPTOR_RANGE({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, .NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND })
+		};
 		DX::SerializeRootSignature(Blob, {
 			//!< SRV
 			D3D12_ROOT_PARAMETER({
@@ -64,7 +66,12 @@ public:
 				.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
 				.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 			}),
-
+			//!< CBV
+			D3D12_ROOT_PARAMETER({
+				.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+				.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+				.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+			}),
 			}, {
 				StaticSamplerDescs[0],
 			}, SHADER_ROOT_ACCESS_PS);
@@ -145,13 +152,13 @@ public:
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				CL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
-				const auto& DescSRV = CbvSrvUavDescs[0];
-				const auto& HeapSRV = DescSRV.first;
-				const auto& HandleSRV = DescSRV.second;
-
-				const std::array DHs = { COM_PTR_GET(HeapSRV) };
+				const auto& Desc = CbvSrvUavDescs[0];
+				const auto& Heap = Desc.first;
+				const auto& Handle = Desc.second;
+				const std::array DHs = { COM_PTR_GET(Heap) };
 				CL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-				CL->SetGraphicsRootDescriptorTable(0, HandleSRV[0]); //!< SRV
+				CL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
+				CL->SetGraphicsRootDescriptorTable(1, Handle[1 + i]); //!< CBV
 
 				CL->ExecuteBundle(BCL);
 			}
@@ -162,6 +169,7 @@ public:
 
 	virtual void Camera(const int i) 
 	{
+#if 0
 		constexpr float CameraSize = 5.0f;
 		constexpr float Fov = DirectX::XMConvertToRadians(14.0f);
 		const float CameraDistance = -CameraSize / tan(Fov * 0.5f);
@@ -175,5 +183,6 @@ public:
 
 		auto Projection = DirectX::XMMatrixPerspectiveFovLH(Fov, DisplayAspect, 0.1f, 100.0f);
 		//Projection[2][0] += OffsetX / (cameraSize * DisplayAspect);
+#endif
 	}
 };

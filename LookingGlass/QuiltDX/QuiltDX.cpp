@@ -205,6 +205,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_DESTROY:
         if (nullptr != Inst) { 
+            Inst->OnPreDestroy();
             Inst->OnDestroy(hWnd, hInst);
             delete Inst;
         }

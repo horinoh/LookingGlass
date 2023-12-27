@@ -88,49 +88,19 @@ public:
 				std::string_view TypeStr(data(Buf));
 
 				if ("standard" == TypeStr) {
-					QuiltColumn = 4;
-					QuiltRow = 8;
-					QuiltSize = 2048; //!< 512x256 x 4 x 8
+					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 4, 8, 2048, 2048)));
 				}
 				else if ("8k" == TypeStr) {
-					QuiltColumn = 5;
-					QuiltRow = 9;
-					QuiltSize = 8192; //!< 1638x910 x 5 x 9
+					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 5, 9, 8192, 8192)));
 				}
 				else if ("portrait" == TypeStr) {
-					QuiltColumn = 8;
-					QuiltRow = 6;
-					QuiltSize = 3360; //!< 420x560 x 8 x 6
+					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 8, 6, 3360, 3360)));
 				}
 				else {
-					QuiltColumn = 5;
-					QuiltRow = 9;
-					QuiltSize = 4096; //!< 819x455 x 5 x 9
+					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 5, 9, 4096, 4096)));
 				}
-				//!< QuiltTotalは hpc_GetDevicePropertyInvView(DeviceIndex) ? 1 : -1 を乗算して、符号込みにしてからシェーダに渡す #TODO
-				QuiltTotal = QuiltColumn * QuiltRow;
-
-				LOG(data(std::format("Type = {}, Quilt = {} x {} = {}\n", TypeStr, QuiltColumn, QuiltRow, QuiltTotal)));
 			}
 
-			//!< レンチキュラー
-			{
-				Pitch = hpc_GetDevicePropertyPitch(DeviceIndex);
-				Tilt = hpc_GetDevicePropertyTilt(DeviceIndex);
-				Center = hpc_GetDevicePropertyCenter(DeviceIndex);
-				Subp = hpc_GetDevicePropertySubp(DeviceIndex);
-				DisplayAspect = hpc_GetDevicePropertyDisplayAspect(DeviceIndex);
-				//hpc_GetDevicePropertyInvView(DeviceIndex);
-				Ri = hpc_GetDevicePropertyRi(DeviceIndex);
-				Bi = hpc_GetDevicePropertyBi(DeviceIndex);
-			
-				LOG(data(std::format("Pitch = {}\n", Pitch)));
-				LOG(data(std::format("Tilt = {}\n", Tilt)));
-				LOG(data(std::format("Center = {}\n", Center)));
-				LOG(data(std::format("Subp = {}\n", Subp)));
-				LOG(data(std::format("DisplayAspect = {}\n", DisplayAspect)));
-				LOG(data(std::format("Ri, Bi = {}, {} ({})\n", Ri, Bi, (Ri == 0 && Bi == 2) ? "RGB" : "BGR")));
-			}
 			{
 				ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
 			}
@@ -138,89 +108,47 @@ public:
 			//!<	DX : D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE 16
 			//!<	VK : VkPhysicalDeviceProperties.limits.maxViewports = 16
 			//!<	トータルのビュー数が 45 や 48 だったりするので、3 回くらいは描画することになる
+			//!<	もしくは、歯抜けに 16 パターン分描画して間は補完する
 		} else {
 			LOG("[ Holo ] Device not found\n");
 		}
+
+		//!< レンチキュラー
+		LenticularBuffer = new LENTICULAR_BUFFER(DeviceIndex);
+		if (nullptr != LenticularBuffer) {
+			LOG(data(std::format("Pitch = {}\n", LenticularBuffer->Pitch)));
+			LOG(data(std::format("Tilt = {}\n", LenticularBuffer->Tilt)));
+			LOG(data(std::format("Center = {}\n", LenticularBuffer->Center)));
+			LOG(data(std::format("Subp = {}\n", LenticularBuffer->Subp)));
+			LOG(data(std::format("DisplayAspect = {}\n", LenticularBuffer->DisplayAspect)));
+			LOG(data(std::format("InvView = {}\n", LenticularBuffer->InvView)));
+			LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer->Ri, LenticularBuffer->Bi, (LenticularBuffer->Ri == 0 && LenticularBuffer->Bi == 2) ? "RGB" : "BGR")));
+		}
 	}
 	virtual ~Holo() {
+		if (nullptr != LenticularBuffer) {
+			delete LenticularBuffer;
+		}
+		if (nullptr != HogeBuffer) {
+			delete HogeBuffer;
+		}
 		hpc_CloseApp();
 	}
 
 	void SetHoloWindow(HWND hWnd, HINSTANCE hInstance)  
 	{
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する
-		const auto Index = GetDeviceIndex();
+		const auto Index = DeviceIndex;
 		if (-1 != Index) {
 			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(Index), hpc_GetDevicePropertyWinY(Index), hpc_GetDevicePropertyScreenW(Index), hpc_GetDevicePropertyScreenH(Index), SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);
 		}
 	}
-
-	int GetDeviceIndex() const { return DeviceIndex; }
-	//virtual int GetViewportMax() const { return 1; }
-	//struct QUILT_SETTING {
-	//	QUILT_SETTING() {}
-	//	QUILT_SETTING(const int Index) {
-	//		std::vector<char> Buf(hpc_GetDeviceType(Index, nullptr, 0));
-	//		hpc_GetDeviceType(Index, data(Buf), size(Buf));
-	//		std::string_view TypeStr(data(Buf));
-
-	//		if ("standard" == TypeStr) {
-	//			Size = 2048; Column = 4; Row = 8;
-	//		}
-	//		else if ("8k" == TypeStr) {
-	//			//Looking Glass 8K : 5 columns by 9 rows, 8192 by 8192
-	//			Size = 8192; Column = 5; Row = 9;
-	//		}
-	//		else if ("portrait" == TypeStr) {
-	//			//Looking Glass Portrait : 8 columns by 6 rows, 3360 by 3360
-	//			Size = 3360; Column = 8; Row = 6;
-	//		}
-	//		else {
-	//			//Looking Glass 15.6": 5 columns by 9 rows, 4096 by 4096
-	//			Size = 4096; Column = 5; Row = 9;
-	//		}
-
-	//		LOG(data(std::format("Type = {}\n", TypeStr)));
-	//		LOG(data(std::format("\tQuiltSettings =\n")));
-	//		LOG(data(std::format("\t\tWidth, Height = {}, {}\n", GetWidth(), GetHeight())));
-	//		LOG(data(std::format("\t\tColumn, Row = {}, {}\n", GetViewColumn(), GetViewRow())));
-	//		//OUTPUT(data(std::format("\t\tViewTotal = {}\n", GetViewTotal())));
-	//	}
-
-	//	int GetSize() const { return Size; }
-	//	int GetWidth() const { return GetSize(); }
-	//	int GetHeight() const { return GetSize(); }
-	//	int GetViewColumn() const { return Column; }
-	//	int GetViewRow() const { return Row; }
-	//	int GetViewWidth() const { return GetWidth() / GetViewColumn(); }
-	//	int GetViewHeight() const { return GetHeight() / GetViewRow(); }
-	//	int GetViewTotal() const { return GetViewColumn() * GetViewRow(); }
-
-	//	int Size = 3360;
-	//	int Column = 8, Row = 6;
-	//};
-	//const QUILT_SETTING& GetQuiltSetting() const { return QuiltSetting; }
-
+	
 protected:
 	int DeviceIndex = -1;
 
-	int QuiltColumn = 8;
-	int QuiltRow = 6;
-	int QuiltTotal = QuiltColumn * QuiltRow;
-	int QuiltSize = 3360;
-
-	float Pitch = 246.866f;
-	float Tilt = -0.185377f;
-	float Center = 0.565845f;
-	float Subp = 0.000217014f;
-	float DisplayAspect = 0.75f;
-	int Ri = 0, Bi = 2;
-
 	float ViewCone = TO_RADIAN(40.0f);
-
-	// 
-	//QUILT_SETTING QuiltSetting;
 
 	//!< ジオメトリシェーダパラメータ
 	//struct HOLO_BUFFER_GS {
@@ -241,39 +169,70 @@ protected:
 	//HOLO_BUFFER_GS BufferGS;
 
 	//!< ピクセルシェーダパラメータ
-	//struct HOLO_BUFFER_PS {
-	//	HOLO_BUFFER_PS() {}
-	//	HOLO_BUFFER_PS(const int Index) {
-	//		Pitch = hpc_GetDevicePropertyPitch(Index);
-	//		Tilt = hpc_GetDevicePropertyTilt(Index);
-	//		Center = hpc_GetDevicePropertyCenter(Index);
-	//		Subp = hpc_GetDevicePropertySubp(Index);
-	//		//!<  W / H
-	//		DisplayAspect = hpc_GetDevicePropertyDisplayAspect(Index);
-	//		InvView = hpc_GetDevicePropertyInvView(Index);
-	//		//!< 恐らく G == 1 は確定で、RGB or BGR ということ
-	//		Ri = hpc_GetDevicePropertyRi(Index);
-	//		Bi = hpc_GetDevicePropertyBi(Index);
+	struct LENTICULAR_BUFFER {
+		LENTICULAR_BUFFER(const int Index) {
+			if (-1 != Index) {
+				Pitch = hpc_GetDevicePropertyPitch(Index);
+				Tilt = hpc_GetDevicePropertyTilt(Index);
+				Center = hpc_GetDevicePropertyCenter(Index);
+				Subp = hpc_GetDevicePropertySubp(Index);
 
-	//		LOG(data(std::format("\thpc_GetDevicePropertyPitch = {}\n", Pitch)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertyTilt = {}\n", Tilt)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertyCenter = {}\n", Center)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertySubp = {}\n", Subp)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertyDisplayAspect = {}\n", DisplayAspect)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertyInvView = {}\n", InvView)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertyRi, Bi = {}, {} ({})\n", Ri, Bi, (Ri == 0 && Bi == 2) ? "RGB" : "BGR")));
-	//	}
-	//	float Pitch = 246.866f;
-	//	float Tilt = -0.185377f;
-	//	float Center = 0.565845f;
-	//	float Subp = 0.000217014f;
-	//	float DisplayAspect = 0.75f;
-	//	int InvView = 1;
-	//	int Ri = 0, Bi = 2;
+				DisplayAspect = hpc_GetDevicePropertyDisplayAspect(Index);
+				InvView = hpc_GetDevicePropertyInvView(Index);
+				Ri = hpc_GetDevicePropertyRi(Index);
+				Bi = hpc_GetDevicePropertyBi(Index);
 
-	//	float QuiltColumn;
-	//	float QuiltRow;
-	//	float QuiltTotal;
-	//};
-	//HOLO_BUFFER_PS BufferPS;
+				{
+					std::vector<char> Buf(hpc_GetDeviceType(Index, nullptr, 0));
+					hpc_GetDeviceType(Index, data(Buf), size(Buf));
+					std::string_view TypeStr(data(Buf));
+					if ("standard" == TypeStr) {
+						Column = 4;
+						Row = 8;
+						//QuiltSize = 2048; //!< レンダーターゲットサイズ 2048x2048 = 512x256 x 4 x 8
+					}
+					else if ("8k" == TypeStr) {
+						Column = 5;
+						Row = 9;
+						//QuiltSize = 8192; //!< レンダーターゲットサイズ 8192x8192 = 1638x910 x 5 x 9
+					}
+					else if ("portrait" == TypeStr) {
+						Column = 8;
+						Row = 6;
+						//QuiltSize = 3360; //!< レンダーターゲットサイズ 3360x3360 = 420x560 x 8 x 6
+					}
+					else {
+						Column = 5;
+						Row = 9;
+						//QuiltSize = 4096; //!< レンダーターゲットサイズ 4096x4096 = 819x455 x 5 x 9
+					}
+					ColRow = Column * Row;
+				}
+			}
+		}
+		float Pitch = 246.866f;
+		float Tilt = -0.185377f;
+		float Center = 0.565845f;
+		float Subp = 0.000217014f;
+
+		float DisplayAspect = 0.75f;
+		int InvView = 1;
+		//!< Gi == 1 は確定 (RGB or BGR ということ)
+		int Ri = 0;
+		int Bi = 2;
+
+		float Column = 8;
+		float Row = 6;
+		float ColRow = Column * Row;
+	};
+	LENTICULAR_BUFFER* LenticularBuffer = nullptr;
+
+	struct HOGE_BUFFER {
+		HOGE_BUFFER(const int Index) {
+			if (-1 != Index) {
+			}
+		}
+		float a = 0.0f;
+	};
+	HOGE_BUFFER* HogeBuffer = nullptr;
 };

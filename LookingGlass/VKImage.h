@@ -85,7 +85,11 @@ public:
 
 public:
 	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
-		for (auto& i : GLITextures) { i.Destroy(Device); } GLITextures.clear();
+		for (auto& i : GLITextures) { 
+			i.Destroy(Device);
+		} 
+		GLITextures.clear();
+
 		Super::OnDestroy(hWnd, hInstance);
 	}
 

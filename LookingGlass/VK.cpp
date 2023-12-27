@@ -9,17 +9,54 @@
 
 void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 {
+	for (auto i : DescriptorUpdateTemplates) {
+		vkDestroyDescriptorUpdateTemplate(Device, i, GetAllocationCallbacks());
+	}
+	DescriptorUpdateTemplates.clear();
+	//!< 個別に開放できるのは VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT を指定した場合
+	//if (!empty(DescriptorSets)) { vkFreeDescriptorSets(Device, DescriptorPool, static_cast<uint32_t>(size(DescriptorSets)), data(DescriptorSets)); }
+	DescriptorSets.clear();
+	//!< やらなくてもよい
+	//for (auto i : DescriptorPools) { vkResetDescriptorPool(Device, i, 0); }
+	for (auto i : DescriptorPools) {
+		vkDestroyDescriptorPool(Device, i, GetAllocationCallbacks());
+	}
+	DescriptorPools.clear();
+
 	for (auto i : Framebuffers) {
 		vkDestroyFramebuffer(Device, i, GetAllocationCallbacks());
 	}
 	Framebuffers.clear();
-
+	for (auto i : Pipelines) {
+		vkDestroyPipeline(Device, i, GetAllocationCallbacks());
+	}
+	Pipelines.clear();
 	for (auto i : RenderPasses) {
 		vkDestroyRenderPass(Device, i, GetAllocationCallbacks());
 	}
 	RenderPasses.clear();
 
-	for (auto i : IndirectBuffers) { i.Destroy(Device); } IndirectBuffers.clear();
+	for (auto i : PipelineLayouts) {
+		vkDestroyPipelineLayout(Device, i, GetAllocationCallbacks());
+	}
+	PipelineLayouts.clear();
+	for (auto i : DescriptorSetLayouts) {
+		vkDestroyDescriptorSetLayout(Device, i, GetAllocationCallbacks());
+	}
+	DescriptorSetLayouts.clear();
+
+	for (auto i : Samplers) {
+		vkDestroySampler(Device, i, GetAllocationCallbacks());
+	}
+
+	for (auto i : UniformBuffers) { 
+		i.Destroy(Device);
+	}
+	UniformBuffers.clear();
+	for (auto i : IndirectBuffers) { 
+		i.Destroy(Device); 
+	}
+	IndirectBuffers.clear();
 
 	//!< コマンドプール破棄時にコマンドバッファは暗黙的に破棄される
 	for (auto i : SecondaryCommandPools) {

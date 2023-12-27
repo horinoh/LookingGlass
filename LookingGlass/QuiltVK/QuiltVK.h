@@ -27,11 +27,10 @@ public:
 		IndirectBuffers.emplace_back().Create(Device, PDMP, DIC).SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, sizeof(DIC), &DIC);
 	}
 	virtual void CreateUniformBuffer() override {
-		//...
-
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		for (size_t i = 0; i < size(SwapchainImages); ++i) {
-			UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(int));
+			auto& UB = UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
+			CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
 		}
 	}
 	virtual void CreateTexture() override {
@@ -59,11 +58,12 @@ public:
 		const std::array ISs = { Samplers[0] };
 		CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
 			VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = data(ISs) }),
-			VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
+			VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr }),
 
 		});
 		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), DescriptorSetLayouts, {});
 	}
+	virtual void CreateRenderPass() { CreateRenderPass_None(); }
 	virtual void CreatePipeline() override {
 		const std::array SMs = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "QuiltVK.vert.spv"),
@@ -98,7 +98,6 @@ public:
 
 		auto DSL = DescriptorSetLayouts[0];
 		auto DP = DescriptorPools[0];
-
 		const std::array DSLs = { DSL };
 		const VkDescriptorSetAllocateInfo DSAI = {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,

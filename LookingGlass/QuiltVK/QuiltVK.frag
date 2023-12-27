@@ -8,7 +8,24 @@ layout (location = 0) in vec2 InTexcoord;
 
 layout (location = 0) out vec4 OutColor;
 
-layout (set=0, binding=0) uniform sampler2D Sampler2D;
+layout (set = 0, binding = 0) uniform sampler2D Sampler2D;
+
+layout (set = 0, binding = 1) uniform LenticularBuffer
+{
+	float Pitch;
+	float Tilt;
+	float Center;
+	float Subp;
+
+	float DisplayAspect;
+	int InvView;
+	int Ri;
+	int Bi;
+
+	float Column;
+	float Row;
+	float ColRow;
+};
 
 void main()
 {

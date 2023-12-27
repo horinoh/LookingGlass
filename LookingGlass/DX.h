@@ -85,6 +85,10 @@ public:
 	}
 	virtual void OnTimer(HWND hWnd, HINSTANCE hInstance) { SendMessage(hWnd, WM_PAINT, 0, 0); }
 	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance)  { Draw(); }
+	//!< ‰ð•ú‘O‚ÉAI—¹‚ð‘Ò‚½‚È‚­‚Ä‚Í‚È‚ç‚È‚¢‚à‚Ì‚ð‘Ò‚Â
+	virtual void OnPreDestroy() {
+		WaitForFence(COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence));
+	}
 	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance)  { }
 
 public:
@@ -259,6 +263,14 @@ protected:
 			})
 		};
 		GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
+	}
+	static void CopyToUploadResource(ID3D12Resource* Resource, const size_t Size, const void* Source, const D3D12_RANGE* Range = nullptr) {
+		if (nullptr != Resource && Size && nullptr != Source) [[likely]] {
+			BYTE* Data;
+			VERIFY_SUCCEEDED(Resource->Map(0, Range, reinterpret_cast<void**>(&Data))); {
+				memcpy(Data, Source, Size);
+			} Resource->Unmap(0, nullptr);
+		}
 	}
 
 	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& PSFs, const D3D12_RESOURCE_STATES RS) {
