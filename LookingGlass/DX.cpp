@@ -75,10 +75,6 @@ void DX::CreateCommandQueue()
 	};
 	VERIFY_SUCCEEDED(Device->CreateCommandQueue(&CQD, COM_PTR_UUIDOF_PUTVOID(GraphicsCommandQueue)));
 }
-void DX::CreateFence()
-{
-	VERIFY_SUCCEEDED(Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, COM_PTR_UUIDOF_PUTVOID(GraphicsFence)));
-}
 void DX::CreateSwapChain(HWND hWnd, const DXGI_FORMAT ColorFormat, const UINT Width, const UINT Height)
 {
 	std::vector<DXGI_SAMPLE_DESC> SDs;
@@ -210,12 +206,12 @@ void DX::CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
 			.pSODeclaration = nullptr, .NumEntries = 0,
 			.pBufferStrides = nullptr, .NumStrides = 0,
 			.RasterizedStream = 0
-			}),
+		}),
 		.BlendState = D3D12_BLEND_DESC({
 			.AlphaToCoverageEnable = TRUE,		//!< マルチサンプルを考慮したアルファテスト(AlphaToCoverageEnable)、アルファが0の箇所には無駄に書き込まない
 			.IndependentBlendEnable = FALSE,	//!< マルチレンダーターゲットにそれぞれ別のブレンドステートを割り当てる(IndependentBlendEnable)
 			.RenderTarget = {}
-			}),
+		}),
 		.SampleMask = D3D12_DEFAULT_SAMPLE_MASK,
 		.RasterizerState = RD,
 		.DepthStencilState = DSD,
@@ -284,7 +280,8 @@ void DX::SubmitGraphics(const UINT i)
 }
 void DX::Present()
 {
-	VERIFY_SUCCEEDED(SwapChain->Present(1/*垂直同期を待つ*/, 0));
+	//!< 垂直同期を待つ
+	VERIFY_SUCCEEDED(SwapChain->Present(1, 0));
 }
 void DX::Draw()
 {

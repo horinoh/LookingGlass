@@ -36,7 +36,7 @@
 //#define SHADER_ROOT_ACCESS_DS_GS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS))
 //#define SHADER_ROOT_ACCESS_MS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS)
 
-#define VERIFY_SUCCEEDED(x) (x)
+#define VERIFY_SUCCEEDED(x) { const auto HR = (x); assert(SUCCEEDED(HR) && ""); }
 
 #include "Common.h"
 
@@ -60,7 +60,7 @@ public:
 		CreateRootSignature();
 		CreatePipelineState();
 		CreateDescriptor();
-		CreateShaderTable();
+		//CreateShaderTable();
 		
 		OnExitSizeMove(hWnd, hInstance);
 	}
@@ -85,7 +85,7 @@ public:
 	}
 	virtual void OnTimer(HWND hWnd, HINSTANCE hInstance) { SendMessage(hWnd, WM_PAINT, 0, 0); }
 	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance)  { Draw(); }
-	//!< 解放前に、終了を待たなくてはならないものを待つ
+	//!< 解放前に、終了を待たなくてはならないものをここで待つ
 	virtual void OnPreDestroy() {
 		WaitForFence(COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence));
 	}
@@ -94,7 +94,9 @@ public:
 public:
 	virtual void CreateDevice([[maybe_unused]] HWND hWnd);
 	virtual void CreateCommandQueue();
-	virtual void CreateFence();
+	virtual void CreateFence() {
+		VERIFY_SUCCEEDED(Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, COM_PTR_UUIDOF_PUTVOID(GraphicsFence)));
+	}
 	
 	virtual void CreateSwapChain(HWND hWnd, const DXGI_FORMAT ColorFormat, const UINT Width, const UINT Height);
 	virtual void GetSwapChainResource();
@@ -132,23 +134,11 @@ public:
 	virtual void CreatePipelineState() {}
 	
 	virtual void CreateDescriptor() {}
-	virtual void CreateShaderTable() {}
+	//virtual void CreateShaderTable() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
 	virtual void PopulateCommandList(const size_t i) {
-		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
-		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
-		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
-			CL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
-			CL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
-			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
-			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			{
-				constexpr std::array<D3D12_RECT, 0> Rects = {};
-				CL->ClearRenderTargetView(SwapChainCPUHandles[i], DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
-			}
-			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-		} VERIFY_SUCCEEDED(CL->Close());
+		PopulateCommandList_Clear(i, DirectX::Colors::SkyBlue);
 	}
 
 	static void WaitForFence(ID3D12CommandQueue* CQ, ID3D12Fence* Fence);
@@ -285,7 +275,6 @@ protected:
 				.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
 				.PlacedFootprint = PSFs[i]
 			};
-			//const D3D12_BOX Box = { .left = static_cast<UINT>(PSFs[i].Offset), .top = 0, .front = 0, .right = static_cast<UINT>(PSFs[i].Offset) + PSFs[i].Footprint.Width, .bottom = 1, .back = 1, };
 			GCL->CopyTextureRegion(&TCL_Dst, 0, 0, 0, &TCL_Src, nullptr);
 		}
 		{
@@ -305,27 +294,21 @@ protected:
 	}
 
 	void CreatePipelineState_VsPs_Input(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {
-		//!< ブレンド (Blend)
-//!< 例) 
-//!< ブレンド	: Src * A + Dst * (1 - A)	= Src:D3D12_BLEND_SRC_ALPHA, Dst:D3D12_BLEND_INV_SRC_ALPHA, Op:D3D12_BLEND_OP_ADD
-//!< 加算		: Src * 1 + Dst * 1			= Src:D3D12_BLEND_ONE, Dst:D3D12_BLEND_ONE, Op:D3D12_BLEND_OP_ADD
-//!< 乗算		: Src * 0 + Dst * Src		= Src:D3D12_BLEND_ZERO, Dst:D3D12_BLEND_SRC_COLOR, Op:D3D12_BLEND_OP_ADD
 		const std::vector RTBDs = {
 			D3D12_RENDER_TARGET_BLEND_DESC({
-				.BlendEnable = FALSE, .LogicOpEnable = FALSE, //!< ブレンド有効かどうか、論理演算有効かどうか (同時にTRUEにはできない)
-				.SrcBlend = D3D12_BLEND_ONE, .DestBlend = D3D12_BLEND_ZERO, .BlendOp = D3D12_BLEND_OP_ADD, //!< ブレンド Src(新規), Dst(既存), Op
-				.SrcBlendAlpha = D3D12_BLEND_ONE, .DestBlendAlpha = D3D12_BLEND_ZERO, .BlendOpAlpha = D3D12_BLEND_OP_ADD, //!< アルファ Src(新規), Dst(既存), Op
-				.LogicOp = D3D12_LOGIC_OP_NOOP, //!< 論理演算
-				.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL, //!< 書き込み時のマスク値
+				.BlendEnable = FALSE, .LogicOpEnable = FALSE, 
+				.SrcBlend = D3D12_BLEND_ONE, .DestBlend = D3D12_BLEND_ZERO, .BlendOp = D3D12_BLEND_OP_ADD,
+				.SrcBlendAlpha = D3D12_BLEND_ONE, .DestBlendAlpha = D3D12_BLEND_ZERO, .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+				.LogicOp = D3D12_LOGIC_OP_NOOP, 
+				.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL, 
 			}),
 		};
 		constexpr D3D12_DEPTH_STENCILOP_DESC DSOD = {
-			.StencilFailOp = D3D12_STENCIL_OP_KEEP,			//!< ステンシルテスト失敗時
-			.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,	//!< ステンシルテスト成功、デプステスト失敗時
-			.StencilPassOp = D3D12_STENCIL_OP_KEEP,			//!< ステンシルテスト成功、デプステスト成功時
-			.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS		//!< 既存のステンシル値との比較方法
+			.StencilFailOp = D3D12_STENCIL_OP_KEEP,			
+			.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,	
+			.StencilPassOp = D3D12_STENCIL_OP_KEEP,			
+			.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS	
 		};
-		//!< (アルファブレンド等で)「テスト」は有効だが「ライト」は無効にするような場合は D3D12_DEPTH_WRITE_MASK_ZERO にする
 		const D3D12_DEPTH_STENCIL_DESC DSD = {
 			.DepthEnable = DepthEnable, .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL, .DepthFunc = D3D12_COMPARISON_FUNC_LESS,
 			.StencilEnable = FALSE, .StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK, .StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK,
@@ -334,14 +317,27 @@ protected:
 		const std::vector RTVs = { DXGI_FORMAT_R8G8B8A8_UNORM };
 
 		std::vector<std::thread> Threads;
-		//!< メンバ関数をスレッドで使用したい場合は、以下のようにthisを引数に取る形式を使用すればよい
-		//std::thread::thread(&DXExt::Func, this, Arg0, Arg1,...);
 		Threads.emplace_back(std::thread::thread(DX::CreatePipelineStateVsPsDsHsGs, std::ref(PipelineStates.emplace_back()), COM_PTR_GET(Device), COM_PTR_GET(RootSignatures[0]), PTT, RTBDs, RD, DSD, SBCs[0], SBCs[1], NullSBC, NullSBC, NullSBC, IEDs, RTVs, nullptr));
 
 		for (auto& i : Threads) { i.join(); }
 	}
 	void CreatePipelineState_VsPs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {  
 		CreatePipelineState_VsPs_Input(PTT, RD, DepthEnable, {}, SBCs);
+	}
+	void PopulateCommandList_Clear(const size_t i, const DirectX::XMVECTORF32& Color) {
+		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
+		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
+		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
+			CL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
+			CL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
+			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			{
+				constexpr std::array<D3D12_RECT, 0> Rects = {};
+				CL->ClearRenderTargetView(SwapChainCPUHandles[i], Color, static_cast<UINT>(size(Rects)), data(Rects));
+			}
+			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		} VERIFY_SUCCEEDED(CL->Close());
 	}
 
 	class ResourceBase

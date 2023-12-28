@@ -276,24 +276,6 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 		}
 	}
 }
-void VK::CreateFence(VkDevice Dev)
-{
-	constexpr VkFenceCreateInfo FCI = { 
-		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-		.pNext = nullptr, 
-		.flags = VK_FENCE_CREATE_SIGNALED_BIT
-	};
-	VERIFY_SUCCEEDED(vkCreateFence(Dev, &FCI, GetAllocationCallbacks(), &GraphicsFence));
-
-	constexpr VkSemaphoreCreateInfo SCI = {
-		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, 
-		.pNext = nullptr,
-		.flags = 0
-	};
-	VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &NextImageAcquiredSemaphore));
-	VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &RenderFinishedSemaphore));
-}
-
 
 VkSurfaceFormatKHR VK::SelectSurfaceFormat(VkPhysicalDevice PD, VkSurfaceKHR Sfc)
 {
@@ -662,20 +644,6 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 	VERIFY_SUCCEEDED(vkCreateGraphicsPipelines(Dev, VK_NULL_HANDLE, static_cast<uint32_t>(size(GPCIs)), data(GPCIs), GetAllocationCallbacks(), &PL));
 }
 
-void VK::CreateFramebuffer(VkFramebuffer& FB, const VkRenderPass RP, const uint32_t Width, const uint32_t Height, const uint32_t Layers, const std::vector<VkImageView>& IVs)
-{
-	const VkFramebufferCreateInfo FCI = {
-		.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.renderPass = RP, //!< ここで指定するレンダーパスは「互換性のあるもの」なら可
-		.attachmentCount = static_cast<uint32_t>(size(IVs)), .pAttachments = data(IVs),
-		.width = Width, .height = Height,
-		.layers = Layers
-	};
-	VERIFY_SUCCEEDED(vkCreateFramebuffer(Device, &FCI, GetAllocationCallbacks(), &FB));
-}
-
 void VK::CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth, const FLOAT MaxDepth)
 {
 	Viewports = {
@@ -696,20 +664,13 @@ void VK::CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDe
 void VK::WaitForFence(VkDevice Device, VkFence Fence) 
 {
 	const std::array Fences = { Fence };
-
-	//!< https://arm-software.github.io/vulkan_best_practice_for_mobile_developers/docs/faq.html#debugging-a-device_lost 
-	//!< I’m getting a DEVICE_LOST error when calling either vkQueueSubmit or vkWaitForFences. Validation is clean. Why could that be? There are two main reasons why a DEVICE_LOST might arise:
-	//!<	Out of memory(OOM)
-	//!<	Resource corruption
-	//!<  missing synchronization does not necessarily result in a lost device.
 	VERIFY_SUCCEEDED(vkWaitForFences(Device, static_cast<uint32_t>(size(Fences)), data(Fences), VK_TRUE, (std::numeric_limits<uint64_t>::max)()));
 	vkResetFences(Device, static_cast<uint32_t>(size(Fences)), data(Fences));
 }
 void VK::SubmitGraphics(const uint32_t i)
 {
-	const std::array WaitSems = { NextImageAcquiredSemaphore/*, ComputeSemaphore*/ };
+	const std::array WaitSems = { NextImageAcquiredSemaphore };
 	const std::array WaitStages = { VkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) };
-	assert(size(WaitSems) == size(WaitStages) && "Must be same size");
 	//!< 実行するコマンドバッファ
 	const std::array CBs = { CommandBuffers[i], };
 	//!< 完了時にシグナルされるセマフォ (RenderFinishedSemaphore) -> これを待ってからプレゼントが行われる
@@ -747,15 +708,8 @@ void VK::Draw()
 {
 	WaitForFence(Device, GraphicsFence);
 
-	//!< 次のイメージが取得できるまでブロック(タイムアウトは指定可能)、取得できたからといってイメージは直ぐに目的に使用可能とは限らない
-	//!< 使用可能になるとフェンスやセマフォがシグナルされる (シグナルするように指定した場合)
-	//!< ここではセマフォを指定し、このセマフォはサブミット時に使用する(サブミットしたコマンドがプレゼンテーションを待つように指示している)
-	//!<	VK_SUBOPTIMAL_KHR : イメージは使用可能ではあるがプレゼンテーションエンジンにとってベストではない状態
-	//!<	VK_ERROR_OUT_OF_DATE_KHR : イメージは使用不可で再作成が必要
 	VERIFY_SUCCEEDED(vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, NextImageAcquiredSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
-
 	DrawFrame(SwapchainImageIndex);
-
 	SubmitGraphics(SwapchainImageIndex);
 
 	Present();

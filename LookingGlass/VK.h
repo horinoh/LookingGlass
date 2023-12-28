@@ -46,7 +46,7 @@ namespace Colors
 	constexpr VkClearColorValue Yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
 }
 
-#define VERIFY_SUCCEEDED(x) (x)
+#define VERIFY_SUCCEEDED(x) { const auto VR = (x); assert(VK_SUCCESS == VR && ""); }
 
 #include "Common.h"
 
@@ -64,6 +64,7 @@ public:
 		SelectPhysicalDevice(Instance);
 		CreateDevice(hWnd, hInstance);
 		CreateFence(Device);
+		CreateSemaphore(Device);
 		CreateSwapchain();
 		AllocateCommandBuffer();
 		CreateGeometry();
@@ -75,7 +76,7 @@ public:
 		CreatePipeline();
 		CreateFramebuffer();
 		CreateDescriptor();
-		CreateShaderBindingTable();
+		//CreateShaderBindingTable();
 
 		OnExitSizeMove(hWnd, hInstance);
 	}
@@ -100,7 +101,7 @@ public:
 	}
 	virtual void OnTimer(HWND hWnd, HINSTANCE hInstance) { SendMessage(hWnd, WM_PAINT, 0, 0); }
 	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance) { Draw(); }
-	//!< 解放前に、終了を待たなくてはならないものを待つ
+	//!< 解放前に、終了を待たなくてはならないものをここで待つ
 	virtual void OnPreDestroy() {
 		if (VK_NULL_HANDLE != Device) [[likely]] {
 			VERIFY_SUCCEEDED(vkDeviceWaitIdle(Device));
@@ -114,7 +115,23 @@ public:
 	virtual void CreateInstance(const std::vector<const char*>& AdditionalLayers = {}, const std::vector<const char*>& AdditionalExtensions = {});
 	virtual void SelectPhysicalDevice(VkInstance Inst);
 	virtual void CreateDevice([[maybe_unused]] HWND hWnd, HINSTANCE hInstance, void* pNext = nullptr, const std::vector<const char*>& AdditionalExtensions = {});
-	virtual void CreateFence(VkDevice Dev);
+	virtual void CreateFence(VkDevice Dev) {
+		constexpr VkFenceCreateInfo FCI = {
+		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = VK_FENCE_CREATE_SIGNALED_BIT
+		};
+		VERIFY_SUCCEEDED(vkCreateFence(Dev, &FCI, GetAllocationCallbacks(), &GraphicsFence));	
+	}
+	virtual void CreateSemaphore(VkDevice Dev) {
+		constexpr VkSemaphoreCreateInfo SCI = {
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0
+		};
+		VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &NextImageAcquiredSemaphore));
+		VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &RenderFinishedSemaphore));
+	}
 
 	[[nodiscard]] virtual VkSurfaceFormatKHR SelectSurfaceFormat(VkPhysicalDevice PD, VkSurfaceKHR Surface);
 	[[nodiscard]] virtual VkPresentModeKHR SelectSurfacePresentMode(VkPhysicalDevice PD, VkSurfaceKHR Surface); 
@@ -194,7 +211,18 @@ public:
 		const std::vector<VkPipelineColorBlendAttachmentState>& PCBASs);
 	virtual void CreatePipeline() {}
 
-	virtual void CreateFramebuffer(VkFramebuffer& FB, const VkRenderPass RP, const uint32_t Width, const uint32_t Height, const uint32_t Layers, const std::vector<VkImageView>& IVs);
+	virtual void CreateFramebuffer(VkFramebuffer& FB, const VkRenderPass RP, const uint32_t Width, const uint32_t Height, const uint32_t Layers, const std::vector<VkImageView>& IVs) {
+		const VkFramebufferCreateInfo FCI = {
+			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.renderPass = RP,
+			.attachmentCount = static_cast<uint32_t>(size(IVs)), .pAttachments = data(IVs),
+			.width = Width, .height = Height,
+			.layers = Layers
+		};
+		VERIFY_SUCCEEDED(vkCreateFramebuffer(Device, &FCI, GetAllocationCallbacks(), &FB));
+	}
 	virtual void CreateFramebuffer() {
 		const auto RP = RenderPasses.front();
 		for (auto i : SwapchainImageViews) {
@@ -231,34 +259,11 @@ public:
 	}
 	virtual void CreateDescriptor() {}
 
-	virtual void CreateShaderBindingTable() {}
+	//virtual void CreateShaderBindingTable() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
 	virtual void PopulateCommandBuffer(const size_t i) {
-		const auto CB = CommandBuffers[i];
-		constexpr VkCommandBufferBeginInfo CBBI = {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.pInheritanceInfo = nullptr
-		};
-		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			vkCmdSetViewport(CB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-			vkCmdSetScissor(CB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
-
-			constexpr std::array CVs = { VkClearValue({.color = Colors::SkyBlue }) };
-			const VkRenderPassBeginInfo RPBI = {
-				.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-				.pNext = nullptr,
-				.renderPass = RenderPasses[0],
-				.framebuffer = Framebuffers[i],
-				.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = SurfaceExtent2D }),
-				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
-			};
-			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_INLINE); {
-			} vkCmdEndRenderPass(CB);
-
-		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
+		PopulateCommandBuffer_Clear(i, Colors::SkyBlue);
 	}
 
 	static void WaitForFence(VkDevice Device, VkFence Fence);
@@ -386,10 +391,7 @@ protected:
 			void* Data;
 			VERIFY_SUCCEEDED(vkMapMemory(Dev, DM, Offset, /*Size*/MappedRangeSize, static_cast<VkMemoryMapFlags>(0), &Data)); {
 				memcpy(Data, Source, Size);
-				//!< メモリコンテンツが変更されたことをドライバへ知らせる(vkMapMemory()した状態でやること)
-				//!< デバイスメモリ確保時に VK_MEMORY_PROPERTY_HOST_COHERENT_BIT を指定した場合は必要ない CreateDeviceMemory(..., VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 				VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Dev, static_cast<uint32_t>(size(MMRs)), data(MMRs)));
-				//VERIFY_SUCCEEDED(vkInvalidateMappedMemoryRanges(Device, static_cast<uint32_t>(size(MMRs)), data(MMRs)));
 			} vkUnmapMemory(Dev, DM);
 		}
 	}
@@ -505,10 +507,10 @@ protected:
 			.depthBoundsTestEnable = VK_FALSE,
 			.stencilTestEnable = VK_FALSE,
 			.front = VkStencilOpState({
-				.failOp = VK_STENCIL_OP_KEEP,		//!< ステンシルテスト失敗時
-				.passOp = VK_STENCIL_OP_KEEP,		//!< ステンシルテスト成功、デプステスト失敗時
-				.depthFailOp = VK_STENCIL_OP_KEEP,	//!< ステンシルテスト成功、デプステスト成功時
-				.compareOp = VK_COMPARE_OP_NEVER,	//!< 既存のステンシル値との比較方法
+				.failOp = VK_STENCIL_OP_KEEP,		
+				.passOp = VK_STENCIL_OP_KEEP,		
+				.depthFailOp = VK_STENCIL_OP_KEEP,	
+				.compareOp = VK_COMPARE_OP_NEVER,
 				.compareMask = 0, .writeMask = 0, .reference = 0
 			}),
 			.back = VkStencilOpState({
@@ -520,30 +522,46 @@ protected:
 			}),
 			.minDepthBounds = 0.0f, .maxDepthBounds = 1.0f
 		};
-
-		//!< ブレンド (Blend)
-		//!< 例) 
-		//!< ブレンド	: Src * A + Dst * (1 - A)	= Src:VK_BLEND_FACTOR_SRC_ALPHA, Dst:VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, Op:VK_BLEND_OP_ADD
-		//!< 加算		: Src * 1 + Dst * 1			= Src:VK_BLEND_FACTOR_ONE, Dst:VK_BLEND_FACTOR_ONE, Op:VK_BLEND_OP_ADD
-		//!< 乗算		: Src * 0 + Dst * Src		= Src:VK_BLEND_FACTOR_ZERO, Dst:VK_BLEND_FACTOR_SRC_COLOR, Op:VK_BLEND_OP_ADD
 		const std::vector PCBASs = {
 			VkPipelineColorBlendAttachmentState({
 				.blendEnable = VK_FALSE,
-				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE, .dstColorBlendFactor = VK_BLEND_FACTOR_ONE, .colorBlendOp = VK_BLEND_OP_ADD, //!< ブレンド 
-				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .alphaBlendOp = VK_BLEND_OP_ADD, //!< アルファ
+				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE, .dstColorBlendFactor = VK_BLEND_FACTOR_ONE, .colorBlendOp = VK_BLEND_OP_ADD, 
+				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .alphaBlendOp = VK_BLEND_OP_ADD,
 				.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
 			}),
 		};
 
 		std::vector<std::thread> Threads;
-		//!< メンバ関数をスレッドで使用したい場合は、以下のようにthisを引数に取る形式を使用すればよい
-		//std::thread::thread(&VKExt::Func, this, Arg0, Arg1,...);
 		Threads.emplace_back(std::thread::thread(VK::CreatePipelineVsFsTesTcsGs, std::ref(Pipelines.emplace_back()), Device, PipelineLayouts[0], RenderPasses[0], PT, PatchControlPoints, PRSCI, PDSSCI, &PSSCIs[0], &PSSCIs[1], nullptr, nullptr, nullptr, VIBDs, VIADs, PCBASs));
 
 		for (auto& i : Threads) { i.join(); }
 	}
 	void CreatePipeline_VsFs(const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 2>& PSSCIs) { 
 		CreatePipeline_VsFs_Input(PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
+	}
+	void PopulateCommandBuffer_Clear(const size_t i, const VkClearColorValue& Color) {
+		const auto CB = CommandBuffers[i];
+		constexpr VkCommandBufferBeginInfo CBBI = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.pInheritanceInfo = nullptr
+		};
+		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
+			vkCmdSetViewport(CB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
+			vkCmdSetScissor(CB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+			const std::array CVs = { VkClearValue({.color = Color }) };
+			const VkRenderPassBeginInfo RPBI = {
+				.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+				.pNext = nullptr,
+				.renderPass = RenderPasses[0],
+				.framebuffer = Framebuffers[i],
+				.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = SurfaceExtent2D }),
+				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
+			};
+			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_INLINE); {
+			} vkCmdEndRenderPass(CB);
+		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
 
 	template<typename T> class Scoped : public T
@@ -696,7 +714,6 @@ protected:
 				.pNext = nullptr,
 				.flags = 0,
 				.image = Image,
-				//!< 基本 TYPE_2D, _TYPE_2D_ARRAY として扱う、それ以外で使用する場合は明示的に上書きして使う
 				.viewType = ArrayLayers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY,
 				.format = Format,
 				.components = VkComponentMapping({.r = VK_COMPONENT_SWIZZLE_R, .g = VK_COMPONENT_SWIZZLE_G, .b = VK_COMPONENT_SWIZZLE_B, .a = VK_COMPONENT_SWIZZLE_A }),
@@ -711,11 +728,8 @@ protected:
 			if (VK_NULL_HANDLE != View) { vkDestroyImageView(Device, View, GetAllocationCallbacks()); }
 		}
 
-		//!< レイアウトを GENERAL にしておく必要がある場合に使用
-		//!< 例) 頻繁にレイアウトの変更や戻しが必要になるような場合 UNDEFINED へは戻せないので、戻せるレイアウトである GENERAL を初期レイアウトとしておく
 		void PopulateSetLayoutCommand(const VkCommandBuffer CB, const VkImageLayout Layout) {
 			const std::array IMBs = {
-				//!< UNDEFINED -> Layout
 				VkImageMemoryBarrier({
 					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 					.pNext = nullptr,
