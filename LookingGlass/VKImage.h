@@ -82,6 +82,20 @@ public:
 	[[nodiscard]] static VkComponentMapping ToVkComponentMapping(const gli::texture::swizzles_type GLISwizzleType) {
 		return VkComponentMapping({ .r = ToVkComponentSwizzle(GLISwizzleType.r), .g = ToVkComponentSwizzle(GLISwizzleType.g), .b = ToVkComponentSwizzle(GLISwizzleType.b), .a = ToVkComponentSwizzle(GLISwizzleType.a) });
 	}
+	static void GetPhysicalDeviceImageFormatProperties(VkImageFormatProperties& IFP, const VkPhysicalDevice& PD, const gli::texture& GLI) {
+		VERIFY_SUCCEEDED(vkGetPhysicalDeviceImageFormatProperties(PD,
+			VKImage::ToVkFormat(GLI.format()),
+			VKImage::ToVkImageType(GLI.target()),
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			gli::is_target_cube(GLI.target()) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0,
+			&IFP));
+		LOG(data(std::format("maxExtent = {} x {} x {}\n", IFP.maxExtent.width, IFP.maxExtent.height, IFP.maxExtent.depth)));
+		LOG(data(std::format("maxMipLevels = {}\n", IFP.maxMipLevels)));
+		LOG(data(std::format("maxArrayLayers = {}\n", IFP.maxArrayLayers)));
+		LOG(data(std::format("sampleCounts = {}\n", IFP.sampleCounts)));
+		LOG(data(std::format("maxResourceSize = {}\n", IFP.maxResourceSize)));
+	}
 
 public:
 	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
@@ -100,13 +114,13 @@ public:
 		gli::texture GliTexture;
 
 	public:
+		const gli::texture& GetGliTexture() const { return GliTexture; }
 		GLITexture& Create(const VkDevice Dev, const VkPhysicalDeviceMemoryProperties PDMP, const std::filesystem::path& Path) {
 			assert(std::filesystem::exists(Path) && "");
 			if (IsDDS(Path) || IsKTX(Path)) {
 				GliTexture = gli::load(data(Path.string()));
 			}
 			assert(!GliTexture.empty() && "Load image failed");
-
 			const auto Format = ToVkFormat(GliTexture.format());
 			VK::CreateImageMemory(&Image, &DeviceMemory, Dev, PDMP,
 				gli::is_target_cube(GliTexture.target()) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0,
@@ -158,6 +172,9 @@ public:
 				PopulateCopyCommand(CB, PSF, Staging.Buffer);
 			} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 			VK::SubmitAndWait(Queue, CB);
+		}
+		void GetPhysicalDeviceImageFormatProperties(VkImageFormatProperties& IFP, const VkPhysicalDevice& PD) {
+			VKImage::GetPhysicalDeviceImageFormatProperties(IFP, PD, GliTexture);
 		}
 	};
 

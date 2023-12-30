@@ -36,7 +36,39 @@ public:
 	virtual void CreateTexture() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
-		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "mar-terrarium.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		//c_missy_baby_beach_qs5x9.dds
+		//dedouze_qs5x9.dds
+		//g_lumen1_qs5x9.dds
+		//inventorbench_jayhowse_qs5x9.dds
+		//j_smf_lightfield_qs5x9.dds
+		//mar1_qs5x8.dds 
+		//Jane_Guan_Space_Nap_qs8x6.dds //https://docs.lookingglassfactory.com/keyconcepts/quilts
+		//timestar_40.dds
+		//teresaquilt.dds
+		//soccerballquilt.dds
+		//kangarooquilt.dds
+		//statueoffset.dds
+		//statue.dds
+		//example01.dds
+		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Jane_Guan_Space_Nap_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+		//!< ƒLƒ‹ƒg‚Ì•ªŠ„‚É‡‚í‚¹‚ÄÝ’è‚·‚é‚±‚Æ
+		if (nullptr != LenticularBuffer) {
+			LenticularBuffer->Column = 8;
+			LenticularBuffer->Row = 6;
+			LenticularBuffer->ColRow = LenticularBuffer->Column * LenticularBuffer->Row;
+
+			const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
+			const auto ViewWidth = Extent.x / LenticularBuffer->Column;
+			const auto ViewHeight = Extent.y / LenticularBuffer->Row;
+
+			LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
+			LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
+			LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
+
+			const auto ViewPortion = glm::vec2(float(ViewWidth) * LenticularBuffer->Column / float(Extent.x), float(ViewHeight) * LenticularBuffer->Row / float(Extent.y));
+			LOG(data(std::format("ViewPortion = {} x {}\n", ViewPortion.x, ViewPortion.y)));
+		}
 	}
 	virtual void CreateImmutableSampler() override {
 		constexpr VkSamplerCreateInfo SCI = {

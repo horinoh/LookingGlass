@@ -72,7 +72,7 @@ public:
 
 				//!< 基本的に libHoloPlayCore.h の内容は理解する必要はないと書いてあるが、サンプルでは使っている…
 				//!< ビューの取りうる範囲 [-viewCone * 0.5f, viewCone * 0.5f]
-				LOG(data(std::format("\thpc_GetDevicePropertyFloat = {}\n", hpc_GetDevicePropertyFloat(i, "/calibration/viewCone/value")))); //!< 参考値) 40
+				LOG(data(std::format("\thpc_GetDevicePropertyFloat(viewCone) = {}\n", hpc_GetDevicePropertyFloat(i, "/calibration/viewCone/value")))); //!< 参考値) 40
 			}
 		}
 
@@ -140,7 +140,11 @@ public:
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する
 		const auto Index = DeviceIndex;
 		if (-1 != Index) {
+			LOG(data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(Index), hpc_GetDevicePropertyWinY(Index), hpc_GetDevicePropertyScreenW(Index), hpc_GetDevicePropertyScreenH(Index))));
 			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(Index), hpc_GetDevicePropertyWinY(Index), hpc_GetDevicePropertyScreenW(Index), hpc_GetDevicePropertyScreenH(Index), SWP_FRAMECHANGED);
+			::ShowWindow(hWnd, SW_SHOW);
+		} else {
+			::SetWindowPos(hWnd, nullptr, /*1920*/0, 0, 1536, 2048, SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);
 		}
 	}
@@ -178,7 +182,7 @@ protected:
 				Subp = hpc_GetDevicePropertySubp(Index);
 
 				DisplayAspect = hpc_GetDevicePropertyDisplayAspect(Index);
-				InvView = hpc_GetDevicePropertyInvView(Index);
+				InvView = hpc_GetDevicePropertyInvView(Index) ? -1 : 1;
 				Ri = hpc_GetDevicePropertyRi(Index);
 				Bi = hpc_GetDevicePropertyBi(Index);
 
@@ -224,6 +228,7 @@ protected:
 		float Column = 8;
 		float Row = 6;
 		float ColRow = Column * Row;
+		float QuiltAspect = Column / Row;
 	};
 	LENTICULAR_BUFFER* LenticularBuffer = nullptr;
 

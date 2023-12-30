@@ -37,7 +37,39 @@ public:
 	virtual void CreateTexture() override {
 		const auto DCA = DirectCommandAllocators[0];
 		const auto DCL = DirectCommandLists[0];
-		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "mar-terrarium.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//c_missy_baby_beach_qs5x9.dds
+		//dedouze_qs5x9.dds
+		//g_lumen1_qs5x9.dds
+		//inventorbench_jayhowse_qs5x9.dds
+		//j_smf_lightfield_qs5x9.dds
+		//mar1_qs5x8.dds 
+		//Jane_Guan_Space_Nap_qs8x6.dds //https://docs.lookingglassfactory.com/keyconcepts/quilts
+		//timestar_40.dds
+		//teresaquilt.dds
+		//soccerballquilt.dds
+		//kangarooquilt.dds
+		//statueoffset.dds
+		//statue.dds
+		//example01.dds
+		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Jane_Guan_Space_Nap_qs8x6.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		
+		//!< ƒLƒ‹ƒg‚Ì•ªŠ„‚É‡‚í‚¹‚ÄÝ’è‚·‚é‚±‚Æ
+		if (nullptr != LenticularBuffer) {
+			LenticularBuffer->Column = 8;
+			LenticularBuffer->Row = 6;
+			LenticularBuffer->ColRow = LenticularBuffer->Column * LenticularBuffer->Row;
+
+			const auto RD = XTKTextures.back().Resource->GetDesc();
+			const auto ViewWidth = RD.Width / LenticularBuffer->Column;
+			const auto ViewHeight = RD.Height / LenticularBuffer->Row;
+
+			LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
+			LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
+			LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
+
+			const auto ViewPortion = DirectX::XMFLOAT2(float(ViewWidth) * LenticularBuffer->Column / float(RD.Width), float(ViewHeight) * LenticularBuffer->Row / float(RD.Height));
+			LOG(data(std::format("ViewPortion = {} x {}\n", ViewPortion.x, ViewPortion.y)));
+		}
 	}
 	virtual void CreateStaticSampler() override {
 		StaticSamplerDescs.emplace_back(D3D12_STATIC_SAMPLER_DESC({

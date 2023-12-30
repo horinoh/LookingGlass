@@ -1,5 +1,8 @@
 # LookingGlass
 
+## アセット
+- [デモダウンロード](https://docs.lookingglassfactory.com/getting-started/portrait/demo-holograms)
+
 ## Looking Glass Portrait
 - USB-C, HDMI を PC に接続 (Connect USB-C and HDMI to PC)
 - Portrait の電源を入れる
