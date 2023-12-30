@@ -31,8 +31,8 @@ ConstantBuffer<LENTICULAR_BUFFER> LB : register(b0, space0);
 float2 ToTexcoord(float3 CoordZ)
 {
 	//const float2 ViewPortion = float2(0.999755859f, 0.999755859f);
-	//return (float2(fmod(CoordZ.z, LB.Column), floor(CoordZ.z / LB.Column)) + CoordZ.xy) / float2(LB.Column, LB.Row) * ViewPortion;
-	return (float2(fmod(CoordZ.z, LB.Column), floor(CoordZ.z / LB.Column)) + CoordZ.xy) / float2(LB.Column, LB.Row);
+	//return (float2(fmod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / float2(LB.Column, LB.Row) * ViewPortion;
+	return (float2(fmod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / float2(LB.Column, LB.Row);
 }
 
 float4 main(IN In) : SV_TARGET

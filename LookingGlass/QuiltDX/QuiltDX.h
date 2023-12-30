@@ -33,28 +33,29 @@ public:
 			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
 		}
 	}
+	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく
 	virtual void CreateTexture() override {
 		const auto DCA = DirectCommandAllocators[0];
 		const auto DCL = DirectCommandLists[0];
+		//example01.dds // 4x8
+		//mar1_qs5x8.dds 
 		//c_missy_baby_beach_qs5x9.dds
 		//dedouze_qs5x9.dds
 		//g_lumen1_qs5x9.dds
 		//inventorbench_jayhowse_qs5x9.dds
 		//j_smf_lightfield_qs5x9.dds
-		//mar1_qs5x8.dds 
+		//timestar_40.dds // 8x6
+		//teresaquilt.dds // 8x6
+		//soccerballquilt.dds // 8x6
+		//kangarooquilt.dds // 8x6
+		//statueoffset.dds // 8x6
+		//statue.dds // 8x6
 		//Jane_Guan_Space_Nap_qs8x6.dds //https://docs.lookingglassfactory.com/keyconcepts/quilts
-		//timestar_40.dds
-		//teresaquilt.dds
-		//soccerballquilt.dds
-		//kangarooquilt.dds
-		//statueoffset.dds
-		//statue.dds
-		//example01.dds
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Jane_Guan_Space_Nap_qs8x6.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		
-		//!< キルトの分割に合わせて設定すること
 		if (nullptr != LenticularBuffer) {
 			const auto RD = XTKTextures.back().Resource->GetDesc();
+			//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること
 			UpdateLenticularBuffer(8, 6, RD.Width, RD.Height);
 		}
 	}

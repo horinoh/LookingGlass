@@ -160,6 +160,10 @@ public:
 		LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
 		LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
 		LOG(data(std::format("ViewPortion = {} x {}\n", float(ViewWidth) * LenticularBuffer->Column / float(Width), float(ViewHeight) * LenticularBuffer->Row / float(Height))));
+
+		//!< DX ‚Ε‚Ν Y ‚ªγ‚Ε‚ ‚θA(‚±‚±‚Ε‚Ν)VK ‚ΰ DX ‚Ι‡‚ν‚Ή‚Δ Y ‚ªγ‚Ι‚µ‚Δ‚Ά‚ιΧ
+		//!< Tilt ‚Μ’l‚π³‚Ι‚·‚ι‚±‚Ζ‚Ε’Òελ‚π‡‚ν‚Ή‚Δ‚Ά‚ι
+		LenticularBuffer->Tilt = abs(LenticularBuffer->Tilt);
 	}
 
 protected:

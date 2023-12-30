@@ -33,8 +33,8 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 vec2 ToTexcoord(vec3 CoordZ)
 {
 	//const vec2 ViewPortion = vec2(0.999755859f, 0.999755859f);
-	//return (vec2(mod(CoordZ.z, Column), floor(CoordZ.z / Column)) + CoordZ.xy) / vec2(Column, Row) * ViewPortion;
-	return (vec2(mod(CoordZ.z, Column), floor(CoordZ.z / Column)) + CoordZ.xy) / vec2(Column, Row);
+	//return (vec2(mod(CoordZ.z, Column), -sign(Tilt) * floor(CoordZ.z / Column)) + CoordZ.xy) / vec2(Column, Row) * ViewPortion;
+	return (vec2(mod(CoordZ.z, Column), -sign(Tilt) * floor(CoordZ.z / Column)) + CoordZ.xy) / vec2(Column, Row);
 }
 
 void main()
