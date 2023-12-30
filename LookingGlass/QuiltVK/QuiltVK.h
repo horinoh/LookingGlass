@@ -29,8 +29,7 @@ public:
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		for (size_t i = 0; i < size(SwapchainImages); ++i) {
-			auto& UB = UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
-			CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
+			UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
 		}
 	}
 	virtual void CreateTexture() override {
@@ -54,20 +53,8 @@ public:
 
 		//!< ƒLƒ‹ƒg‚Ì•ªŠ„‚É‡‚í‚¹‚ÄÝ’è‚·‚é‚±‚Æ
 		if (nullptr != LenticularBuffer) {
-			LenticularBuffer->Column = 8;
-			LenticularBuffer->Row = 6;
-			LenticularBuffer->ColRow = LenticularBuffer->Column * LenticularBuffer->Row;
-
 			const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
-			const auto ViewWidth = Extent.x / LenticularBuffer->Column;
-			const auto ViewHeight = Extent.y / LenticularBuffer->Row;
-
-			LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
-			LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
-			LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
-
-			const auto ViewPortion = glm::vec2(float(ViewWidth) * LenticularBuffer->Column / float(Extent.x), float(ViewHeight) * LenticularBuffer->Row / float(Extent.y));
-			LOG(data(std::format("ViewPortion = {} x {}\n", ViewPortion.x, ViewPortion.y)));
+			UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
 		}
 	}
 	virtual void CreateImmutableSampler() override {
@@ -225,6 +212,13 @@ public:
 				vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
 			} vkCmdEndRenderPass(CB);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
+	}
+
+	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) override {
+		Holo::UpdateLenticularBuffer(Column, Row, Width, Height);
+		for (auto i : UniformBuffers) {
+			CopyToHostVisibleDeviceMemory(Device, i.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
+		}
 	}
 
 	virtual void Camera(const int i)

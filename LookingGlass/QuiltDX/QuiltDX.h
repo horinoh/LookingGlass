@@ -30,8 +30,7 @@ public:
 		DXGI_SWAP_CHAIN_DESC1 SCD;
 		SwapChain->GetDesc1(&SCD);
 		for (UINT i = 0; i < SCD.BufferCount; ++i) {
-			auto& CB = ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
-			CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
+			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
 		}
 	}
 	virtual void CreateTexture() override {
@@ -55,20 +54,8 @@ public:
 		
 		//!< ƒLƒ‹ƒg‚Ì•ªŠ„‚É‡‚í‚¹‚ÄÝ’è‚·‚é‚±‚Æ
 		if (nullptr != LenticularBuffer) {
-			LenticularBuffer->Column = 8;
-			LenticularBuffer->Row = 6;
-			LenticularBuffer->ColRow = LenticularBuffer->Column * LenticularBuffer->Row;
-
 			const auto RD = XTKTextures.back().Resource->GetDesc();
-			const auto ViewWidth = RD.Width / LenticularBuffer->Column;
-			const auto ViewHeight = RD.Height / LenticularBuffer->Row;
-
-			LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
-			LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
-			LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
-
-			const auto ViewPortion = DirectX::XMFLOAT2(float(ViewWidth) * LenticularBuffer->Column / float(RD.Width), float(ViewHeight) * LenticularBuffer->Row / float(RD.Height));
-			LOG(data(std::format("ViewPortion = {} x {}\n", ViewPortion.x, ViewPortion.y)));
+			UpdateLenticularBuffer(8, 6, RD.Width, RD.Height);
 		}
 	}
 	virtual void CreateStaticSampler() override {
@@ -197,6 +184,13 @@ public:
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		}
 		VERIFY_SUCCEEDED(CL->Close());
+	}
+
+	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) override {
+		Holo::UpdateLenticularBuffer(Column, Row, Width, Height);
+		for (auto i : ConstantBuffers) {
+			CopyToUploadResource(COM_PTR_GET(i.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
+		}
 	}
 
 	virtual void Camera(const int i) 

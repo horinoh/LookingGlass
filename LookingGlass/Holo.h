@@ -149,6 +149,19 @@ public:
 		}
 	}
 	
+	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) {
+		LenticularBuffer->Column = Column;
+		LenticularBuffer->Row = Row;
+		LenticularBuffer->ColRow = LenticularBuffer->Column * LenticularBuffer->Row;
+
+		const auto ViewWidth = Width / LenticularBuffer->Column;
+		const auto ViewHeight = Height / LenticularBuffer->Row;
+		LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
+		LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
+		LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
+		LOG(data(std::format("ViewPortion = {} x {}\n", float(ViewWidth) * LenticularBuffer->Column / float(Width), float(ViewHeight) * LenticularBuffer->Row / float(Height))));
+	}
+
 protected:
 	int DeviceIndex = -1;
 
