@@ -775,7 +775,6 @@ protected:
 	VkFence GraphicsFence = VK_NULL_HANDLE;
 	VkSemaphore NextImageAcquiredSemaphore = VK_NULL_HANDLE;
 	VkSemaphore RenderFinishedSemaphore = VK_NULL_HANDLE;
-	VkSemaphore ComputeSemaphore = VK_NULL_HANDLE;
 
 	VkExtent2D SurfaceExtent2D;
 	VkFormat ColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
