@@ -100,10 +100,6 @@ public:
 					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 5, 9, 4096, 4096)));
 				}
 			}
-
-			{
-				ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
-			}
 			//!< [ DX, VK ] 一度に描画できるビュー数
 			//!<	DX : D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE 16
 			//!<	VK : VkPhysicalDeviceProperties.limits.maxViewports = 16
@@ -123,6 +119,25 @@ public:
 			LOG(data(std::format("DisplayAspect = {}\n", LenticularBuffer->DisplayAspect)));
 			LOG(data(std::format("InvView = {}\n", LenticularBuffer->InvView)));
 			LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer->Ri, LenticularBuffer->Bi, (LenticularBuffer->Ri == 0 && LenticularBuffer->Bi == 2) ? "RGB" : "BGR")));
+		}
+		if (-1 != DeviceIndex) {
+			ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
+
+			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
+			hpc_GetDeviceType(DeviceIndex, data(Buf), size(Buf));
+			std::string_view TypeStr(data(Buf));
+			if ("standard" == TypeStr) {
+				QuiltWidth = QuiltHeight = 2048;
+			}
+			else if ("8k" == TypeStr) {
+				QuiltWidth = QuiltHeight = 8192;
+			}
+			else if ("portrait" == TypeStr) {
+				QuiltWidth = QuiltHeight = 3360;
+			}
+			else {
+				QuiltWidth = QuiltHeight = 4096;
+			}
 		}
 	}
 	virtual ~Holo() {
@@ -152,14 +167,13 @@ public:
 	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) {
 		LenticularBuffer->Column = Column;
 		LenticularBuffer->Row = Row;
-		LenticularBuffer->ColRow = LenticularBuffer->Column * LenticularBuffer->Row;
-
-		const auto ViewWidth = Width / LenticularBuffer->Column;
-		const auto ViewHeight = Height / LenticularBuffer->Row;
+		QuiltWidth = Width;
+		QuiltHeight = Height;
+		const auto ViewWidth = static_cast<float>(QuiltWidth) / LenticularBuffer->Column;
+		const auto ViewHeight = static_cast<float>(QuiltHeight) / LenticularBuffer->Row;
 		LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
-		LenticularBuffer->QuiltAspect = LenticularBuffer->DisplayAspect;
-		LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer->QuiltAspect)));
-		LOG(data(std::format("ViewPortion = {} x {}\n", float(ViewWidth) * LenticularBuffer->Column / float(Width), float(ViewHeight) * LenticularBuffer->Row / float(Height))));
+		LOG(data(std::format("QuiltAspect = {}\n", ViewWidth / ViewHeight)));
+		LOG(data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer->Column / static_cast<float>(QuiltWidth), static_cast<float>(ViewHeight) * LenticularBuffer->Row / static_cast<float>(QuiltHeight))));
 
 		//!< DX では Y が上であり、(ここでは)VK も DX に合わせて Y が上にしている為
 		//!< Tilt の値を正にすることで辻褄を合わせている
@@ -170,6 +184,9 @@ protected:
 	int DeviceIndex = -1;
 
 	float ViewCone = TO_RADIAN(40.0f);
+	
+	uint64_t QuiltWidth = 3360;
+	uint32_t QuiltHeight = 3360;
 
 	//!< ジオメトリシェーダパラメータ
 	//struct HOLO_BUFFER_GS {
@@ -210,24 +227,19 @@ protected:
 					if ("standard" == TypeStr) {
 						Column = 4;
 						Row = 8;
-						//QuiltSize = 2048; //!< レンダーターゲットサイズ 2048x2048 = 512x256 x 4 x 8
 					}
 					else if ("8k" == TypeStr) {
 						Column = 5;
 						Row = 9;
-						//QuiltSize = 8192; //!< レンダーターゲットサイズ 8192x8192 = 1638x910 x 5 x 9
 					}
 					else if ("portrait" == TypeStr) {
 						Column = 8;
 						Row = 6;
-						//QuiltSize = 3360; //!< レンダーターゲットサイズ 3360x3360 = 420x560 x 8 x 6
 					}
 					else {
 						Column = 5;
 						Row = 9;
-						//QuiltSize = 4096; //!< レンダーターゲットサイズ 4096x4096 = 819x455 x 5 x 9
 					}
-					ColRow = Column * Row;
 				}
 			}
 		}
@@ -244,7 +256,6 @@ protected:
 
 		float Column = 8;
 		float Row = 6;
-		float ColRow = Column * Row;
 		float QuiltAspect = Column / Row;
 	};
 	LENTICULAR_BUFFER* LenticularBuffer = nullptr;

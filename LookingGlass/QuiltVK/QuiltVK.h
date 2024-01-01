@@ -28,9 +28,10 @@ public:
 	}
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
-		for (size_t i = 0; i < size(SwapchainImages); ++i) {
-			UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
-		}
+		//for (size_t i = 0; i < size(SwapchainImages); ++i) {
+		//	UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
+		//}
+		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく
 	virtual void CreateTexture() override {
@@ -105,9 +106,10 @@ public:
 		for (auto i : SMs) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
+		const auto DescCount = 1;//static_cast<uint32_t>(size(SwapchainImages));
 		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
-			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
-			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = static_cast<uint32_t>(size(SwapchainImages)) }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1}),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
 		});
 
 		auto DSL = DescriptorSetLayouts[0];
@@ -119,7 +121,7 @@ public:
 			.descriptorPool = DP,
 			.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
 		};
-		for (size_t i = 0; i < size(SwapchainImages); ++i) {
+		for (size_t i = 0; i < DescCount; ++i) {
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
 
@@ -141,10 +143,10 @@ public:
 				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
 			}),
 		}, DSL);
-		for (size_t i = 0; i < size(SwapchainImages); ++i) {
+		for (size_t i = 0; i < DescCount; ++i) {
 			const DescriptorUpdateInfo DUI = {
 				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
 			};
 			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[i], DUT, &DUI);
 		}
@@ -176,7 +178,7 @@ public:
 			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
 			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
 
-			const std::array DSs = { DescriptorSets[i] };
+			const std::array DSs = { DescriptorSets[0/*i*/]};
 			constexpr std::array<uint32_t, 0> DynamicOffsets = {};
 			vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
 
@@ -211,9 +213,11 @@ public:
 
 	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) override {
 		Holo::UpdateLenticularBuffer(Column, Row, Width, Height);
-		for (auto i : UniformBuffers) {
-			CopyToHostVisibleDeviceMemory(Device, i.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
-		}
+		//for (auto i : UniformBuffers) {
+		//	CopyToHostVisibleDeviceMemory(Device, i.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
+		//}
+		auto& UB = UniformBuffers[0];
+		CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
 	}
 
 	virtual void Camera(const int i)

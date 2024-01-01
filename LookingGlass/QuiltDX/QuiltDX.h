@@ -27,11 +27,12 @@ public:
 		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA).ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), sizeof(DA), &DA);
 	}
 	virtual void CreateConstantBuffer() override {
-		DXGI_SWAP_CHAIN_DESC1 SCD;
-		SwapChain->GetDesc1(&SCD);
-		for (UINT i = 0; i < SCD.BufferCount; ++i) {
-			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
-		}
+		//DXGI_SWAP_CHAIN_DESC1 SCD;
+		//SwapChain->GetDesc1(&SCD);
+		//for (UINT i = 0; i < SCD.BufferCount; ++i) {
+		//	ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
+		//}
+		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく
 	virtual void CreateTexture() override {
@@ -129,15 +130,22 @@ public:
 		CDH.ptr += IncSize;
 		GDH.ptr += IncSize;
 
-		DXGI_SWAP_CHAIN_DESC1 SCD;
-		SwapChain->GetDesc1(&SCD);
-		for (UINT i = 0; i < SCD.BufferCount; ++i) {
-			const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = ConstantBuffers[i].Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(ConstantBuffers[i].Resource->GetDesc().Width) };
-			Device->CreateConstantBufferView(&CBVD, CDH);
-			Handle.emplace_back(GDH);
-			CDH.ptr += IncSize;
-			GDH.ptr += IncSize;
-		}
+		//DXGI_SWAP_CHAIN_DESC1 SCD;
+		//SwapChain->GetDesc1(&SCD);
+		//for (UINT i = 0; i < SCD.BufferCount; ++i) {
+		//	const auto& CB = ConstantBuffers[i];
+		//	const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)};
+		//	Device->CreateConstantBufferView(&CBVD, CDH);
+		//	Handle.emplace_back(GDH);
+		//	CDH.ptr += IncSize;
+		//	GDH.ptr += IncSize;
+		//}
+		const auto& CB = ConstantBuffers[0];
+		const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
+		Device->CreateConstantBufferView(&CBVD, CDH);
+		Handle.emplace_back(GDH);
+		CDH.ptr += IncSize;
+		GDH.ptr += IncSize;
 	}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
@@ -172,7 +180,7 @@ public:
 				const std::array DHs = { COM_PTR_GET(Heap) };
 				CL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
 				CL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
-				CL->SetGraphicsRootDescriptorTable(1, Handle[1 + i]); //!< CBV
+				CL->SetGraphicsRootDescriptorTable(1, Handle[1/* + i*/]); //!< CBV
 
 				CL->ExecuteBundle(BCL);
 			}
@@ -183,9 +191,11 @@ public:
 
 	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) override {
 		Holo::UpdateLenticularBuffer(Column, Row, Width, Height);
-		for (auto i : ConstantBuffers) {
-			CopyToUploadResource(COM_PTR_GET(i.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
-		}
+		//for (auto i : ConstantBuffers) {
+		//	CopyToUploadResource(COM_PTR_GET(i.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
+		//}
+		auto& CB = ConstantBuffers[0];
+		CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
 	}
 
 	virtual void Camera(const int i) 

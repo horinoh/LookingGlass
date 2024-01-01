@@ -24,7 +24,7 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 
 	float Column;
 	float Row;
-	float ColRow;
+
 	float QuiltAspect;
 } LB;
 
@@ -61,10 +61,11 @@ void main()
 
 	//!< RGB サブピクセルは正弦波パターンに並んでいて、全体的に斜めになっている
 	vec3 RGB[3];
+	const float ColRow = LB.Column * LB.Row;
 	for(int i = 0;i < 3;++i) {
 		//!< キルトグリッド上のどのパターンか
 		float Z = (InTexcoord.x + i * LB.Subp + InTexcoord.y * LB.Tilt) * LB.Pitch - LB.Center;
-		Z = mod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * LB.ColRow;
+		Z = mod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * ColRow;
 
 		//!< 前後のパターンから補完する
 		const float Y = clamp(UV.y, 0.005f, 0.995f);

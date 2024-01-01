@@ -21,7 +21,7 @@ struct LENTICULAR_BUFFER
 
 	float Column;
 	float Row;
-	float ColRow;
+
 	float QuiltAspect;
 };
 ConstantBuffer<LENTICULAR_BUFFER> LB : register(b0, space0);
@@ -59,10 +59,11 @@ float4 main(IN In) : SV_TARGET
 
 	//!< RGB サブピクセルは正弦波パターンに並んでいて、全体的に斜めになっている
 	float3 RGB[3];
+	const float ColRow = LB.Column * LB.Row;
 	for (int i = 0; i < 3; ++i) {
 		//!< キルトグリッド上のどのパターンか
 		float Z = (In.Texcoord.x + i * LB.Subp + In.Texcoord.y * LB.Tilt) * LB.Pitch - LB.Center;
-		Z = fmod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * LB.ColRow;
+		Z = fmod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * ColRow;
 
 		//!< 前後のパターンから補完する
 		const float Y = clamp(UV.y, 0.005f, 0.995f);
