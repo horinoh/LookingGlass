@@ -7,6 +7,23 @@
 #include "VKDeviceProcAddr.h"
 #undef VK_PROC_ADDR
 
+template<> const glm::vec3 GetMin(const glm::vec3& lhs, const glm::vec3& rhs) { return glm::vec3((std::min)(lhs.x, rhs.x), (std::min)(lhs.y, rhs.y), (std::min)(lhs.z, rhs.z)); }
+template<> const glm::vec3 GetMax(const glm::vec3& lhs, const glm::vec3& rhs) { return glm::vec3((std::max)(lhs.x, rhs.x), (std::max)(lhs.y, rhs.y), (std::max)(lhs.z, rhs.z)); }
+template<>
+void AdjustScale(std::vector<glm::vec3>& Vertices, const float Scale)
+{
+	auto Max = (std::numeric_limits<glm::vec3>::min)();
+	auto Min = (std::numeric_limits<glm::vec3>::max)();
+	for (const auto& i : Vertices) {
+		Min = GetMin(Min, i);
+		Max = GetMax(Max, i);
+	}
+	const auto Diff = Max - Min;
+	const auto Bound = (std::max)((std::max)(Diff.x, Diff.y), Diff.z);
+	const auto Coef = Scale / Bound;
+	std::ranges::transform(Vertices, std::begin(Vertices), [&](const glm::vec3& rhs) { return glm::vec3(rhs.x, (rhs.y - Diff.y * 0.5f), rhs.z - Min.z) * Coef; });
+}
+
 void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 {
 	for (auto i : DescriptorUpdateTemplates) {
@@ -49,14 +66,32 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 		vkDestroySampler(Device, i, GetAllocationCallbacks());
 	}
 
+	for (auto& i : RenderTextures) { 
+		i.Destroy(Device);
+	}
+	RenderTextures.clear();
+	for (auto& i : DepthTextures) { 
+		i.Destroy(Device); 
+	}
+	DepthTextures.clear();
+
 	for (auto i : UniformBuffers) { 
 		i.Destroy(Device);
 	}
 	UniformBuffers.clear();
+
 	for (auto i : IndirectBuffers) { 
 		i.Destroy(Device); 
 	}
 	IndirectBuffers.clear();
+	for (auto i : IndexBuffers) {
+		i.Destroy(Device);
+	}
+	IndexBuffers.clear();
+	for (auto i : VertexBuffers) {
+		i.Destroy(Device);
+	}
+	VertexBuffers.clear();
 
 	//!< コマンドプール破棄時にコマンドバッファは暗黙的に破棄される
 	for (auto i : SecondaryCommandPools) {

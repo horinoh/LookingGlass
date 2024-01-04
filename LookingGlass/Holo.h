@@ -164,9 +164,10 @@ public:
 		}
 	}
 	
-	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) {
+	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint32_t Width, const uint32_t Height) {
 		LenticularBuffer->Column = Column;
 		LenticularBuffer->Row = Row;
+		
 		QuiltWidth = Width;
 		QuiltHeight = Height;
 		const auto ViewWidth = static_cast<float>(QuiltWidth) / LenticularBuffer->Column;
@@ -185,7 +186,7 @@ protected:
 
 	float ViewCone = TO_RADIAN(40.0f);
 	
-	uint64_t QuiltWidth = 3360;
+	uint32_t QuiltWidth = 3360;
 	uint32_t QuiltHeight = 3360;
 
 	//!< ジオメトリシェーダパラメータ
@@ -256,6 +257,7 @@ protected:
 
 		float Column = 8;
 		float Row = 6;
+
 		float QuiltAspect = Column / Row;
 	};
 	LENTICULAR_BUFFER* LenticularBuffer = nullptr;

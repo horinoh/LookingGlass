@@ -50,24 +50,17 @@ public:
 		if (nullptr != LenticularBuffer) {
 			const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
 			//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること
-			UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
+			Holo::UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
+
+			//for (auto i : UniformBuffers) {
+			//	CopyToHostVisibleDeviceMemory(Device, i.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
+			//}
+			auto& UB = UniformBuffers[0];
+			CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
 		}
 	}
 	virtual void CreateImmutableSampler() override {
-		constexpr VkSamplerCreateInfo SCI = {
-			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.magFilter = VK_FILTER_LINEAR, .minFilter = VK_FILTER_LINEAR, .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT, .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT, .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.mipLodBias = 0.0f,
-			.anisotropyEnable = VK_FALSE, .maxAnisotropy = 1.0f,
-			.compareEnable = VK_FALSE, .compareOp = VK_COMPARE_OP_NEVER,
-			.minLod = 0.0f, .maxLod = 1.0f,
-			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-			.unnormalizedCoordinates = VK_FALSE
-		};
-		VERIFY_SUCCEEDED(vkCreateSampler(Device, &SCI, GetAllocationCallbacks(), &Samplers.emplace_back()));
+		CreateImmutableSampler_LinearRepeat();
 	}
 	virtual void CreatePipelineLayout() override {
 		const std::array ISs = { Samplers[0] };
@@ -78,7 +71,7 @@ public:
 		});
 		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), DescriptorSetLayouts, {});
 	}
-	virtual void CreateRenderPass() { CreateRenderPass_None(); }
+	virtual void CreateRenderPass() override { CreateRenderPass_None(); }
 	virtual void CreatePipeline() override {
 		const std::array SMs = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "QuiltVK.vert.spv"),
@@ -88,7 +81,6 @@ public:
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMs[0], .pName = "main", .pSpecializationInfo = nullptr }),
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMs[1], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
-
 		constexpr VkPipelineRasterizationStateCreateInfo PRSCI = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 			.pNext = nullptr,
@@ -158,6 +150,9 @@ public:
 		const auto PLL = PipelineLayouts[0];
 		const auto PL = Pipelines[0];
 
+		const auto DescIndex = 0;//i;
+
+		//!< セカンダリコマンドバッファ
 		const VkCommandBufferInheritanceInfo CBII = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
 			.pNext = nullptr,
@@ -178,7 +173,7 @@ public:
 			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
 			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
 
-			const std::array DSs = { DescriptorSets[0/*i*/]};
+			const std::array DSs = { DescriptorSets[DescIndex]};
 			constexpr std::array<uint32_t, 0> DynamicOffsets = {};
 			vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
 
@@ -187,6 +182,7 @@ public:
 			vkCmdDrawIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
 
+		//!< コマンドバッファ
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			.pNext = nullptr,
@@ -209,15 +205,6 @@ public:
 				vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
 			} vkCmdEndRenderPass(CB);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
-	}
-
-	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) override {
-		Holo::UpdateLenticularBuffer(Column, Row, Width, Height);
-		//for (auto i : UniformBuffers) {
-		//	CopyToHostVisibleDeviceMemory(Device, i.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
-		//}
-		auto& UB = UniformBuffers[0];
-		CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
 	}
 
 	virtual void Camera(const int i)

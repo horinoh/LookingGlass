@@ -119,6 +119,7 @@ public:
 	virtual void CreateStaticSampler() {}
 	
 	template<typename T = D3D12_ROOT_PARAMETER> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
+	//template<typename T> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
 	virtual void CreateRootSignature() {}
 
 	static void CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
@@ -235,6 +236,26 @@ protected:
 		assert(!(RD.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) && "”ñ RENDER_TARGET, DEPTH_STENCIL ‚Ìê‡ApOptimizedClearValue ‚ðŽg—p‚µ‚È‚¢");
 		VERIFY_SUCCEEDED(Device->CreateCommittedResource(&HP, D3D12_HEAP_FLAG_NONE, &RD, RS, nullptr, IID_PPV_ARGS(Resource)));
 	}
+	static void CreateRenderTextureResource(ID3D12Resource** Resource, ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const UINT16 MipLevels, const D3D12_CLEAR_VALUE& CV, const D3D12_RESOURCE_FLAGS RF, const D3D12_RESOURCE_STATES RS) {
+		constexpr D3D12_HEAP_PROPERTIES HP = {
+			.Type = D3D12_HEAP_TYPE_DEFAULT,
+			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+			.CreationNodeMask = 0, .VisibleNodeMask = 0
+		};
+		const D3D12_RESOURCE_DESC RD = {
+			.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+			.Alignment = 0,
+			.Width = Width, .Height = Height,
+			.DepthOrArraySize = DepthOrArraySize,
+			.MipLevels = MipLevels,
+			.Format = CV.Format,
+			.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
+			.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+			.Flags = RF
+		};
+		VERIFY_SUCCEEDED(Device->CreateCommittedResource(&HP, D3D12_HEAP_FLAG_NONE, &RD, RS, &CV, IID_PPV_ARGS(Resource)));
+	}
 	static void ExecuteAndWait(ID3D12CommandQueue* CQ, ID3D12CommandList* CL, ID3D12Fence* Fence) {
 		const std::array CLs = { CL };
 		CQ->ExecuteCommandLists(static_cast<UINT>(size(CLs)), data(CLs));
@@ -262,7 +283,6 @@ protected:
 			} Resource->Unmap(0, nullptr);
 		}
 	}
-
 	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& PSFs, const D3D12_RESOURCE_STATES RS) {
 		for (UINT i = 0; i < size(PSFs); ++i) {
 			const D3D12_TEXTURE_COPY_LOCATION TCL_Dst = {
@@ -291,6 +311,68 @@ protected:
 			};
 			GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
 		}
+	}
+
+	void CreateTexture_Depth(const UINT64 Width, const UINT Height) {
+		DepthTextures.emplace_back().Create(COM_PTR_GET(Device), Width, Height, 1, D3D12_CLEAR_VALUE({ .Format = DXGI_FORMAT_D24_UNORM_S8_UINT, .DepthStencil = D3D12_DEPTH_STENCIL_VALUE({.Depth = 1.0f, .Stencil = 0 }) }));
+	}
+	void CreateTexture_Depth() {
+		CreateTexture_Depth(static_cast<UINT64>(Rect.right - Rect.left), static_cast<UINT>(Rect.bottom - Rect.top));
+	}
+	void CreateTexture_Render(const UINT64 Width, const UINT Height) {
+		RenderTextures.emplace_back().Create(COM_PTR_GET(Device), Width, Height, 1, D3D12_CLEAR_VALUE({ .Format = DXGI_FORMAT_R8G8B8A8_UNORM, .Color = { DirectX::Colors::SkyBlue.f[0], DirectX::Colors::SkyBlue.f[1], DirectX::Colors::SkyBlue.f[2], DirectX::Colors::SkyBlue.f[3] } }));
+	}
+	void CreateTexture_Render() {
+		CreateTexture_Render(static_cast<UINT64>(Rect.right - Rect.left), static_cast<UINT>(Rect.bottom - Rect.top));
+	}
+
+	void CreateStaticSampler_LinearWrap(const UINT ShaderRegister, const UINT RegisterSpace, const D3D12_SHADER_VISIBILITY ShaderVisibility) {
+		StaticSamplerDescs.emplace_back(D3D12_STATIC_SAMPLER_DESC({
+			.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+			.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP, .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP, .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+			.MipLODBias = 0.0f,
+			.MaxAnisotropy = 0,
+			.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+			.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
+			.MinLOD = 0.0f, .MaxLOD = 1.0f,
+			.ShaderRegister = ShaderRegister, .RegisterSpace = RegisterSpace, .ShaderVisibility = ShaderVisibility
+		}));
+	}
+	void CreateStaticSampler_PointWrap(const UINT ShaderRegister, const UINT RegisterSpace, const D3D12_SHADER_VISIBILITY ShaderVisibility) {
+		StaticSamplerDescs.emplace_back(D3D12_STATIC_SAMPLER_DESC({
+			.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT,
+			.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP, .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP, .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+			.MipLODBias = 0.0f,
+			.MaxAnisotropy = 0,
+			.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+			.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
+			.MinLOD = 0.0f, .MaxLOD = 1.0f,
+			.ShaderRegister = ShaderRegister, .RegisterSpace = RegisterSpace, .ShaderVisibility = ShaderVisibility
+		}));
+	}
+	void CreateStaticSampler_LinearClamp(const UINT ShaderRegister, const UINT RegisterSpace, const D3D12_SHADER_VISIBILITY ShaderVisibility) {
+		StaticSamplerDescs.emplace_back(D3D12_STATIC_SAMPLER_DESC({
+			.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+			.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP, .AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP, .AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+			.MipLODBias = 0.0f,
+			.MaxAnisotropy = 0,
+			.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+			.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
+			.MinLOD = 0.0f, .MaxLOD = 1.0f,
+			.ShaderRegister = ShaderRegister, .RegisterSpace = RegisterSpace, .ShaderVisibility = ShaderVisibility
+		}));
+	}
+	void CreateStaticSampler_PointClamp(const UINT ShaderRegister, const UINT RegisterSpace, const D3D12_SHADER_VISIBILITY ShaderVisibility) {
+		StaticSamplerDescs.emplace_back(D3D12_STATIC_SAMPLER_DESC({
+			.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT,
+			.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP, .AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP, .AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+			.MipLODBias = 0.0f,
+			.MaxAnisotropy = 0,
+			.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
+			.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
+			.MinLOD = 0.0f, .MaxLOD = 1.0f,
+			.ShaderRegister = ShaderRegister, .RegisterSpace = RegisterSpace, .ShaderVisibility = ShaderVisibility
+		}));
 	}
 
 	void CreatePipelineState_VsPs_Input(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {
@@ -324,6 +406,39 @@ protected:
 	void CreatePipelineState_VsPs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {  
 		CreatePipelineState_VsPs_Input(PTT, RD, DepthEnable, {}, SBCs);
 	}
+	void CreatePipelineState_VsGsPs_Input(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs)
+	{
+		const std::vector RTBDs = {
+			D3D12_RENDER_TARGET_BLEND_DESC({
+				.BlendEnable = FALSE, .LogicOpEnable = FALSE,
+				.SrcBlend = D3D12_BLEND_ONE, .DestBlend = D3D12_BLEND_ZERO, .BlendOp = D3D12_BLEND_OP_ADD,
+				.SrcBlendAlpha = D3D12_BLEND_ONE, .DestBlendAlpha = D3D12_BLEND_ZERO, .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+				.LogicOp = D3D12_LOGIC_OP_NOOP,
+				.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+			}),
+		};
+		constexpr D3D12_DEPTH_STENCILOP_DESC DSOD = {
+			.StencilFailOp = D3D12_STENCIL_OP_KEEP,
+			.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+			.StencilPassOp = D3D12_STENCIL_OP_KEEP,
+			.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS
+		};
+		const D3D12_DEPTH_STENCIL_DESC DSD = {
+			.DepthEnable = DepthEnable, .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL, .DepthFunc = D3D12_COMPARISON_FUNC_LESS,
+			.StencilEnable = FALSE, .StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK, .StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK,
+			.FrontFace = DSOD, .BackFace = DSOD
+		};
+		const std::vector RTVs = { DXGI_FORMAT_R8G8B8A8_UNORM };
+
+		std::vector<std::thread> Threads;
+		Threads.emplace_back(std::thread::thread(DX::CreatePipelineStateVsPsDsHsGs, std::ref(PipelineStates.emplace_back()), COM_PTR_GET(Device), COM_PTR_GET(RootSignatures[0]), PTT, RTBDs, RD, DSD, SBCs[0], SBCs[1], NullSBC, NullSBC, SBCs[2], IEDs, RTVs, nullptr));
+
+		for (auto& i : Threads) { i.join(); }
+	}
+	void CreatePipelineState_VsGsPs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs) {
+		CreatePipelineState_VsGsPs_Input(PTT, RD, DepthEnable, {}, SBCs);
+	}
+
 	void PopulateCommandList_Clear(const size_t i, const DirectX::XMVECTORF32& Color) {
 		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
@@ -394,6 +509,30 @@ protected:
 			return *this;
 		}
 	};
+	class VertexBuffer : public DefaultResource
+	{
+	private:
+		using Super = DefaultResource;
+	public:
+		D3D12_VERTEX_BUFFER_VIEW View;
+		VertexBuffer& Create(ID3D12Device* Device, const size_t Size, const UINT Stride) {
+			Super::Create(Device, Size);
+			View = D3D12_VERTEX_BUFFER_VIEW({ .BufferLocation = Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(Size), .StrideInBytes = Stride });
+			return *this;
+		}
+	};
+	class IndexBuffer : public DefaultResource
+	{
+	private:
+		using Super = DefaultResource;
+	public:
+		D3D12_INDEX_BUFFER_VIEW View;
+		IndexBuffer& Create(ID3D12Device* Device, const size_t Size, const DXGI_FORMAT Format) {
+			Super::Create(Device, Size);
+			View = D3D12_INDEX_BUFFER_VIEW({ .BufferLocation = Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(Size), .Format = Format });
+			return *this;
+		}
+	};
 	class IndirectBuffer : public DefaultResource
 	{
 	private:
@@ -444,7 +583,35 @@ protected:
 				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2DArray = D3D12_TEX2D_ARRAY_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .FirstArraySlice = 0, .ArraySize = DepthOrArraySize, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) });
 		}
 	};
-
+	class DepthTexture : public TextureBase
+	{
+	private:
+		using Super = TextureBase;
+	public:
+		D3D12_DEPTH_STENCIL_VIEW_DESC DSV;
+		void Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const D3D12_CLEAR_VALUE& CV) {
+			DX::CreateRenderTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, CV, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			DSV = DepthOrArraySize == 1 ?
+				D3D12_DEPTH_STENCIL_VIEW_DESC({ .Format = CV.Format, .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D, .Flags = D3D12_DSV_FLAG_NONE, .Texture2D = D3D12_TEX2D_DSV({.MipSlice = 0 }) }) :
+				D3D12_DEPTH_STENCIL_VIEW_DESC({ .Format = CV.Format, .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY, .Flags = D3D12_DSV_FLAG_NONE, .Texture2DArray = D3D12_TEX2D_ARRAY_DSV({.MipSlice = 0, .FirstArraySlice = 0, .ArraySize = DepthOrArraySize }) });
+		}
+	};
+	class RenderTexture : public Texture
+	{
+	private:
+		using Super = Texture;
+	public:
+		D3D12_RENDER_TARGET_VIEW_DESC RTV;
+		void Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const D3D12_CLEAR_VALUE& CV) {
+			DX::CreateRenderTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, CV, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			RTV = DepthOrArraySize == 1 ?
+				D3D12_RENDER_TARGET_VIEW_DESC({ .Format = CV.Format, .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D, .Texture2D = D3D12_TEX2D_RTV({.MipSlice = 0, .PlaneSlice = 0 }) }) :
+				D3D12_RENDER_TARGET_VIEW_DESC({ .Format = CV.Format, .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY, .Texture2DArray = D3D12_TEX2D_ARRAY_RTV({.MipSlice = 0, .FirstArraySlice = 0, .ArraySize = DepthOrArraySize, .PlaneSlice = 0 }) });
+			SRV = DepthOrArraySize == 1 ?
+				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = CV.Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2D = D3D12_TEX2D_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) }) :
+				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = CV.Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2DArray = D3D12_TEX2D_ARRAY_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .FirstArraySlice = 0, .ArraySize = DepthOrArraySize, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) });
+		}
+	};
 protected:
 	RECT Rect;
 
@@ -467,12 +634,13 @@ protected:
 	std::vector<COM_PTR<ID3D12CommandAllocator>> BundleCommandAllocators;
 	std::vector<COM_PTR<ID3D12GraphicsCommandList>> BundleCommandLists;
 
+	std::vector<VertexBuffer> VertexBuffers;
+	std::vector<IndexBuffer> IndexBuffers;
 	std::vector<IndirectBuffer> IndirectBuffers;
 	std::vector<ConstantBuffer> ConstantBuffers;
 
-	//std::vector<Texture> Textures;
-	//std::vector<DepthTexture> DepthTextures;
-	//std::vector<RenderTexture> RenderTextures;
+	std::vector<DepthTexture> DepthTextures;
+	std::vector<RenderTexture> RenderTextures;
 	std::vector<D3D12_STATIC_SAMPLER_DESC> StaticSamplerDescs;
 
 	std::vector<COM_PTR<ID3D12RootSignature>> RootSignatures;

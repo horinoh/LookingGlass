@@ -4,6 +4,23 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 
+template<> const DirectX::XMFLOAT3 GetMin(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs) { return DirectX::XMFLOAT3((std::min)(lhs.x, rhs.x), (std::min)(lhs.y, rhs.y), (std::min)(lhs.z, rhs.z)); }
+template<> const DirectX::XMFLOAT3 GetMax(const DirectX::XMFLOAT3& lhs, const DirectX::XMFLOAT3& rhs) { return DirectX::XMFLOAT3((std::max)(lhs.x, rhs.x), (std::max)(lhs.y, rhs.y), (std::max)(lhs.z, rhs.z)); }
+template<>
+void AdjustScale(std::vector<DirectX::XMFLOAT3>& Vertices, const float Scale)
+{
+	auto Max = (std::numeric_limits<DirectX::XMFLOAT3>::min)();
+	auto Min = (std::numeric_limits<DirectX::XMFLOAT3>::max)();
+	for (const auto& i : Vertices) {
+		Min = GetMin(Min, i);
+		Max = GetMax(Max, i);
+	}
+	const auto Diff = DirectX::XMFLOAT3(Max.x - Min.x, Max.y - Min.y, Max.z - Min.z);
+	const auto Bound = (std::max)((std::max)(Diff.x, Diff.y), Diff.z);
+	const auto Coef = Scale / Bound;
+	std::ranges::transform(Vertices, std::begin(Vertices), [&](const DirectX::XMFLOAT3& rhs) { return DirectX::XMFLOAT3(rhs.x * Coef, (rhs.y - Diff.y * 0.5f) * Coef, (rhs.z - Min.z) * Coef); });
+}
+
 void DX::CreateDevice([[maybe_unused]] HWND hWnd)
 {
 	VERIFY_SUCCEEDED(CreateDXGIFactory1(COM_PTR_UUIDOF_PUTVOID(Factory)));
@@ -141,10 +158,11 @@ void DX::CreateDirectCommandList()
 {
 	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, COM_PTR_UUIDOF_PUTVOID(DirectCommandAllocators.emplace_back())));
 
+	const auto DCA = DirectCommandAllocators[0];
 	DXGI_SWAP_CHAIN_DESC1 SCD;
 	SwapChain->GetDesc1(&SCD);
 	for (UINT i = 0; i < SCD.BufferCount; ++i) {
-		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, COM_PTR_GET(DirectCommandAllocators[0]), nullptr, COM_PTR_UUIDOF_PUTVOID(DirectCommandLists.emplace_back())));
+		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, COM_PTR_GET(DCA), nullptr, COM_PTR_UUIDOF_PUTVOID(DirectCommandLists.emplace_back())));
 		VERIFY_SUCCEEDED(DirectCommandLists.back()->Close());
 	}
 }
@@ -152,10 +170,11 @@ void DX::CreateBundleCommandList()
 {
 	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_UUIDOF_PUTVOID(BundleCommandAllocators.emplace_back())));
 
+	const auto BCA = BundleCommandAllocators[0];
 	DXGI_SWAP_CHAIN_DESC1 SCD;
 	SwapChain->GetDesc1(&SCD);
 	for (UINT i = 0; i < SCD.BufferCount; ++i) {
-		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_GET(BundleCommandAllocators[0]), nullptr, COM_PTR_UUIDOF_PUTVOID(BundleCommandLists.emplace_back())));
+		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_GET(BCA), nullptr, COM_PTR_UUIDOF_PUTVOID(BundleCommandLists.emplace_back())));
 		VERIFY_SUCCEEDED(BundleCommandLists.back()->Close());
 	}
 }

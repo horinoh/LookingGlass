@@ -17,16 +17,16 @@
 #include <vulkan/vulkan.h>
 #pragma warning(pop)
 
-//#define GLM_FORCE_RADIANS
-//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-//#pragma warning(push)
-//#pragma warning(disable : 4201)
-//#include <glm/glm.hpp>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#pragma warning(push)
+#pragma warning(disable : 4201)
+#include <glm/glm.hpp>
 //#include <glm/gtc/matrix_transform.hpp>
 //#include <glm/gtc/quaternion.hpp>
 //#include <glm/gtc/type_ptr.hpp>
 //#include <glm/gtx/quaternion.hpp>
-//#pragma warning(pop)
+#pragma warning(pop)
 
 namespace Colors
 {
@@ -224,10 +224,7 @@ public:
 		VERIFY_SUCCEEDED(vkCreateFramebuffer(Device, &FCI, GetAllocationCallbacks(), &FB));
 	}
 	virtual void CreateFramebuffer() {
-		const auto RP = RenderPasses.front();
-		for (auto i : SwapchainImageViews) {
-			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i });
-		}
+		CreateFrameBuffer_Default();
 	}
 
 	virtual void CreateDescriptorPool(VkDescriptorPool& DP, const VkDescriptorPoolCreateFlags Flags, const std::vector<VkDescriptorPoolSize>& DPSs) {
@@ -442,6 +439,85 @@ protected:
 		}
 	}
 
+	void CreateTexture_Depth(const uint32_t Width, const uint32_t Height) {
+		DepthTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, DepthFormat, VkExtent3D({ .width = Width, .height = Height, .depth = 1 }));
+	}
+	void CreateTexture_Depth() {
+		CreateTexture_Depth(SurfaceExtent2D.width, SurfaceExtent2D.height);
+	}
+	void CreateTexture_Render(const uint32_t Width, const uint32_t Height) {
+		RenderTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, ColorFormat, VkExtent3D({ .width = Width, .height = Height, .depth = 1 }));
+	}
+	void CreateTexture_Render() {
+		CreateTexture_Render(SurfaceExtent2D.width, SurfaceExtent2D.height);
+	}
+
+
+	void CreateImmutableSampler_LinearRepeat()  {
+		constexpr VkSamplerCreateInfo SCI = {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.magFilter = VK_FILTER_LINEAR, .minFilter = VK_FILTER_LINEAR, .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT, .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT, .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.mipLodBias = 0.0f,
+			.anisotropyEnable = VK_FALSE, .maxAnisotropy = 1.0f,
+			.compareEnable = VK_FALSE, .compareOp = VK_COMPARE_OP_NEVER,
+			.minLod = 0.0f, .maxLod = 1.0f,
+			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+			.unnormalizedCoordinates = VK_FALSE
+		};
+		VERIFY_SUCCEEDED(vkCreateSampler(Device, &SCI, GetAllocationCallbacks(), &Samplers.emplace_back()));
+	}
+	void CreateImmutableSampler_NearestRepeat() {
+		constexpr VkSamplerCreateInfo SCI = {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.magFilter = VK_FILTER_NEAREST, .minFilter = VK_FILTER_NEAREST, .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT, .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT, .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.mipLodBias = 0.0f,
+			.anisotropyEnable = VK_FALSE, .maxAnisotropy = 1.0f,
+			.compareEnable = VK_FALSE, .compareOp = VK_COMPARE_OP_NEVER,
+			.minLod = 0.0f, .maxLod = 1.0f,
+			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+			.unnormalizedCoordinates = VK_FALSE
+		};
+		VERIFY_SUCCEEDED(vkCreateSampler(Device, &SCI, GetAllocationCallbacks(), &Samplers.emplace_back()));
+	}
+	void CreateImmutableSampler_LinearClamp() {
+		constexpr VkSamplerCreateInfo SCI = {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.magFilter = VK_FILTER_LINEAR, .minFilter = VK_FILTER_LINEAR, .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			.mipLodBias = 0.0f,
+			.anisotropyEnable = VK_FALSE, .maxAnisotropy = 1.0f,
+			.compareEnable = VK_FALSE, .compareOp = VK_COMPARE_OP_NEVER,
+			.minLod = 0.0f, .maxLod = 1.0f,
+			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+			.unnormalizedCoordinates = VK_FALSE
+		};
+		VERIFY_SUCCEEDED(vkCreateSampler(Device, &SCI, GetAllocationCallbacks(), &Samplers.emplace_back()));
+	}
+	void CreateImmutableSampler_NearestClamp() {
+		constexpr VkSamplerCreateInfo SCI = {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.magFilter = VK_FILTER_NEAREST, .minFilter = VK_FILTER_NEAREST, .mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			.mipLodBias = 0.0f,
+			.anisotropyEnable = VK_FALSE, .maxAnisotropy = 1.0f,
+			.compareEnable = VK_FALSE, .compareOp = VK_COMPARE_OP_NEVER,
+			.minLod = 0.0f, .maxLod = 1.0f,
+			.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
+			.unnormalizedCoordinates = VK_FALSE
+		};
+		VERIFY_SUCCEEDED(vkCreateSampler(Device, &SCI, GetAllocationCallbacks(), &Samplers.emplace_back()));
+	}
+
 	void CreateRenderPass_None() {
 		constexpr std::array<VkAttachmentReference, 0> InPreAtts = {};
 		constexpr std::array ColAtts = { VkAttachmentReference({.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }), };
@@ -498,6 +574,43 @@ protected:
 				}),
 			}, {});
 	}
+	void CreateRenderPass_Depth() {
+		constexpr std::array<VkAttachmentReference, 0> InpAtts = {};
+		constexpr std::array ColAtts = { VkAttachmentReference({.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }), };
+		constexpr std::array ResAtts = { VkAttachmentReference({.attachment = VK_ATTACHMENT_UNUSED, .layout = VK_IMAGE_LAYOUT_UNDEFINED }), };
+		constexpr auto DepAtt = VkAttachmentReference({ .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }); //!< デプスアタッチメントを使用
+		constexpr std::array<uint32_t, 0> PreAtts = {};
+
+		VK::CreateRenderPass(RenderPasses.emplace_back(), {
+			VkAttachmentDescription({
+				.flags = 0,
+				.format = ColorFormat,
+				.samples = VK_SAMPLE_COUNT_1_BIT,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR, .storeOp = VK_ATTACHMENT_STORE_OP_STORE, //!< 「開始時にクリア」「終了時に保存」
+				.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+				.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+			}),
+			//!< デプスアタッチメントを使用
+			VkAttachmentDescription({
+				.flags = 0,
+				.format = DepthFormat,
+				.samples = VK_SAMPLE_COUNT_1_BIT,
+				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR, .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+				.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+				.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+			}),
+			}, 
+			{
+				VkSubpassDescription({
+					.flags = 0,
+					.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+					.inputAttachmentCount = static_cast<uint32_t>(size(InpAtts)), .pInputAttachments = data(InpAtts),
+					.colorAttachmentCount = static_cast<uint32_t>(size(ColAtts)), .pColorAttachments = data(ColAtts), .pResolveAttachments = data(ResAtts),
+					.pDepthStencilAttachment = &DepAtt, //!< デプスアタッチメントを使用
+					.preserveAttachmentCount = static_cast<uint32_t>(size(PreAtts)), .pPreserveAttachments = data(PreAtts)
+				}),
+			}, {});
+	}
 	void CreatePipeline_VsFs_Input(const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::vector<VkVertexInputBindingDescription>& VIBDs, const std::vector<VkVertexInputAttributeDescription>& VIADs, const std::array<VkPipelineShaderStageCreateInfo, 2>& PSSCIs) {
 		const VkPipelineDepthStencilStateCreateInfo PDSSCI = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
@@ -539,6 +652,60 @@ protected:
 	void CreatePipeline_VsFs(const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 2>& PSSCIs) { 
 		CreatePipeline_VsFs_Input(PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
 	}
+	void CreatePipelineState_VsGsFs_Input(const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::vector<VkVertexInputBindingDescription>& VIBDs, const std::vector<VkVertexInputAttributeDescription>& VIADs, const std::array<VkPipelineShaderStageCreateInfo, 3>& PSSCIs)
+	{
+		const VkPipelineDepthStencilStateCreateInfo PDSSCI = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.depthTestEnable = DepthEnable, .depthWriteEnable = DepthEnable, .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+			.depthBoundsTestEnable = VK_FALSE,
+			.stencilTestEnable = VK_FALSE,
+			.front = VkStencilOpState({
+				.failOp = VK_STENCIL_OP_KEEP,
+				.passOp = VK_STENCIL_OP_KEEP,
+				.depthFailOp = VK_STENCIL_OP_KEEP,
+				.compareOp = VK_COMPARE_OP_NEVER,
+				.compareMask = 0, .writeMask = 0, .reference = 0
+				}),
+			.back = VkStencilOpState({
+				.failOp = VK_STENCIL_OP_KEEP,
+				.passOp = VK_STENCIL_OP_KEEP,
+				.depthFailOp = VK_STENCIL_OP_KEEP,
+				.compareOp = VK_COMPARE_OP_ALWAYS,
+				.compareMask = 0, .writeMask = 0, .reference = 0
+				}),
+			.minDepthBounds = 0.0f, .maxDepthBounds = 1.0f
+		};
+		const std::vector PCBASs = {
+			VkPipelineColorBlendAttachmentState({
+				.blendEnable = VK_FALSE,
+				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE, .dstColorBlendFactor = VK_BLEND_FACTOR_ONE, .colorBlendOp = VK_BLEND_OP_ADD,
+				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .alphaBlendOp = VK_BLEND_OP_ADD,
+				.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+			}),
+		};
+
+		std::vector<std::thread> Threads;
+		Threads.emplace_back(std::thread::thread(VK::CreatePipelineVsFsTesTcsGs, std::ref(Pipelines.emplace_back()), Device, PipelineLayouts[0], RenderPasses[0], PT, PatchControlPoints, PRSCI, PDSSCI, &PSSCIs[0], &PSSCIs[1], nullptr, nullptr, &PSSCIs[2], VIBDs, VIADs, PCBASs));
+
+		for (auto& i : Threads) { i.join(); }
+	}
+	void CreatePipelineState_VsGsFs(const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 3>& PSSCIs) {
+		CreatePipelineState_VsGsFs_Input(PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
+	}
+
+	void CreateFrameBuffer_Default() {
+		for (auto i : SwapchainImageViews) {
+			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, {i});
+		}
+	}
+	void CreateFrameBuffer_Depth() {
+		for (auto i : SwapchainImageViews) {
+			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i, DepthTextures[0].View });
+		}
+	}
+
 	void PopulateCommandBuffer_Clear(const size_t i, const VkClearColorValue& Color) {
 		const auto CB = CommandBuffers[i];
 		constexpr VkCommandBufferBeginInfo CBBI = {
@@ -670,6 +837,38 @@ protected:
 			return *this;
 		}
 	};
+	class VertexBuffer : public DeviceLocalBuffer
+	{
+	private:
+		using Super = DeviceLocalBuffer;
+	public:
+		VertexBuffer& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const size_t Size) {
+			Super::Create(Device, PDMP, Size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			return *this;
+		}
+		void PopulateCopyCommand(const VkCommandBuffer CB, const size_t Size, const VkBuffer Staging) {
+			Super::PopulateCopyCommand(CB, Size, Staging, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+		}
+		void SubmitCopyCommand(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkCommandBuffer CB, const VkQueue Queue, const size_t Size, const void* Source) {
+			Super::SubmitCopyCommand(Device, PDMP, CB, Queue, Size, Source, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+		}
+	};
+	class IndexBuffer : public DeviceLocalBuffer
+	{
+	private:
+		using Super = DeviceLocalBuffer;
+	public:
+		IndexBuffer& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const size_t Size) {
+			Super::Create(Device, PDMP, Size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			return *this;
+		}
+		void PopulateCopyCommand(const VkCommandBuffer CB, const size_t Size, const VkBuffer Staging) {
+			Super::PopulateCopyCommand(CB, Size, Staging, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+		}
+		void SubmitCopyCommand(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkCommandBuffer CB, const VkQueue Queue, const size_t Size, const void* Source) {
+			Super::SubmitCopyCommand(Device, PDMP, CB, Queue, Size, Source, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+		}
+	};
 	class IndirectBuffer : public DeviceLocalBuffer
 	{
 	private:
@@ -750,7 +949,26 @@ protected:
 			VK::SubmitAndWait(Queue, CB);
 		}
 	};
-
+	class DepthTexture : public Texture
+	{
+	private:
+		using Super = Texture;
+	public:
+		DepthTexture& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkFormat Format, const VkExtent3D& Extent) {
+			Super::Create(Device, PDMP, Format, Extent, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT/*| VK_IMAGE_USAGE_SAMPLED_BIT*/, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+			return *this;
+		}
+	};
+	class RenderTexture : public Texture
+	{
+	private:
+		using Super = Texture;
+	public:
+		RenderTexture& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkFormat Format, const VkExtent3D& Extent) {
+			Super::Create(Device, PDMP, Format, Extent, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+			return *this;
+		}
+	};
 protected:
 	RECT Rect;
 
@@ -788,12 +1006,14 @@ protected:
 	std::vector<VkCommandPool> SecondaryCommandPools;
 	std::vector<VkCommandBuffer> SecondaryCommandBuffers;
 
+	std::vector<VertexBuffer> VertexBuffers;
+	std::vector<IndexBuffer> IndexBuffers;
 	std::vector<IndirectBuffer> IndirectBuffers;
 	std::vector<UniformBuffer> UniformBuffers;
 
-	//std::vector<Texture> Textures;
-	//std::vector<DepthTexture> DepthTextures;
-	//std::vector<RenderTexture> RenderTextures;
+	VkFormat DepthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+	std::vector<DepthTexture> DepthTextures;
+	std::vector<RenderTexture> RenderTextures;
 	std::vector<VkSampler> Samplers;
 
 	std::vector<VkDescriptorSetLayout> DescriptorSetLayouts;

@@ -51,20 +51,17 @@ public:
 		if (nullptr != LenticularBuffer) {
 			const auto RD = XTKTextures.back().Resource->GetDesc();
 			//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること
-			UpdateLenticularBuffer(8, 6, RD.Width, RD.Height);
+			Holo::UpdateLenticularBuffer(8, 6, static_cast<uint32_t>(RD.Width), RD.Height);
+
+			//for (auto i : ConstantBuffers) {
+			//	CopyToUploadResource(COM_PTR_GET(i.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
+			//}
+			auto& CB = ConstantBuffers[0];
+			CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
 		}
 	}
 	virtual void CreateStaticSampler() override {
-		StaticSamplerDescs.emplace_back(D3D12_STATIC_SAMPLER_DESC({
-			.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-			.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP, .AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP, .AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-			.MipLODBias = 0.0f,
-			.MaxAnisotropy = 0,
-			.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER,
-			.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
-			.MinLOD = 0.0f, .MaxLOD = 1.0f,
-			.ShaderRegister = 0, .RegisterSpace = 0, .ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-		}));
+		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 	}
 	virtual void CreateRootSignature() override {
 		COM_PTR<ID3DBlob> Blob;
@@ -95,7 +92,6 @@ public:
 	}
 	virtual void CreatePipelineState() override {
 		std::vector<COM_PTR<ID3DBlob>> SBs = {};
-		//!< #TODO
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "QuiltDX.vs.cso").wstring()), COM_PTR_PUT(SBs.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "QuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBs.emplace_back())));
 		const std::array SBCs = {
@@ -150,15 +146,19 @@ public:
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
 
+		const auto DescIndex = 0;//i;
+
+		//!< バンドルコマンドリスト
 		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));	
 		{
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 			BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
 		}
 		VERIFY_SUCCEEDED(BCL->Close());
 
+		//!< ダイレクトコマンドリスト
 		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(CL->Reset(CA, PS));
@@ -180,22 +180,13 @@ public:
 				const std::array DHs = { COM_PTR_GET(Heap) };
 				CL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
 				CL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
-				CL->SetGraphicsRootDescriptorTable(1, Handle[1/* + i*/]); //!< CBV
+				CL->SetGraphicsRootDescriptorTable(1, Handle[1 + DescIndex]); //!< CBV
 
 				CL->ExecuteBundle(BCL);
 			}
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		}
 		VERIFY_SUCCEEDED(CL->Close());
-	}
-
-	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint64_t Width, const uint32_t Height) override {
-		Holo::UpdateLenticularBuffer(Column, Row, Width, Height);
-		//for (auto i : ConstantBuffers) {
-		//	CopyToUploadResource(COM_PTR_GET(i.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
-		//}
-		auto& CB = ConstantBuffers[0];
-		CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
 	}
 
 	virtual void Camera(const int i) 

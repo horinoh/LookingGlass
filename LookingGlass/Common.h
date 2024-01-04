@@ -33,3 +33,10 @@ static bool IsKTX(const std::filesystem::path& Path) {
 	}
 	return false;
 }
+
+template<typename T> static constexpr size_t TotalSizeOf(const std::vector<T>& rhs) { return sizeof(T) * size(rhs); }
+template<typename T, size_t U> static constexpr size_t TotalSizeOf(const std::array<T, U>& rhs) { return sizeof(rhs); }
+
+template<typename T> const T GetMin(const T& lhs, const T& rhs);
+template<typename T> const T GetMax(const T& lhs, const T& rhs);
+template<typename T> void AdjustScale(std::vector<T>& Vertices, const float Scale);
