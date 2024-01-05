@@ -6,7 +6,7 @@ layout (location = 0) in vec3 InNormal[];
 
 layout (location = 0) out vec3 OutNormal;
 
-layout (triangles, invocations = 4) in;
+layout (triangles, invocations = 16) in;
 layout (line_strip, max_vertices = 3) out;
 void main()
 {
@@ -19,6 +19,7 @@ void main()
 		gl_Position = PVW * gl_in[i].gl_Position;
 		//gl_Position = gl_in[i].gl_Position;
 		OutNormal = InNormal[i];
+		//OutNormal = normalize(WIT * InNormal[i]);
 	
 		gl_ViewportIndex = gl_InvocationID; //!< GSインスタンシング(ビューポート毎)
 		//gl_Layer = gl_InvocationID; //!< GSインスタンシング(レンダーターゲット毎)

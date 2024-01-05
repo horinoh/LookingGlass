@@ -172,6 +172,29 @@ public:
 		CDH.ptr += IncSize;
 		//GDH.ptr += IncSize;
 	}
+	std::vector<D3D12_VIEWPORT> QuiltViewports;
+	std::vector<D3D12_RECT> QuiltScissorRects;
+	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
+		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
+		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
+		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
+
+		//!<【パス0】キルトレンダーターゲットを分割
+		//const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
+		const auto W = Width / LenticularBuffer->Column, H = Height / LenticularBuffer->Row;
+		for (auto i = 0; i < LenticularBuffer->Row; ++i) {
+			//const auto Y = QuiltHeight - H * (i + 1);
+			const auto Y = Height - H * (i + 1);
+			for (auto j = 0; j < LenticularBuffer->Column; ++j) {
+				const auto X = j * W;
+				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = X, .TopLeftY = Y, .Width = W, .Height = H, .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
+				QuiltScissorRects.emplace_back(D3D12_RECT({ .left = static_cast<LONG>(X), .top = static_cast<LONG>(Y), .right = static_cast<LONG>(X + W), .bottom = static_cast<LONG>(Y + H) }));
+			}
+		}
+
+		//!<【パス1】スクリーンを使用
+		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
+	}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
 
@@ -198,10 +221,12 @@ public:
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(GCL->Reset(CA, PS));
 		{
+			//!<【パス0】
 			GCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
 
-			GCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
-			GCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+			const auto Offset = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE * 0;
+			GCL->RSSetViewports(static_cast<UINT>(min(size(QuiltViewports), D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)), &QuiltViewports[Offset]);
+			GCL->RSSetScissorRects(static_cast<UINT>(min(size(QuiltViewports), D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)), &QuiltScissorRects[Offset]);
 
 			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
 			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -218,6 +243,8 @@ public:
 				GCL->ExecuteBundle(BCL);
 			}
 			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+			//!<【パス1】#TODO
 		}
 		VERIFY_SUCCEEDED(GCL->Close());
 	}

@@ -198,6 +198,26 @@ public:
 		}
 #endif
 	}
+	std::vector<VkViewport> QuiltViewports;
+	std::vector<VkRect2D> QuiltScissorRects;
+	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
+		//!<【パス0】キルトレンダーターゲットを分割
+		//const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
+		const auto W = Width / LenticularBuffer->Column, H = Height / LenticularBuffer->Row;
+		const auto Ext2D = VkExtent2D({ .width = static_cast<uint32_t>(W), .height = static_cast<uint32_t>(H) });
+		for (auto i = 0; i < LenticularBuffer->Row; ++i) {
+			//const auto Y = QuiltHeight - H * i;
+			const auto Y = Height - H * i;
+			for (auto j = 0; j < LenticularBuffer->Column; ++j) {
+				const auto X = j * W;
+				QuiltViewports.emplace_back(VkViewport({ .x = X, .y = Y, .width = W, .height = -H, .minDepth = MinDepth, .maxDepth = MaxDepth }));
+				QuiltScissorRects.emplace_back(VkRect2D({ VkOffset2D({.x = static_cast<int32_t>(X), .y = static_cast<int32_t>(Y - H) }), Ext2D }));
+			}
+		}
+
+		//!<【パス1】スクリーンを使用
+		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
+	}
 	virtual void PopulateCommandBuffer(const size_t i) override {
 		//!<【パス0】セカンダリコマンドバッファ
 		const auto RP = RenderPasses[0];
@@ -222,8 +242,12 @@ public:
 			.pInheritanceInfo = &CBII
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
-			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+			VkPhysicalDeviceProperties PDP;
+			vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
+
+			const auto Offset = PDP.limits.maxViewports * 0;
+			vkCmdSetViewport(SCB, 0, std::min(static_cast<uint32_t>(size(QuiltViewports)), PDP.limits.maxViewports), &QuiltViewports[Offset]);
+			vkCmdSetScissor(SCB, 0, std::min(static_cast<uint32_t>(size(QuiltScissorRects)), PDP.limits.maxViewports), &QuiltScissorRects[Offset]);
 
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 

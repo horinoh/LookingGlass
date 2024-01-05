@@ -12,7 +12,7 @@ struct OUT
 	//uint RenderTarget : SV_RenderTargetArrayIndex; 
 };
 
-[instance(4)]
+[instance(16)]
 [maxvertexcount(3)]
 void main(const triangle IN In[3], inout LineStream<OUT> stream, uint instanceID : SV_GSInstanceID)
 {
@@ -28,6 +28,7 @@ void main(const triangle IN In[3], inout LineStream<OUT> stream, uint instanceID
 		Out.Position = mul(WVP, float4(In[i].Position, 1.0f));
 		//Out.Position = float4(In[i].Position, 1.0f);
 		Out.Normal = In[i].Normal;
+		//Out.Normal = normalize(mul(WIT, In[i].Normal));
 
 		Out.Viewport = instanceID; //!< GSインスタンシング(ビューポート毎)
 		//Out.RenderTarget = instanceID; //!< インスタンシング(レンダーターゲット毎)
