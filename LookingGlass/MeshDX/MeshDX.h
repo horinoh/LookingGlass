@@ -133,16 +133,16 @@ public:
 		};
 		std::vector<COM_PTR<ID3DBlob>> SBsPass0;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
-		//VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.gs.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.ps.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.gs.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
 		const std::array SBCsPass0 = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[0]->GetBufferPointer(), .BytecodeLength = SBsPass0[0]->GetBufferSize() }),
-			//D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[1]->GetBufferPointer(), .BytecodeLength = SBsPass0[1]->GetBufferSize() }),
-			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[1/*2*/]->GetBufferPointer(), .BytecodeLength = SBsPass0[1/*2*/]->GetBufferSize()}),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[1]->GetBufferPointer(), .BytecodeLength = SBsPass0[1]->GetBufferSize() }),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[2]->GetBufferPointer(), .BytecodeLength = SBsPass0[2]->GetBufferSize() }),
 		};
-		CreatePipelineState_VsPs_Input(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
-		//CreatePipelineState_VsGsPs_Input(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
+		CreatePipelineState_VsPsGs_Input(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
+#if 0
 		//!< 【パス1】
 		std::vector<COM_PTR<ID3DBlob>> SBsPass1;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
@@ -152,15 +152,73 @@ public:
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass1[1]->GetBufferPointer(), .BytecodeLength = SBsPass1[1]->GetBufferSize() }),
 		};
 		CreatePipelineState_VsPs(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, FALSE, SBCsPass1);
+#endif
 	}
 	virtual void CreateDescriptor() override {
-		//!< #TODO
-		//!< Device->CreateDepthStencilView(COM_PTR_GET(DepthTextures.back().Resource), &DepthTextures.back().DSV, CDH);
+		auto& Desc = DsvDescs.emplace_back();
+		auto& Heap = Desc.first;
+		auto& Handle = Desc.second;
+
+		const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, .NodeMask = 0 };
+		VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+
+		auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+		//auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+		const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+		const auto& Tex = DepthTextures[0];
+		Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+		Handle.emplace_back(CDH);
+		CDH.ptr += IncSize;
+		//GDH.ptr += IncSize;
 	}
 	virtual void PopulateCommandList(const size_t i) override {
-		//!< #TODO
-		//!< DCL->ClearDepthStencilView(DsvCPUHandles.back()[0], D3D12_CLEAR_FLAG_DEPTH/*| D3D12_CLEAR_FLAG_STENCIL*/, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
-		//	const std::array CHs = { SwapChainCPUHandles[i] };
-		//	DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &DsvCPUHandles.back()[0]);
+		const auto PS = COM_PTR_GET(PipelineStates[0]);
+
+		const auto DescIndex = 0;//i;
+
+		//!<【パス0】バンドルコマンドリスト
+		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
+		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+		{
+			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
+			BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+			BCL->IASetIndexBuffer(&IndexBuffers[0].View);
+
+			const auto IB = IndirectBuffers[0];
+			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
+		}
+		VERIFY_SUCCEEDED(BCL->Close());
+
+		//!< ダイレクトコマンドリスト
+		const auto GCL = COM_PTR_GET(DirectCommandLists[i]);
+		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
+		VERIFY_SUCCEEDED(GCL->Reset(CA, PS));
+		{
+			GCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
+
+			GCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
+			GCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+
+			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
+			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			{
+				const auto& HandleDSV = DsvDescs[0].second;
+
+				constexpr std::array<D3D12_RECT, 0> Rects = {};
+				GCL->ClearRenderTargetView(SwapChainCPUHandles[i], DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
+				GCL->ClearDepthStencilView(HandleDSV[0], D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
+
+				const std::array CHs = { SwapChainCPUHandles[i] };
+				GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
+
+				GCL->ExecuteBundle(BCL);
+			}
+			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		}
+		VERIFY_SUCCEEDED(GCL->Close());
 	}
 };

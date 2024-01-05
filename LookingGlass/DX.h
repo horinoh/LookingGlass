@@ -406,7 +406,7 @@ protected:
 	void CreatePipelineState_VsPs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 2>& SBCs) {  
 		CreatePipelineState_VsPs_Input(PTT, RD, DepthEnable, {}, SBCs);
 	}
-	void CreatePipelineState_VsGsPs_Input(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs)
+	void CreatePipelineState_VsPsGs_Input(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs)
 	{
 		const std::vector RTBDs = {
 			D3D12_RENDER_TARGET_BLEND_DESC({
@@ -435,8 +435,8 @@ protected:
 
 		for (auto& i : Threads) { i.join(); }
 	}
-	void CreatePipelineState_VsGsPs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs) {
-		CreatePipelineState_VsGsPs_Input(PTT, RD, DepthEnable, {}, SBCs);
+	void CreatePipelineState_VsPsGs(const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs) {
+		CreatePipelineState_VsPsGs_Input(PTT, RD, DepthEnable, {}, SBCs);
 	}
 
 	void PopulateCommandList_Clear(const size_t i, const DirectX::XMVECTORF32& Color) {

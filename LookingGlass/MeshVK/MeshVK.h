@@ -121,7 +121,8 @@ public:
 		CreateImmutableSampler_LinearRepeat();
 	}
 	virtual void CreatePipelineLayout() override {
-		//!< #TODO
+		//!<yƒpƒX0z#TODO
+		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), {}, {});
 	}
 	virtual void CreateRenderPass() override { 
 		//!< yƒpƒX0z
@@ -154,22 +155,22 @@ public:
 		};
 		const std::array SMsPass0 = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass0VK.vert.spv"),
-			//VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass0VK.geom.spv"),
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass0VK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass0VK.geom.spv"),
 		};
 		const std::array PSSCIsPass0 = {
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMsPass0[0], .pName = "main", .pSpecializationInfo = nullptr }),
-			//VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = SMsPass0[1], .pName = "main", .pSpecializationInfo = nullptr }),
-			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMsPass0[1/*2*/], .pName = "main", .pSpecializationInfo = nullptr}),
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMsPass0[1], .pName = "main", .pSpecializationInfo = nullptr }),
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = SMsPass0[2], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
-		CreatePipeline_VsFs_Input(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
-		//CreatePipelineState_VsGsFs_Input(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
+		CreatePipelineState_VsFsGs_Input(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
 		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
-
+		
+#if 0
 		//!< yƒpƒX1z
 		const std::array SMsPass1 = {
-			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass0VK.vert.spv"),
-			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass0VK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.vert.spv"),
+			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.frag.spv"),
 		};
 		const std::array PSSCIsPass1 = {
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMsPass1[0], .pName = "main", .pSpecializationInfo = nullptr }),
@@ -177,6 +178,7 @@ public:
 		};
 		CreatePipeline_VsFs(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIsPass1);
 		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
+#endif
 	}
 	virtual void CreateDescriptor() override {
 		//!< #TODO
