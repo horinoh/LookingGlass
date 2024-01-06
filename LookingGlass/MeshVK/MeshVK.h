@@ -164,7 +164,6 @@ public:
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = SMsPass0[2], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
 		CreatePipelineState_VsFsGs_Input(PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
-		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 		
 #if 0
 		//!< 【パス1】
@@ -179,6 +178,12 @@ public:
 		CreatePipeline_VsFs(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIsPass1);
 		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 #endif
+
+		for (auto& i : Threads) { i.join(); }
+		Threads.clear();
+
+		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
+		//for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
 		//!< #TODO
@@ -242,13 +247,6 @@ public:
 			.pInheritanceInfo = &CBII
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
-			VkPhysicalDeviceProperties PDP;
-			vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-
-			const auto Offset = PDP.limits.maxViewports * 0;
-			vkCmdSetViewport(SCB, 0, std::min(static_cast<uint32_t>(size(QuiltViewports)), PDP.limits.maxViewports), &QuiltViewports[Offset]);
-			vkCmdSetScissor(SCB, 0, std::min(static_cast<uint32_t>(size(QuiltScissorRects)), PDP.limits.maxViewports), &QuiltScissorRects[Offset]);
-
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
 			const std::array VBs = { VertexBuffers[0].Buffer };
@@ -287,8 +285,20 @@ public:
 				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
 			};
 			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
-				const std::array SCBs = { SCB };
-				vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
+				VkPhysicalDeviceProperties PDP;
+				vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
+
+				const auto ColRow = static_cast<int32_t>(LenticularBuffer->Column * LenticularBuffer->Row);
+				const int32_t QuiltIterateCount = ColRow / PDP.limits.maxViewports + ((ColRow % PDP.limits.maxViewports) ? 1 : 0);
+				for (auto j = 0; j < QuiltIterateCount; ++j) {
+					const auto Offset = PDP.limits.maxViewports * j;
+					const auto Count = (std::min)(static_cast<int32_t>(size(QuiltViewports)) - Offset, PDP.limits.maxViewports); //!< Scissor も同じカウント
+					vkCmdSetViewport(CB, 0, Count, &QuiltViewports[Offset]);
+					vkCmdSetScissor(CB, 0, Count, &QuiltScissorRects[Offset]);
+
+					const std::array SCBs = { SCB };
+					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
+				}
 			} vkCmdEndRenderPass(CB);
 
 			//!< バリア #TODO

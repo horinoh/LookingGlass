@@ -94,6 +94,9 @@ public:
 		};
 		CreatePipeline_VsFs(PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIs);
 
+		for (auto& i : Threads) { i.join(); }
+		Threads.clear();
+
 		for (auto i : SMs) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {

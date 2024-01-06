@@ -107,6 +107,9 @@ public:
 			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
 		};
 		CreatePipelineState_VsPs(COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, FALSE, SBCs);
+
+		for (auto& i : Threads) { i.join(); }
+		Threads.clear();
 	}
 	virtual void CreateDescriptor() override {
 		auto& Desc = CbvSrvUavDescs.emplace_back();

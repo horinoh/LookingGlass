@@ -644,10 +644,7 @@ protected:
 			}),
 		};
 
-		std::vector<std::thread> Threads;
 		Threads.emplace_back(std::thread::thread(VK::CreatePipelineVsFsTesTcsGs, std::ref(Pipelines.emplace_back()), Device, PLL, RP, PT, PatchControlPoints, PRSCI, PDSSCI, &PSSCIs[0], &PSSCIs[1], nullptr, nullptr, nullptr, VIBDs, VIADs, PCBASs));
-
-		for (auto& i : Threads) { i.join(); }
 	}
 	void CreatePipeline_VsFs(const VkPipelineLayout PLL, const VkRenderPass RP, const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 2>& PSSCIs) {
 		CreatePipeline_VsFs_Input(PLL, RP, PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
@@ -686,10 +683,7 @@ protected:
 			}),
 		};
 
-		std::vector<std::thread> Threads;
 		Threads.emplace_back(std::thread::thread(VK::CreatePipelineVsFsTesTcsGs, std::ref(Pipelines.emplace_back()), Device, PLL, RP, PT, PatchControlPoints, PRSCI, PDSSCI, &PSSCIs[0], &PSSCIs[1], nullptr, nullptr, &PSSCIs[2], VIBDs, VIADs, PCBASs));
-
-		for (auto& i : Threads) { i.join(); }
 	}
 	void CreatePipelineState_VsFsGs(const VkPipelineLayout PLL, const VkRenderPass RP, const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 3>& PSSCIs) {
 		CreatePipelineState_VsFsGs_Input(PLL, RP, PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
@@ -971,6 +965,7 @@ protected:
 	};
 protected:
 	RECT Rect;
+	std::vector<std::thread> Threads;
 
 	HMODULE VulkanLibrary = nullptr;
 #define VK_PROC_ADDR(proc) static PFN_vk ## proc vk ## proc;

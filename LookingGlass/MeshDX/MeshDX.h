@@ -153,6 +153,9 @@ public:
 		};
 		CreatePipelineState_VsPs(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, FALSE, SBCsPass1);
 #endif
+
+		for (auto& i : Threads) { i.join(); }
+		Threads.clear();
 	}
 	virtual void CreateDescriptor() override {
 		auto& Desc = DsvDescs.emplace_back();
@@ -224,10 +227,6 @@ public:
 			//!<【パス0】
 			GCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
 
-			const auto Offset = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE * 0;
-			GCL->RSSetViewports(static_cast<UINT>(min(size(QuiltViewports), D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)), &QuiltViewports[Offset]);
-			GCL->RSSetScissorRects(static_cast<UINT>(min(size(QuiltViewports), D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)), &QuiltScissorRects[Offset]);
-
 			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
 			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
@@ -240,7 +239,16 @@ public:
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
 
-				GCL->ExecuteBundle(BCL);
+				const auto ColRow = static_cast<int32_t>(LenticularBuffer->Column * LenticularBuffer->Row);
+				const auto QuiltIterateCount = ColRow / D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE + ((ColRow % D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) ? 1 : 0);
+				for (auto j = 0; j < QuiltIterateCount; ++j) {
+					const auto Offset = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE * j;
+					const auto Count = (std::min)(static_cast<int32_t>(size(QuiltViewports)) - Offset, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE); //!< Scissor も同じカウント
+					GCL->RSSetViewports(Count, &QuiltViewports[Offset]);
+					GCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
+
+					GCL->ExecuteBundle(BCL);
+				}
 			}
 			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
