@@ -117,6 +117,9 @@ public:
 		VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 	}
 	virtual void CreatePipelineState() override {
+		PipelineStates.emplace_back();
+		//PipelineStates.emplace_back();
+
 		constexpr D3D12_RASTERIZER_DESC RD = {
 			.FillMode = D3D12_FILL_MODE_SOLID,
 			.CullMode = D3D12_CULL_MODE_BACK, .FrontCounterClockwise = TRUE,
@@ -140,7 +143,7 @@ public:
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[1]->GetBufferPointer(), .BytecodeLength = SBsPass0[1]->GetBufferSize() }),
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[2]->GetBufferPointer(), .BytecodeLength = SBsPass0[2]->GetBufferSize() }),
 		};
-		CreatePipelineState_VsPsGs_Input(COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
+		CreatePipelineState_VsPsGs_Input(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
 #if 0
 		//!< 【パス1】
@@ -239,11 +242,9 @@ public:
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
 
-				const auto ColRow = static_cast<int32_t>(LenticularBuffer->Column * LenticularBuffer->Row);
-				const auto QuiltIterateCount = ColRow / D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE + ((ColRow % D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) ? 1 : 0);
-				for (auto j = 0; j < QuiltIterateCount; ++j) {
-					const auto Offset = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE * j;
-					const auto Count = (std::min)(static_cast<int32_t>(size(QuiltViewports)) - Offset, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE); //!< Scissor も同じカウント
+				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+					const auto Offset = GetViewportSetOffset(j);
+					const auto Count = GetViewportSetCount(j, size(QuiltViewports));
 					GCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 					GCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
@@ -256,4 +257,6 @@ public:
 		}
 		VERIFY_SUCCEEDED(GCL->Close());
 	}
+
+	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
 };

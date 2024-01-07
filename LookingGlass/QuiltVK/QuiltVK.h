@@ -72,6 +72,8 @@ public:
 	}
 	virtual void CreateRenderPass() override { CreateRenderPass_None(); }
 	virtual void CreatePipeline() override {
+		Pipelines.emplace_back();
+
 		const std::array SMs = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "QuiltVK.vert.spv"),
 			VK::CreateShaderModule(std::filesystem::path(".") / "QuiltVK.frag.spv"),
@@ -92,7 +94,7 @@ public:
 			.depthBiasEnable = VK_FALSE, .depthBiasConstantFactor = 0.0f, .depthBiasClamp = 0.0f, .depthBiasSlopeFactor = 0.0f,
 			.lineWidth = 1.0f
 		};
-		CreatePipeline_VsFs(PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIs);
+		CreatePipeline_VsFs(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIs);
 
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
@@ -211,5 +213,11 @@ public:
 
 	virtual void Camera(const int i)
 	{
+	}
+
+	virtual uint32_t GetViewportMax() const override {
+		VkPhysicalDeviceProperties PDP;
+		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
+		return PDP.limits.maxViewports;
 	}
 };

@@ -181,6 +181,15 @@ public:
 		LenticularBuffer->Tilt = abs(LenticularBuffer->Tilt);
 	}
 
+	virtual uint32_t GetViewportMax() const { return 16; }
+	uint32_t GetViewportDrawCount() const {
+		const auto ColRow = static_cast<uint32_t>(LenticularBuffer->Column * LenticularBuffer->Row);
+		const auto ViewportCount = GetViewportMax();
+		return ColRow / ViewportCount + ((ColRow % ViewportCount) ? 1 : 0);
+	}
+	uint32_t GetViewportSetOffset(const uint32_t i) const { return GetViewportMax() * i; }
+	uint32_t GetViewportSetCount(const uint32_t i, const size_t Size) const { return (std::min)(static_cast<int32_t>(Size) - GetViewportSetOffset(i), GetViewportMax()); }
+
 protected:
 	int DeviceIndex = -1;
 

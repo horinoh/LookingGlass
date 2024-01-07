@@ -131,6 +131,9 @@ public:
 		CreateRenderPass_None();
 	}
 	virtual void CreatePipeline() override {
+		Pipelines.emplace_back();
+		//Pipelines.emplace_back();
+
 		constexpr VkPipelineRasterizationStateCreateInfo PRSCI = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 			.pNext = nullptr,
@@ -163,7 +166,7 @@ public:
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMsPass0[1], .pName = "main", .pSpecializationInfo = nullptr }),
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = SMsPass0[2], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
-		CreatePipelineState_VsFsGs_Input(PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
+		CreatePipelineState_VsFsGs_Input(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
 		
 #if 0
 		//!< yƒpƒX1z
@@ -288,11 +291,9 @@ public:
 				VkPhysicalDeviceProperties PDP;
 				vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
 
-				const auto ColRow = static_cast<int32_t>(LenticularBuffer->Column * LenticularBuffer->Row);
-				const int32_t QuiltIterateCount = ColRow / PDP.limits.maxViewports + ((ColRow % PDP.limits.maxViewports) ? 1 : 0);
-				for (auto j = 0; j < QuiltIterateCount; ++j) {
-					const auto Offset = PDP.limits.maxViewports * j;
-					const auto Count = (std::min)(static_cast<int32_t>(size(QuiltViewports)) - Offset, PDP.limits.maxViewports); //!< Scissor ‚à“¯‚¶ƒJƒEƒ“ƒg
+				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+					const auto Offset = GetViewportSetOffset(j);
+					const auto Count = GetViewportSetCount(j, size(QuiltViewports));
 					vkCmdSetViewport(CB, 0, Count, &QuiltViewports[Offset]);
 					vkCmdSetScissor(CB, 0, Count, &QuiltScissorRects[Offset]);
 
@@ -306,5 +307,11 @@ public:
 			//!<yƒpƒX1z#TODO
 
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
+	}
+
+	virtual uint32_t GetViewportMax() const override { 
+		VkPhysicalDeviceProperties PDP;
+		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
+		return PDP.limits.maxViewports;
 	}
 };
