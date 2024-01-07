@@ -210,11 +210,7 @@ public:
 			} vkCmdEndRenderPass(CB);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
-
-	virtual void Camera(const int i)
-	{
-	}
-
+	
 	virtual uint32_t GetViewportMax() const override {
 		VkPhysicalDeviceProperties PDP;
 		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);

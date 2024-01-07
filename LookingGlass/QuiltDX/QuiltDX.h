@@ -71,22 +71,25 @@ public:
 		constexpr std::array DRs_Cbv = {
 			D3D12_DESCRIPTOR_RANGE({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, .NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND })
 		};
-		DX::SerializeRootSignature(Blob, {
-			//!< SRV
-			D3D12_ROOT_PARAMETER({
-				.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-				.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
-				.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-			}),
-			//!< CBV
-			D3D12_ROOT_PARAMETER({
-				.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-				.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
-				.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-			}),
-			}, {
+		DX::SerializeRootSignature(Blob, 
+			{
+				//!< SRV
+				D3D12_ROOT_PARAMETER({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+				}),
+				//!< CBV
+				D3D12_ROOT_PARAMETER({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+				}),
+			}, 
+			{
 				StaticSamplerDescs[0],
-			}, SHADER_ROOT_ACCESS_PS);
+			}, 
+			SHADER_ROOT_ACCESS_PS);
 
 		VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 	}
@@ -192,25 +195,6 @@ public:
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		}
 		VERIFY_SUCCEEDED(CL->Close());
-	}
-
-	virtual void Camera(const int i) 
-	{
-#if 0
-		constexpr float CameraSize = 5.0f;
-		constexpr float Fov = DirectX::XMConvertToRadians(14.0f);
-		const float CameraDistance = -CameraSize / tan(Fov * 0.5f);
-
-		//!< [-0.5f * ViewCone, 0.5f * ViewCone]
-		const float OffsetAngle = (i / (QuiltTotal - 1.0f) - 0.5f) * ViewCone;
-		const float OffsetX = CameraDistance * tan(OffsetAngle);
-
-		//const auto View = DirectX::XMMatrixLookAtRH(CamPos, CamTag, CamUp);
-		//viewMatrix = glm::translate(currentViewMatrix, glm::vec3(OffsetX, 0.0f, CameraDistance));
-
-		auto Projection = DirectX::XMMatrixPerspectiveFovLH(Fov, DisplayAspect, 0.1f, 100.0f);
-		//Projection[2][0] += OffsetX / (cameraSize * DisplayAspect);
-#endif
 	}
 
 	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }

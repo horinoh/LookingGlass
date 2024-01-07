@@ -9,9 +9,6 @@
 class MeshDX : public DX, public Holo, public Fbx
 {
 public:
-	std::vector<UINT32> Indices;
-	std::vector<DirectX::XMFLOAT3> Vertices;
-	std::vector<DirectX::XMFLOAT3> Normals;
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
 	virtual void Process(FbxMesh* Mesh) override {
 		Fbx::Process(Mesh);
@@ -100,7 +97,9 @@ public:
 		DX::ExecuteAndWait(GCQ, CL, COM_PTR_GET(GraphicsFence));
 	}
 	virtual void CreateConstantBuffer() override {
-		//!< #TODO
+		//!<yƒpƒX0z#TODO
+		//!<yƒpƒX1z
+		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
 	}
 	virtual void CreateTexture() override {
 		//!<yƒpƒX0zƒŒƒ“ƒ_[ƒ^[ƒQƒbƒgAƒfƒvƒX
@@ -112,13 +111,60 @@ public:
 		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 	}
 	virtual void CreateRootSignature() override {
-		COM_PTR<ID3DBlob> Blob;
-		DX::SerializeRootSignature(Blob, {}, {}, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_DENY_ALL);
-		VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
+		//!<yƒpƒX0z
+		{
+			COM_PTR<ID3DBlob> Blob;
+			constexpr std::array DRs_Cbv = {
+				D3D12_DESCRIPTOR_RANGE({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, .NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND })
+			};
+			DX::SerializeRootSignature(Blob, 
+				{
+					//!< CBV
+					D3D12_ROOT_PARAMETER({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
+					}),
+				}, 
+				{
+				}, 
+				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_GS);
+			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
+		}
+		//!<yƒpƒX1z
+		{
+			COM_PTR<ID3DBlob> Blob;
+			constexpr std::array DRs_Srv = {
+				D3D12_DESCRIPTOR_RANGE({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV, .NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND })
+			};
+			constexpr std::array DRs_Cbv = {
+				D3D12_DESCRIPTOR_RANGE({.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, .NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND })
+			};
+			DX::SerializeRootSignature(Blob, 
+				{
+					//!< SRV
+					D3D12_ROOT_PARAMETER({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+					}),
+					//!< CBV
+					D3D12_ROOT_PARAMETER({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+					}),
+				}, 
+				{
+					StaticSamplerDescs[0],
+				}, 
+				SHADER_ROOT_ACCESS_PS);
+			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
+		}
 	}
 	virtual void CreatePipelineState() override {
 		PipelineStates.emplace_back();
-		//PipelineStates.emplace_back();
+		PipelineStates.emplace_back();
 
 		constexpr D3D12_RASTERIZER_DESC RD = {
 			.FillMode = D3D12_FILL_MODE_SOLID,
@@ -145,22 +191,21 @@ public:
 		};
 		CreatePipelineState_VsPsGs_Input(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
-#if 0
 		//!< yƒpƒX1z
 		std::vector<COM_PTR<ID3DBlob>> SBsPass1;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass0DX.ps.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass1DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass1DX.ps.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
 		const std::array SBCsPass1 = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass1[0]->GetBufferPointer(), .BytecodeLength = SBsPass1[0]->GetBufferSize() }),
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass1[1]->GetBufferPointer(), .BytecodeLength = SBsPass1[1]->GetBufferSize() }),
 		};
-		CreatePipelineState_VsPs(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, FALSE, SBCsPass1);
-#endif
+		CreatePipelineState_VsPs(PipelineStates[1], COM_PTR_GET(RootSignatures[1]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, FALSE, SBCsPass1);
 
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
 	}
 	virtual void CreateDescriptor() override {
+		//!<yƒpƒX0z
 		auto& Desc = DsvDescs.emplace_back();
 		auto& Heap = Desc.first;
 		auto& Handle = Desc.second;
@@ -177,9 +222,9 @@ public:
 		Handle.emplace_back(CDH);
 		CDH.ptr += IncSize;
 		//GDH.ptr += IncSize;
+
+		//!<yƒpƒX1z
 	}
-	std::vector<D3D12_VIEWPORT> QuiltViewports;
-	std::vector<D3D12_RECT> QuiltScissorRects;
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
 		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
@@ -242,9 +287,10 @@ public:
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
 
+				//!< ƒLƒ‹ƒgƒpƒ^[ƒ“•`‰æ (ƒrƒ…[ƒ|[ƒg“¯Žž•`‰æ”‚É§ŒÀ‚ª‚ ‚éˆ×A—v•¡”‰ñŽÀs)
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
-					const auto Count = GetViewportSetCount(j, size(QuiltViewports));
+					const auto Count = GetViewportSetCount(j);
 					GCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 					GCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
@@ -258,5 +304,36 @@ public:
 		VERIFY_SUCCEEDED(GCL->Close());
 	}
 
+	virtual void Camera(const int i)
+	{
+#if 0
+		constexpr float CameraSize = 5.0f;
+		constexpr float Fov = DirectX::XMConvertToRadians(14.0f);
+		const float CameraDistance = -CameraSize / tan(Fov * 0.5f);
+
+		//!< [-0.5f * ViewCone, 0.5f * ViewCone]
+		const float OffsetAngle = (i / (QuiltTotal - 1.0f) - 0.5f) * ViewCone;
+		const float OffsetX = CameraDistance * tan(OffsetAngle);
+
+		//const auto View = DirectX::XMMatrixLookAtRH(CamPos, CamTag, CamUp);
+		//viewMatrix = glm::translate(currentViewMatrix, glm::vec3(OffsetX, 0.0f, CameraDistance));
+
+		auto Projection = DirectX::XMMatrixPerspectiveFovLH(Fov, DisplayAspect, 0.1f, 100.0f);
+		//Projection[2][0] += OffsetX / (cameraSize * DisplayAspect);
+#endif
+	}
+
 	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+
+protected:
+	std::vector<UINT32> Indices;
+	std::vector<DirectX::XMFLOAT3> Vertices;
+	std::vector<DirectX::XMFLOAT3> Normals;
+
+	std::vector<D3D12_VIEWPORT> QuiltViewports;
+	std::vector<D3D12_RECT> QuiltScissorRects;
+
+	struct VIEW_BUFFER {
+		DirectX::XMFLOAT4X4 View[16];
+	};
 };

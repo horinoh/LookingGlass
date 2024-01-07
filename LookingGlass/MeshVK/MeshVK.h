@@ -9,9 +9,6 @@
 class MeshVK : public VK, public Holo, public Fbx
 {
 public:
-	std::vector<uint32_t> Indices;
-	std::vector<glm::vec3> Vertices;
-	std::vector<glm::vec3> Normals;
 	glm::vec3 ToVec3(const FbxVector4& rhs) { return glm::vec3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
 	virtual void Process(FbxMesh* Mesh) override {
 		Fbx::Process(Mesh);
@@ -110,6 +107,11 @@ public:
 	}
 
 	virtual void CreateUniformBuffer() override {
+		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+
+		//!<【パス0】#TODO
+		//!<【パス1】
+		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
 	}
 	virtual void CreateTexture() override {
 		//!<【パス0】レンダーターゲット、デプス
@@ -121,8 +123,25 @@ public:
 		CreateImmutableSampler_LinearRepeat();
 	}
 	virtual void CreatePipelineLayout() override {
-		//!<【パス0】#TODO
-		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), {}, {});
+		//!<【パス0】
+		{
+			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
+				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
+			});
+			const auto DSLs = { DescriptorSetLayouts[0] };
+			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), DSLs, {});
+		}
+
+		//!<【パス1】
+		{
+			const std::array ISs = { Samplers[0] };
+			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
+				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = data(ISs) }),
+				VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr }),
+			});
+			const auto DSLs = { DescriptorSetLayouts[1] };
+			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), DSLs, {});
+		}
 	}
 	virtual void CreateRenderPass() override { 
 		//!< 【パス0】
@@ -132,7 +151,7 @@ public:
 	}
 	virtual void CreatePipeline() override {
 		Pipelines.emplace_back();
-		//Pipelines.emplace_back();
+		Pipelines.emplace_back();
 
 		constexpr VkPipelineRasterizationStateCreateInfo PRSCI = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -147,7 +166,7 @@ public:
 			.lineWidth = 1.0f
 		};
 		
-		//!< 【パス0】
+		//!<【パス0】
 		const std::vector VIBDs = {
 			VkVertexInputBindingDescription({.binding = 0, .stride = sizeof(Vertices[0]), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX }),
 			VkVertexInputBindingDescription({.binding = 1, .stride = sizeof(Normals[0]), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX }),
@@ -168,8 +187,7 @@ public:
 		};
 		CreatePipelineState_VsFsGs_Input(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
 		
-#if 0
-		//!< 【パス1】
+		//!<【パス1】
 		const std::array SMsPass1 = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.vert.spv"),
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.frag.spv"),
@@ -178,15 +196,13 @@ public:
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMsPass1[0], .pName = "main", .pSpecializationInfo = nullptr }),
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMsPass1[1], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
-		CreatePipeline_VsFs(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIsPass1);
-		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
-#endif
+		CreatePipeline_VsFs(Pipelines[1], PipelineLayouts[1], RenderPasses[1], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIsPass1);
 
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
 
 		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
-		//for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
+		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
 		//!< #TODO
@@ -206,8 +222,6 @@ public:
 		}
 #endif
 	}
-	std::vector<VkViewport> QuiltViewports;
-	std::vector<VkRect2D> QuiltScissorRects;
 	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
 		//!<【パス0】キルトレンダーターゲットを分割
 		//const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
@@ -262,7 +276,7 @@ public:
 			vkCmdDrawIndexedIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
 
-		//!<【パス1】セカンダリコマンドバッファ
+		//!<【パス1】セカンダリコマンドバッファ #TODO
 		//const auto RP1 = RenderPasses[1];
 		//const auto FB1 = Framebuffers[i + 1];
 		//const auto PLL1 = PipelineLayouts[0];
@@ -291,9 +305,10 @@ public:
 				VkPhysicalDeviceProperties PDP;
 				vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
 
+				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
-					const auto Count = GetViewportSetCount(j, size(QuiltViewports));
+					const auto Count = GetViewportSetCount(j);
 					vkCmdSetViewport(CB, 0, Count, &QuiltViewports[Offset]);
 					vkCmdSetScissor(CB, 0, Count, &QuiltScissorRects[Offset]);
 
@@ -309,9 +324,25 @@ public:
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
 
+	virtual void Camera(const int i)
+	{
+	}
+
 	virtual uint32_t GetViewportMax() const override { 
 		VkPhysicalDeviceProperties PDP;
 		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
 		return PDP.limits.maxViewports;
 	}
+
+protected:
+	std::vector<uint32_t> Indices;
+	std::vector<glm::vec3> Vertices;
+	std::vector<glm::vec3> Normals;
+
+	std::vector<VkViewport> QuiltViewports;
+	std::vector<VkRect2D> QuiltScissorRects;
+
+	struct VIEW_BUFFER {
+		glm::mat4 View[16];
+	};
 };
