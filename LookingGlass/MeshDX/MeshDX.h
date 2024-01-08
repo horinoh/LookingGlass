@@ -86,7 +86,6 @@ public:
 		UploadResource UploadPass0Indirect;
 		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DIA), &DIA);
 
-
 		//!<【パス1】フルスクリーン描画用
 		constexpr D3D12_DRAW_ARGUMENTS DA = {
 			.VertexCountPerInstance = 4, 
@@ -344,37 +343,52 @@ public:
 	}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
-
-		const auto DescIndex = 0;//i;
+		const auto RS0 = COM_PTR_GET(RootSignatures[0]);
 
 		//!<【パス0】バンドルコマンドリスト
-		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
-		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+		const auto BCL0 = COM_PTR_GET(BundleCommandLists[0]);
 		{
-			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+			VERIFY_SUCCEEDED(BCL0->Reset(BCA, PS));
+			{
+				BCL0->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-			BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
-			BCL->IASetIndexBuffer(&IndexBuffers[0].View);
+				const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
+				BCL0->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+				BCL0->IASetIndexBuffer(&IndexBuffers[0].View);
 
-			const auto IB = IndirectBuffers[0];
-			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
+				const auto IB = IndirectBuffers[0];
+				BCL0->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
+			}
+			VERIFY_SUCCEEDED(BCL0->Close());
 		}
-		VERIFY_SUCCEEDED(BCL->Close());
+
+		//!<【パス1】バンドルコマンドリスト
+		const auto BCL1 = COM_PTR_GET(BundleCommandLists[1]);
+		{
+			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+			VERIFY_SUCCEEDED(BCL1->Reset(BCA, PS));
+			{
+				BCL1->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+				BCL1->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
+			}
+			VERIFY_SUCCEEDED(BCL1->Close());
+		}
 
 		//!< ダイレクトコマンドリスト
 		const auto GCL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(GCL->Reset(CA, PS));
 		{
-			//!<【パス0】
-			GCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
-			GCL->SetGraphicsRoot32BitConstants(1, 1, &ViewportOffset, 0);
-
 			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
-			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
+
+			//!<【パス0】
 			{
+				GCL->SetGraphicsRootSignature(RS0);
+				//!< ルートコンスタント
+				GCL->SetGraphicsRoot32BitConstants(1, 1, &ViewportOffset, 0);
+
 				//!< デスクリプタ
 				{
 					//!< レンダーターゲット
@@ -417,12 +431,22 @@ public:
 					GCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 					GCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
-					GCL->ExecuteBundle(BCL);
+					GCL->ExecuteBundle(BCL0);
 				}
 			}
-			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+			ResourceBarrier2(GCL,
+				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				RT, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 			//!<【パス1】#TODO
+			{
+				
+			}
+
+			ResourceBarrier2(GCL,
+				SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT,
+				RT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
 		VERIFY_SUCCEEDED(GCL->Close());
 	}

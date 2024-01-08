@@ -261,7 +261,8 @@ protected:
 		CQ->ExecuteCommandLists(static_cast<UINT>(size(CLs)), data(CLs));
 		WaitForFence(CQ, Fence);
 	}
-	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
+	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, 
+		ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
 		const std::array RBs = {
 			D3D12_RESOURCE_BARRIER({
 				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -270,6 +271,31 @@ protected:
 					.pResource = Resource,
 					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
 					.StateBefore = Before, .StateAfter = After
+				})
+			})
+		};
+		GCL->ResourceBarrier(static_cast<UINT>(size(RBs)), data(RBs));
+	}
+	static void ResourceBarrier2(ID3D12GraphicsCommandList* GCL, 
+		ID3D12Resource* Resource0, const D3D12_RESOURCE_STATES Before0, const D3D12_RESOURCE_STATES After0,
+		ID3D12Resource* Resource1, const D3D12_RESOURCE_STATES Before1, const D3D12_RESOURCE_STATES After1) {
+		const std::array RBs = {
+			D3D12_RESOURCE_BARRIER({
+				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+				.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
+					.pResource = Resource0,
+					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+					.StateBefore = Before0, .StateAfter = After0
+				})
+			}),
+			D3D12_RESOURCE_BARRIER({
+				.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+				.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
+					.pResource = Resource1,
+					.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+					.StateBefore = Before1, .StateAfter = After1
 				})
 			})
 		};
