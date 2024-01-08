@@ -33,12 +33,12 @@ float2 ToTexcoord(float3 CoordZ)
 
 float4 main(IN In) : SV_TARGET
 {
-#if 0
+#if 1
 	return Texture.Sample(Sampler, In.Texcoord);
 #else
 	float2 UV = In.Texcoord;
 
-	//!< キルトとディスプレイのアスペクト比は同じにしているので不要
+	//!< 自前で描画しているので、キルトとディスプレイのアスペクト比調整は不要
 
 	clip(UV);
 	clip(1 - UV);

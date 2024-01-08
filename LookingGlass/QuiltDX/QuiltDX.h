@@ -182,13 +182,16 @@ public:
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				CL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
-				const auto& Desc = CbvSrvUavDescs[0];
-				const auto& Heap = Desc.first;
-				const auto& Handle = Desc.second;
-				const std::array DHs = { COM_PTR_GET(Heap) };
-				CL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-				CL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
-				CL->SetGraphicsRootDescriptorTable(1, Handle[1 + DescIndex]); //!< CBV
+				//!< デスクリプタ
+				{
+					const auto& Desc = CbvSrvUavDescs[0];
+					const auto& Heap = Desc.first;
+					const auto& Handle = Desc.second;
+					const std::array DHs = { COM_PTR_GET(Heap) };
+					CL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					CL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
+					CL->SetGraphicsRootDescriptorTable(1, Handle[1 + DescIndex]); //!< CBV
+				}
 
 				CL->ExecuteBundle(BCL);
 			}

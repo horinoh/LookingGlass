@@ -35,12 +35,12 @@ vec2 ToTexcoord(vec3 CoordZ)
 
 void main()
 {
-#if 0
+#if 1
 	OutColor = texture(Sampler2D, InTexcoord);
 #else
 	vec2 UV = InTexcoord;
 
-	//!< キルトとディスプレイのアスペクト比は同じにしているので不要
+	//!< 自前で描画しているので、キルトとディスプレイのアスペクト比調整は不要
 
 	if(any(lessThan(UV, vec2(0)))) discard;
 	if(any(lessThan(1 - UV, vec2(0)))) discard;

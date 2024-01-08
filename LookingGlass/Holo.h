@@ -144,9 +144,6 @@ public:
 		if (nullptr != LenticularBuffer) {
 			delete LenticularBuffer;
 		}
-		if (nullptr != HogeBuffer) {
-			delete HogeBuffer;
-		}
 		hpc_CloseApp();
 	}
 
@@ -192,31 +189,35 @@ public:
 		return (std::min)(static_cast<int32_t>(LenticularBuffer->Column * LenticularBuffer->Row) - GetViewportSetOffset(i), GetViewportMax());
 	}
 
+	virtual void CreateProjectionMatrix(const int i) {}
+	void CreateProjectionMatrices() {
+		CreateProjectionMatrix(-1);
+		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		for (auto i = 0; i < ColRow; ++i) {
+			CreateProjectionMatrix(i);
+		}
+	}
+	virtual void CreateViewMatrix(const int i) {}
+	void CreateViewMatrices() {
+		CreateViewMatrix(-1);
+		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		for (auto i = 0; i < ColRow; ++i) {
+			CreateViewMatrix(i);
+		}
+	}
+	virtual void updateViewProjectionBuffer() {}
+
 protected:
 	int DeviceIndex = -1;
 
 	float ViewCone = TO_RADIAN(40.0f);
-	
+
 	uint32_t QuiltWidth = 3360;
 	uint32_t QuiltHeight = 3360;
 
-	//!< ジオメトリシェーダパラメータ
-	//struct HOLO_BUFFER_GS {
-	//	HOLO_BUFFER_GS() {}
-	//	HOLO_BUFFER_GS(const int Index) {
-	//		Aspect = hpc_GetDevicePropertyDisplayAspect(Index);
-	//		const auto ViewConeDegree = hpc_GetDevicePropertyFloat(Index, "/calibration/viewCone/value");
-	//		ViewCone = TO_RADIAN(ViewConeDegree);
-	//		
-	//		LOG(data(std::format("\thpc_GetDevicePropertyDisplayAspect = {}\n", Aspect)));
-	//		LOG(data(std::format("\thpc_GetDevicePropertyFloat(viewCone) = {}\n", ViewConeDegree)));
-	//	}
-	//	int ViewIndexOffset = 0;
-	//	int ViewTotal;//GetQuiltSetting().GetViewTotal();
-	//	float Aspect = 0.75f;
-	//	float ViewCone = TO_RADIAN(40.0f);
-	//};
-	//HOLO_BUFFER_GS BufferGS;
+	const float CameraSize = 5.0f; //!< 焦点面の垂直半径
+	const float Fov = TO_RADIAN(14.0f);
+	const float CameraDistance = -CameraSize / std::tan(Fov / 2.0f); //!< 焦点面の垂直半径と、視野角からカメラ距離を算出
 
 	//!< ピクセルシェーダパラメータ
 	struct LENTICULAR_BUFFER {
@@ -272,13 +273,4 @@ protected:
 		float QuiltAspect = Column / Row;
 	};
 	LENTICULAR_BUFFER* LenticularBuffer = nullptr;
-
-	struct HOGE_BUFFER {
-		HOGE_BUFFER(const int Index) {
-			if (-1 != Index) {
-			}
-		}
-		float a = 0.0f;
-	};
-	HOGE_BUFFER* HogeBuffer = nullptr;
 };

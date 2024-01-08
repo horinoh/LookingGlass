@@ -9,6 +9,20 @@
 class MeshDX : public DX, public Holo, public Fbx
 {
 public:
+	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
+		CreateProjectionMatrices();
+		{
+			const auto Pos = DirectX::XMVectorSet(0.0f, 0.0f, 3.0f, 1.0f);
+			const auto Tag = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+			const auto Up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+			View = DirectX::XMMatrixLookAtRH(Pos, Tag, Up);
+		}
+		CreateViewMatrices();
+		updateViewProjectionBuffer();
+
+		DX::OnCreate(hWnd, hInstance, Title);
+	}
+
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
 	virtual void Process(FbxMesh* Mesh) override {
 		Fbx::Process(Mesh);
@@ -91,15 +105,21 @@ public:
 			VertexBuffers[1].PopulateCopyCommand(CL, TotalSizeOf(Normals), COM_PTR_GET(UploadPass0Normal.Resource));
 			IndexBuffers[0].PopulateCopyCommand(CL, TotalSizeOf(Indices), COM_PTR_GET(UploadPass0Index.Resource));
 			IndirectBuffers[0].PopulateCopyCommand(CL, sizeof(DIA), COM_PTR_GET(UploadPass0Indirect.Resource));
+
 			//!< 【パス1】
 			IndirectBuffers[1].PopulateCopyCommand(CL, sizeof(DA), COM_PTR_GET(UploadPass1Indirect.Resource));
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(GCQ, CL, COM_PTR_GET(GraphicsFence));
 	}
 	virtual void CreateConstantBuffer() override {
-		//!<【パス0】#TODO
+		//!<【パス0】
+		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(ViewProjectionBuffer));
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[0].Resource), RoundUp256(sizeof(ViewProjectionBuffer)), &ViewProjectionBuffer);
+
 		//!<【パス1】
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[1].Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
+
 	}
 	virtual void CreateTexture() override {
 		//!<【パス0】レンダーターゲット、デプス
@@ -123,6 +143,12 @@ public:
 					D3D12_ROOT_PARAMETER({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
+					}),
+					//!< ROOT_CONSTANTS
+					D3D12_ROOT_PARAMETER({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
+						.Constants = D3D12_ROOT_CONSTANTS({.ShaderRegister = 1, .RegisterSpace = 0, .Num32BitValues = 1 }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
 					}),
 				}, 
@@ -206,24 +232,94 @@ public:
 	}
 	virtual void CreateDescriptor() override {
 		//!<【パス0】
-		auto& Desc = DsvDescs.emplace_back();
-		auto& Heap = Desc.first;
-		auto& Handle = Desc.second;
+		{
+			//!< レンダーターゲットビュー
+			{
+				auto& Desc = RtvDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
 
-		const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, .NodeMask = 0 };
-		VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, .NodeMask = 0 };
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 
-		auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-		//auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
-		const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
-		const auto& Tex = DepthTextures[0];
-		Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
-		Handle.emplace_back(CDH);
-		CDH.ptr += IncSize;
-		//GDH.ptr += IncSize;
+				const auto& Tex = RenderTextures[0];
+				Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
+				Handle.emplace_back(CDH);
+				CDH.ptr += IncSize;
+			}
+			//!< デプスステンシルビュー
+			{
+				auto& Desc = DsvDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, .NodeMask = 0 };
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				const auto& Tex = DepthTextures[0];
+				Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+				Handle.emplace_back(CDH);
+				CDH.ptr += IncSize;
+			}
+			//!< コンスタントバッファービュー
+			{
+				auto& Desc = CbvSrvUavDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 };
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				const auto& CB = ConstantBuffers[0];
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
+				Device->CreateConstantBufferView(&CBVD, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+			}
+		}
 
 		//!<【パス1】
+		{
+			auto& Desc = CbvSrvUavDescs.emplace_back();
+			auto& Heap = Desc.first;
+			auto& Handle = Desc.second;
+
+			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 }; //!< SRV
+			VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+
+			auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+			auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+			const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+			//!< シェーダリソースビュー
+			{
+				const auto& Tex = RenderTextures[0];
+				Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+			}
+			//!< コンスタントバッファービュー
+			{
+				const auto& CB = ConstantBuffers[1];
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
+				Device->CreateConstantBufferView(&CBVD, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+			}
+		}
 	}
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
@@ -274,23 +370,50 @@ public:
 		{
 			//!<【パス0】
 			GCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
+			GCL->SetGraphicsRoot32BitConstants(1, 1, &ViewportOffset, 0);
 
 			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
 			ResourceBarrier(GCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
-				const auto& HandleDSV = DsvDescs[0].second;
+				//!< デスクリプタ
+				{
+					//!< レンダーターゲット
+					{
+#if 0
+						//!< レンダーテクスチャ
+						const auto& HandleRTV = RtvDescs[0].second[0];
+#else
+						//!< スワップチェイン
+						const auto& HandleRTV = SwapChainCPUHandles[i];
+#endif
+						//!< デプス
+						const auto& HandleDSV = DsvDescs[0].second[0];
 
-				constexpr std::array<D3D12_RECT, 0> Rects = {};
-				GCL->ClearRenderTargetView(SwapChainCPUHandles[i], DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
-				GCL->ClearDepthStencilView(HandleDSV[0], D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
+						constexpr std::array<D3D12_RECT, 0> Rects = {};
+						GCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
+						GCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
 
-				const std::array CHs = { SwapChainCPUHandles[i] };
-				GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
+						const std::array CHs = { HandleRTV };
+						GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
+					}
+					//!< コンスタントバッファ
+					{
+						const auto& Desc = CbvSrvUavDescs[0];
+						const auto& Heap = Desc.first;
+						const auto& Handle = Desc.second;
+						const std::array DHs = { COM_PTR_GET(Heap) };
+						GCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+						GCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
+					}
+				}
 
 				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
+
+					//ViewportOffset = Offset;
+
 					GCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 					GCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
@@ -304,26 +427,38 @@ public:
 		VERIFY_SUCCEEDED(GCL->Close());
 	}
 
-	virtual void Camera(const int i)
-	{
-#if 0
-		constexpr float CameraSize = 5.0f;
-		constexpr float Fov = DirectX::XMConvertToRadians(14.0f);
-		const float CameraDistance = -CameraSize / tan(Fov * 0.5f);
-
-		//!< [-0.5f * ViewCone, 0.5f * ViewCone]
-		const float OffsetAngle = (i / (QuiltTotal - 1.0f) - 0.5f) * ViewCone;
-		const float OffsetX = CameraDistance * tan(OffsetAngle);
-
-		//const auto View = DirectX::XMMatrixLookAtRH(CamPos, CamTag, CamUp);
-		//viewMatrix = glm::translate(currentViewMatrix, glm::vec3(OffsetX, 0.0f, CameraDistance));
-
-		auto Projection = DirectX::XMMatrixPerspectiveFovLH(Fov, DisplayAspect, 0.1f, 100.0f);
-		//Projection[2][0] += OffsetX / (cameraSize * DisplayAspect);
-#endif
+	virtual uint32_t GetViewportMax() const override { 
+		return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; 
 	}
+	virtual void CreateProjectionMatrix(const int i) override {
+		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
-	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+		//!< 左右方向にずれている角度(ラジアン)
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer->Column * LenticularBuffer->Row - 1.0f) - 0.5f) * ViewCone;
+		//!< 左右方向にずれている距離
+		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
+
+		auto Prj = DirectX::XMMatrixPerspectiveFovRH(Fov, LenticularBuffer->DisplayAspect, 0.1f, 100.0f);
+		Prj.r[2].m128_f32[0] += OffsetX / (CameraSize * LenticularBuffer->DisplayAspect);
+
+		ProjectionMatrices.emplace_back(Prj);
+	}
+	virtual void CreateViewMatrix(const int i) override {
+		if (-1 == i) { ViewMatrices.clear(); return; }
+
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer->Column * LenticularBuffer->Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
+
+		const auto OffsetLocal = DirectX::XMVector4Transform(DirectX::XMVectorSet(OffsetX, 0.0f, CameraDistance, 1.0f), View);
+		ViewMatrices.emplace_back(View * DirectX::XMMatrixTranslationFromVector(OffsetLocal));
+
+	}
+	virtual void updateViewProjectionBuffer() {
+		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		for (auto i = 0; i < ColRow; ++i) {
+			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
+		}
+	}
 
 protected:
 	std::vector<UINT32> Indices;
@@ -333,7 +468,19 @@ protected:
 	std::vector<D3D12_VIEWPORT> QuiltViewports;
 	std::vector<D3D12_RECT> QuiltScissorRects;
 
-	struct VIEW_BUFFER {
-		DirectX::XMFLOAT4X4 View[16];
+	std::vector<DirectX::XMMATRIX> ProjectionMatrices;
+	DirectX::XMMATRIX View;
+	std::vector<DirectX::XMMATRIX> ViewMatrices;
+
+	struct VIEW_PROJECTION_BUFFER {
+		DirectX::XMFLOAT4X4 ViewProjection[64];
 	};
+	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
+
+	struct WORLD_BUFFER {
+		DirectX::XMFLOAT4X4 World;
+	};
+	WORLD_BUFFER WorldBuffer;
+
+	uint32_t ViewportOffset = 0;
 };
