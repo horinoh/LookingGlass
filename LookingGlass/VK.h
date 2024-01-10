@@ -94,6 +94,7 @@ public:
 			CreateViewport(static_cast<const FLOAT>(W), static_cast<const FLOAT>(H));
 
 			for (auto i = 0; i < size(CommandBuffers); ++i) {
+				PopulateSecondaryCommandBuffer(i);
 				PopulateCommandBuffer(i);
 			}
 		}
@@ -224,7 +225,7 @@ public:
 		VERIFY_SUCCEEDED(vkCreateFramebuffer(Device, &FCI, GetAllocationCallbacks(), &FB));
 	}
 	virtual void CreateFramebuffer() {
-		CreateFrameBuffer_Default();
+		CreateFrameBuffer_Default(RenderPasses[0]);
 	}
 
 	virtual void CreateDescriptorPool(VkDescriptorPool& DP, const VkDescriptorPoolCreateFlags Flags, const std::vector<VkDescriptorPoolSize>& DPSs) {
@@ -259,6 +260,7 @@ public:
 	//virtual void CreateShaderBindingTable() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
+	virtual void PopulateSecondaryCommandBuffer([[maybe_unused]] const size_t i) {}
 	virtual void PopulateCommandBuffer(const size_t i) {
 		PopulateCommandBuffer_Clear(i, Colors::SkyBlue);
 	}
@@ -393,6 +395,34 @@ protected:
 		}
 	}
 
+	static void ImageMemoryBarrier(const VkCommandBuffer CB, 
+		const VkPipelineStageFlags SrcStage, const VkPipelineStageFlags DstStage,
+		const VkAccessFlags SrcAccess, const VkAccessFlags DstAccess, 
+		const VkImageLayout OldLayout, const VkImageLayout NewLayout,
+		const VkImage Image) {
+		const std::array IMBs = {
+			VkImageMemoryBarrier({
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.pNext = nullptr,
+				.srcAccessMask = SrcAccess, .dstAccessMask = DstAccess,
+				.oldLayout = OldLayout, .newLayout = NewLayout,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.image = Image,
+				.subresourceRange = VkImageSubresourceRange({
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
+					.baseMipLevel = 0, 
+					.levelCount = 1, 
+					.baseArrayLayer = 0, 
+					.layerCount = 1 
+				})
+			}),
+		};
+		vkCmdPipelineBarrier(CB, SrcStage, DstStage, VK_DEPENDENCY_BY_REGION_BIT, 
+			0, nullptr,
+			0, nullptr,
+			static_cast<uint32_t>(size(IMBs)), data(IMBs));
+	}
+
 	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs, const uint32_t Levels, const uint32_t Layers) {
 		constexpr std::array<VkMemoryBarrier, 0> MBs = {};
 		constexpr std::array<VkBufferMemoryBarrier, 0> BMBs = {};
@@ -451,7 +481,6 @@ protected:
 	void CreateTexture_Render() {
 		CreateTexture_Render(SurfaceExtent2D.width, SurfaceExtent2D.height);
 	}
-
 
 	void CreateImmutableSampler_LinearRepeat()  {
 		constexpr VkSamplerCreateInfo SCI = {
@@ -690,16 +719,18 @@ protected:
 		CreatePipelineState_VsFsGs_Input(PL, PLL, RP, PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
 	}
 
-	void CreateFrameBuffer_Default() {
+	void CreateFrameBuffer_Default(const VkRenderPass RP, const uint32_t Width, const uint32_t Height) {
 		for (auto i : SwapchainImageViews) {
-			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, {i});
+			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, Width, Height, 1, { i });
 		}
 	}
-	void CreateFrameBuffer_Depth() {
+	void CreateFrameBuffer_Default(const VkRenderPass RP) { CreateFrameBuffer_Default(RP, SurfaceExtent2D.width, SurfaceExtent2D.height); }
+	void CreateFrameBuffer_Depth(const VkRenderPass RP, const VkImageView DepthView, const uint32_t Width, const uint32_t Height) {
 		for (auto i : SwapchainImageViews) {
-			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i, DepthTextures[0].View });
+			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, Width, Height, 1, { i, DepthView });
 		}
 	}
+	void CreateFrameBuffer_Depth(const VkRenderPass RP, const VkImageView DepthView) { CreateFrameBuffer_Depth(RP, DepthView, SurfaceExtent2D.width, SurfaceExtent2D.height); }
 
 	void PopulateCommandBuffer_Clear(const size_t i, const VkClearColorValue& Color) {
 		const auto CB = CommandBuffers[i];

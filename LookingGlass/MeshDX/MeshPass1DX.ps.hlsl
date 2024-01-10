@@ -33,7 +33,7 @@ float2 ToTexcoord(float3 CoordZ)
 
 float4 main(IN In) : SV_TARGET
 {
-#if 1
+#if 0
 	return Texture.Sample(Sampler, In.Texcoord);
 #else
 	float2 UV = In.Texcoord;

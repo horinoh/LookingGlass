@@ -151,53 +151,55 @@ public:
 		CDH.ptr += IncSize;
 		GDH.ptr += IncSize;
 	}
-	virtual void PopulateCommandList(const size_t i) override {
+	virtual	void PopulateBundleCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
 
-		const auto DescIndex = 0;//i;
-
-		//!< バンドルコマンドリスト
 		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));	
+
+		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 			BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
 		}
 		VERIFY_SUCCEEDED(BCL->Close());
+	}
+	virtual void PopulateCommandList(const size_t i) override {
+		const auto PS = COM_PTR_GET(PipelineStates[0]);
 
-		//!< ダイレクトコマンドリスト
-		const auto CL = COM_PTR_GET(DirectCommandLists[i]);
-		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
-		VERIFY_SUCCEEDED(CL->Reset(CA, PS));
+		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
+		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
+
+		VERIFY_SUCCEEDED(DCL->Reset(DCA, PS));
 		{
-			CL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
+			DCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
 
-			CL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
-			CL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+			DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
+			DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
 
 			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
-			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			ResourceBarrier(DCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
 				const std::array CHs = { SwapChainCPUHandles[i] };
-				CL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
+				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
-				//!< デスクリプタ
+				//!< デスクリプタ (DXではダイレクトコマンドリスト内で行う必要がある)
 				{
 					const auto& Desc = CbvSrvUavDescs[0];
 					const auto& Heap = Desc.first;
 					const auto& Handle = Desc.second;
 					const std::array DHs = { COM_PTR_GET(Heap) };
-					CL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-					CL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
-					CL->SetGraphicsRootDescriptorTable(1, Handle[1 + DescIndex]); //!< CBV
+					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
+					DCL->SetGraphicsRootDescriptorTable(1, Handle[1]); //!< CBV
 				}
 
-				CL->ExecuteBundle(BCL);
+				DCL->ExecuteBundle(BCL);
 			}
-			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			ResourceBarrier(DCL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		}
-		VERIFY_SUCCEEDED(CL->Close());
+		VERIFY_SUCCEEDED(DCL->Close());
 	}
 
 	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }

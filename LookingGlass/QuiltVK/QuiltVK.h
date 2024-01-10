@@ -148,15 +148,13 @@ public:
 		}
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
-	virtual void PopulateCommandBuffer(const size_t i) override {
+	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
 		const auto RP = RenderPasses[0];
 		const auto FB = Framebuffers[i];
-		const auto PLL = PipelineLayouts[0];
 		const auto PL = Pipelines[0];
 
-		const auto DescIndex = 0;//i;
-
-		//!< セカンダリコマンドバッファ
+		const auto SCB = SecondaryCommandBuffers[i];
+		
 		const VkCommandBufferInheritanceInfo CBII = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
 			.pNext = nullptr,
@@ -172,31 +170,36 @@ public:
 			.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
 			.pInheritanceInfo = &CBII
 		};
-		const auto SCB = SecondaryCommandBuffers[i];
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
 			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
 			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
 
-			//!< デスクリプタ
-			{
-				const std::array DSs = { DescriptorSets[DescIndex] };
-				constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
-			}
+			//!< デスクリプタ (VKではセカンダリコマンドバッファ内でもできるが、DXに合わせてコマンドバッファ内で行う)
+			//{
+			//	const auto PLL = PipelineLayouts[0];
+			//	const std::array DSs = { DescriptorSets[0] };
+			//	constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+			//	vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+			//}
 
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
 			vkCmdDrawIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+	}
+	virtual void PopulateCommandBuffer(const size_t i) override {
+		const auto RP = RenderPasses[0];
+		const auto FB = Framebuffers[i];
 
-		//!< コマンドバッファ
+		const auto SCB = SecondaryCommandBuffers[i];
+		const auto CB = CommandBuffers[i];
+
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			.pNext = nullptr,
 			.flags = 0,
 			.pInheritanceInfo = nullptr
 		};
-		const auto CB = CommandBuffers[i];
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
 			constexpr std::array<VkClearValue, 0> CVs = {};
 			const VkRenderPassBeginInfo RPBI = {
@@ -208,6 +211,15 @@ public:
 				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
 			};
 			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
+				//!< デスクリプタ (DXに合わせてコマンドバッファ内で行う)
+				{
+					const auto PLL = PipelineLayouts[0];
+
+					const std::array DSs = { DescriptorSets[0] };
+					constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+					vkCmdBindDescriptorSets(CB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+				}
+
 				const std::array SCBs = { SCB };
 				vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
 			} vkCmdEndRenderPass(CB);

@@ -10,6 +10,8 @@ class MeshDX : public DX, public Holo, public Fbx
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
+		Holo::SetHoloWindow(hWnd, hInstance);
+
 		CreateProjectionMatrices();
 		{
 			const auto Pos = DirectX::XMVectorSet(0.0f, 0.0f, 3.0f, 1.0f);
@@ -118,7 +120,6 @@ public:
 		//!<【パス1】
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
 		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[1].Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
-
 	}
 	virtual void CreateTexture() override {
 		//!<【パス0】レンダーターゲット、デプス
@@ -142,12 +143,6 @@ public:
 					D3D12_ROOT_PARAMETER({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
-					}),
-					//!< ROOT_CONSTANTS
-					D3D12_ROOT_PARAMETER({
-						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
-						.Constants = D3D12_ROOT_CONSTANTS({.ShaderRegister = 1, .RegisterSpace = 0, .Num32BitValues = 1 }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
 					}),
 				}, 
@@ -326,11 +321,9 @@ public:
 		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
 
 		//!<【パス0】キルトレンダーターゲットを分割
-		//const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
-		const auto W = Width / LenticularBuffer->Column, H = Height / LenticularBuffer->Row;
+		const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
 		for (auto i = 0; i < LenticularBuffer->Row; ++i) {
-			//const auto Y = QuiltHeight - H * (i + 1);
-			const auto Y = Height - H * (i + 1);
+			const auto Y = QuiltHeight - H * (i + 1);
 			for (auto j = 0; j < LenticularBuffer->Column; ++j) {
 				const auto X = j * W;
 				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = X, .TopLeftY = Y, .Width = W, .Height = H, .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
@@ -341,74 +334,65 @@ public:
 		//!<【パス1】スクリーンを使用
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
-	virtual void PopulateCommandList(const size_t i) override {
-		const auto PS = COM_PTR_GET(PipelineStates[0]);
-		const auto RS0 = COM_PTR_GET(RootSignatures[0]);
+	virtual void PopulateBundleCommandList(const size_t i) override {
+		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 
 		//!<【パス0】バンドルコマンドリスト
 		const auto BCL0 = COM_PTR_GET(BundleCommandLists[0]);
+		const auto PS0 = COM_PTR_GET(PipelineStates[0]);
+		VERIFY_SUCCEEDED(BCL0->Reset(BCA, PS0));
 		{
-			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-			VERIFY_SUCCEEDED(BCL0->Reset(BCA, PS));
-			{
-				BCL0->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			BCL0->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-				const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-				BCL0->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
-				BCL0->IASetIndexBuffer(&IndexBuffers[0].View);
+			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
+			BCL0->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+			BCL0->IASetIndexBuffer(&IndexBuffers[0].View);
 
-				const auto IB = IndirectBuffers[0];
-				BCL0->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
-			}
-			VERIFY_SUCCEEDED(BCL0->Close());
+			const auto IB = IndirectBuffers[0];
+			BCL0->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
 		}
+		VERIFY_SUCCEEDED(BCL0->Close());
 
 		//!<【パス1】バンドルコマンドリスト
 		const auto BCL1 = COM_PTR_GET(BundleCommandLists[1]);
+		const auto PS1 = COM_PTR_GET(PipelineStates[1]);
+		VERIFY_SUCCEEDED(BCL1->Reset(BCA, PS1));
 		{
-			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-			VERIFY_SUCCEEDED(BCL1->Reset(BCA, PS));
-			{
-				BCL1->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-				BCL1->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
-			}
-			VERIFY_SUCCEEDED(BCL1->Close());
+			BCL1->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+			BCL1->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
 		}
+		VERIFY_SUCCEEDED(BCL1->Close());
+	}
+	virtual void PopulateCommandList(const size_t i) override {
+		const auto RS0 = COM_PTR_GET(RootSignatures[0]);
+		const auto RS1 = COM_PTR_GET(RootSignatures[1]);
+		const auto BCL0 = COM_PTR_GET(BundleCommandLists[0]);
+		const auto BCL1 = COM_PTR_GET(BundleCommandLists[1]);
 
 		//!< ダイレクトコマンドリスト
-		const auto GCL = COM_PTR_GET(DirectCommandLists[i]);
-		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
-		VERIFY_SUCCEEDED(GCL->Reset(CA, PS));
+		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
+		VERIFY_SUCCEEDED(DCL->Reset(DCA, nullptr));
 		{
-			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
-			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
-
 			//!<【パス0】
 			{
-				GCL->SetGraphicsRootSignature(RS0);
-				//!< ルートコンスタント
-				GCL->SetGraphicsRoot32BitConstants(1, 1, &ViewportOffset, 0);
+				DCL->SetGraphicsRootSignature(RS0);
 
 				//!< デスクリプタ
 				{
 					//!< レンダーターゲット
 					{
-#if 0
 						//!< レンダーテクスチャ
 						const auto& HandleRTV = RtvDescs[0].second[0];
-#else
-						//!< スワップチェイン
-						const auto& HandleRTV = SwapChainCPUHandles[i];
-#endif
 						//!< デプス
 						const auto& HandleDSV = DsvDescs[0].second[0];
 
 						constexpr std::array<D3D12_RECT, 0> Rects = {};
-						GCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
-						GCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
+						DCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
+						DCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
 
 						const std::array CHs = { HandleRTV };
-						GCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
+						DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
 					}
 					//!< コンスタントバッファ
 					{
@@ -416,8 +400,8 @@ public:
 						const auto& Heap = Desc.first;
 						const auto& Handle = Desc.second;
 						const std::array DHs = { COM_PTR_GET(Heap) };
-						GCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-						GCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
+						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+						DCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
 					}
 				}
 
@@ -426,29 +410,52 @@ public:
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
 
-					//ViewportOffset = Offset;
+					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
+					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
-					GCL->RSSetViewports(Count, &QuiltViewports[Offset]);
-					GCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
-
-					GCL->ExecuteBundle(BCL0);
+					DCL->ExecuteBundle(BCL0);
 				}
 			}
 
-			ResourceBarrier2(GCL,
+			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
+			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
+
+			//!< スワップチェインをレンダーターゲット、レンダーテクスチャをシェーダリソースとする
+			ResourceBarrier2(DCL,
 				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
 				RT, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-			//!<【パス1】#TODO
+			//!<【パス1】
 			{
+				DCL->SetGraphicsRootSignature(RS1);
 				
+				const std::array CHs = { SwapChainCPUHandles[i] };
+				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
+
+				//!< デスクリプタ
+				{
+					const auto& Desc = CbvSrvUavDescs[1];
+					const auto& Heap = Desc.first;
+					const auto& Handle = Desc.second;
+
+					const std::array DHs = { COM_PTR_GET(Heap) };
+					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
+					DCL->SetGraphicsRootDescriptorTable(1, Handle[1]); //!< CBV
+				}
+
+				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
+				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+
+				DCL->ExecuteBundle(BCL1);
 			}
 
-			ResourceBarrier2(GCL,
+			//!< スワップチェインをプレゼント、レンダーテクスチャをレンダーターゲットとする
+			ResourceBarrier2(DCL,
 				SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT,
 				RT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
-		VERIFY_SUCCEEDED(GCL->Close());
+		VERIFY_SUCCEEDED(DCL->Close());
 	}
 
 	virtual uint32_t GetViewportMax() const override { 
@@ -501,10 +508,8 @@ protected:
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 
-	struct WORLD_BUFFER {
-		DirectX::XMFLOAT4X4 World;
-	};
-	WORLD_BUFFER WorldBuffer;
-
-	uint32_t ViewportOffset = 0;
+	//struct WORLD_BUFFER {
+	//	DirectX::XMFLOAT4X4 World;
+	//};
+	//WORLD_BUFFER WorldBuffer;
 };

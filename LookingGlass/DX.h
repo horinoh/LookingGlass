@@ -78,6 +78,7 @@ public:
 			CreateViewport(static_cast<const FLOAT>(W), static_cast<const FLOAT>(H));
 
 			for (auto i = 0; i < size(DirectCommandLists); ++i) {
+				PopulateBundleCommandList(i);
 				PopulateCommandList(i);
 			}
 		}
@@ -138,6 +139,7 @@ public:
 	//virtual void CreateShaderTable() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
+	virtual void PopulateBundleCommandList([[maybe_unused]] const size_t i) {}
 	virtual void PopulateCommandList(const size_t i) {
 		PopulateCommandList_Clear(i, DirectX::Colors::SkyBlue);
 	}
