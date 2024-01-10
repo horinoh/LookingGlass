@@ -145,10 +145,10 @@ public:
 	//virtual void ResizeSwapchain(const uint32_t Width, const uint32_t Height);
 
 	virtual void AllocatePrimaryCommandBuffer();
-	virtual void AllocateSecondaryCommandBuffer();
+	void AllocateSecondaryCommandBuffer(const size_t Num);
 	virtual void AllocateCommandBuffer() {
 		AllocatePrimaryCommandBuffer();
-		AllocateSecondaryCommandBuffer();
+		AllocateSecondaryCommandBuffer(1);
 	}
 
 	virtual void CreateGeometry() {}

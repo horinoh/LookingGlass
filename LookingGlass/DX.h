@@ -108,10 +108,10 @@ public:
 	//virtual void ResizeSwapChain(const UINT Width, const UINT Height);
 
 	virtual void CreateDirectCommandList();
-	virtual void CreateBundleCommandList();
+	virtual void CreateBundleCommandList(const UINT Num);
 	virtual void CreateCommandList() {
 		CreateDirectCommandList();
-		CreateBundleCommandList();
+		CreateBundleCommandList(1);
 	}
 
 	virtual void CreateGeometry() {}
@@ -120,7 +120,6 @@ public:
 	virtual void CreateStaticSampler() {}
 	
 	template<typename T = D3D12_ROOT_PARAMETER> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
-	//template<typename T> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
 	virtual void CreateRootSignature() {}
 
 	static void CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,

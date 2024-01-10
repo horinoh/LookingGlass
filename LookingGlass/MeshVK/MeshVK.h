@@ -45,22 +45,10 @@ public:
 	}
 
 	virtual void AllocateCommandBuffer() override {
-		//!<【パス0】プライマリ、セカンダリコマンドバッファ
+		//!<【パス0】コマンドバッファ
 		VK::AllocateCommandBuffer();
-
 		//!<【パス1】セカンダリコマンドバッファ
-		const auto SCP = SecondaryCommandPools[0];
-		const auto Count = static_cast<uint32_t>(size(SwapchainImages));
-		const auto Prev = size(SecondaryCommandBuffers);
-		SecondaryCommandBuffers.resize(Prev + Count);
-		const VkCommandBufferAllocateInfo CBAI = {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-			.pNext = nullptr,
-			.commandPool = SCP,
-			.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
-			.commandBufferCount = Count
-		};
-		VERIFY_SUCCEEDED(vkAllocateCommandBuffers(Device, &CBAI, &SecondaryCommandBuffers[Prev]));
+		VK::AllocateSecondaryCommandBuffer(2);
 	}
 
 	virtual void CreateGeometry() override {
@@ -334,7 +322,7 @@ public:
 		const auto RP0 = RenderPasses[0];
 		const auto RP1 = RenderPasses[1];
 		const auto FB0 = Framebuffers[0];
-		const auto FB1 = Framebuffers[1+i];
+		const auto FB1 = Framebuffers[1];
 
 		//!<【パス0】セカンダリコマンドバッファ
 		const auto SCB0 = SecondaryCommandBuffers[0];
@@ -403,7 +391,7 @@ public:
 		const auto RP0 = RenderPasses[0];
 		const auto RP1 = RenderPasses[1];
 		const auto FB0 = Framebuffers[0];
-		const auto FB1 = Framebuffers[1+i];
+		const auto FB1 = Framebuffers[1 + i];
 
 		const auto SCB0 = SecondaryCommandBuffers[0];
 		const auto SCB1 = SecondaryCommandBuffers[1];

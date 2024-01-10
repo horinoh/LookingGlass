@@ -166,18 +166,28 @@ void DX::CreateDirectCommandList()
 		VERIFY_SUCCEEDED(DirectCommandLists.back()->Close());
 	}
 }
-void DX::CreateBundleCommandList()
+void DX::CreateBundleCommandList(const UINT Num)
 {
 	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_UUIDOF_PUTVOID(BundleCommandAllocators.emplace_back())));
 
 	const auto BCA = BundleCommandAllocators[0];
-	DXGI_SWAP_CHAIN_DESC1 SCD;
-	SwapChain->GetDesc1(&SCD);
-	for (UINT i = 0; i < SCD.BufferCount; ++i) {
+	for (UINT i = 0; i < Num; ++i) {
 		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_GET(BCA), nullptr, COM_PTR_UUIDOF_PUTVOID(BundleCommandLists.emplace_back())));
 		VERIFY_SUCCEEDED(BundleCommandLists.back()->Close());
 	}
 }
+//void DX::CreateBundleCommandList()
+//{
+//	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_UUIDOF_PUTVOID(BundleCommandAllocators.emplace_back())));
+//
+//	const auto BCA = BundleCommandAllocators[0];
+//	DXGI_SWAP_CHAIN_DESC1 SCD;
+//	SwapChain->GetDesc1(&SCD);
+//	for (UINT i = 0; i < SCD.BufferCount; ++i) {
+//		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_GET(BCA), nullptr, COM_PTR_UUIDOF_PUTVOID(BundleCommandLists.emplace_back())));
+//		VERIFY_SUCCEEDED(BundleCommandLists.back()->Close());
+//	}
+//}
 
 template<> void DX::SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<D3D12_ROOT_PARAMETER>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags)
 {

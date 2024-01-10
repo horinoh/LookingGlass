@@ -480,7 +480,7 @@ void VK::AllocatePrimaryCommandBuffer()
 	};
 	VERIFY_SUCCEEDED(vkAllocateCommandBuffers(Device, &CBAI, data(CommandBuffers)));
 }
-void VK::AllocateSecondaryCommandBuffer() 
+void VK::AllocateSecondaryCommandBuffer(const size_t Num) 
 {
 	const VkCommandPoolCreateInfo CPCI = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -490,11 +490,12 @@ void VK::AllocateSecondaryCommandBuffer()
 	};
 	VERIFY_SUCCEEDED(vkCreateCommandPool(Device, &CPCI, GetAllocationCallbacks(), &SecondaryCommandPools.emplace_back()));
 
-	SecondaryCommandBuffers.resize(size(SwapchainImages));
+	const auto SCP = SecondaryCommandPools[0];
+	SecondaryCommandBuffers.resize(Num);
 	const VkCommandBufferAllocateInfo CBAI = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.pNext = nullptr,
-		.commandPool = SecondaryCommandPools[0],
+		.commandPool = SCP,
 		.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
 		.commandBufferCount = static_cast<uint32_t>(size(SecondaryCommandBuffers))
 	};
