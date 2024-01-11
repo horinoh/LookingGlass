@@ -57,6 +57,7 @@ public:
 
 		//!<【パス0】メッシュ描画用
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
 		VK::Scoped<StagingBuffer> StagingPass0Vertex(Device);
 		StagingPass0Vertex.Create(Device, PDMP, TotalSizeOf(Vertices), data(Vertices));
@@ -133,9 +134,10 @@ public:
 	}
 	virtual void CreatePipelineLayout() override {
 		//!<【パス0】
+		//!< ダイナミックオフセットを使用する為、UNIFORM_BUFFER_DYNAMIC
 		{
 			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
-				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
+				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
 			});
 			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
 		}
@@ -213,9 +215,10 @@ public:
 	}
 	virtual void CreateDescriptor() override {
 		//!< 【パス0】
+		//!< ダイナミックオフセットを使用する為、UNIFORM_BUFFER_DYNAMIC
 		{
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
+				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1 }),
 			});
 			auto DSL = DescriptorSetLayouts[0];
 			auto DP = DescriptorPools[0];
@@ -236,7 +239,7 @@ public:
 			VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
 				VkDescriptorUpdateTemplateEntry({
 					.dstBinding = 0, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 					.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
 				}),
 			}, DSL);
@@ -417,14 +420,11 @@ public:
 			};
 			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
 
-				//!< デスクリプタ
-				{
-					const auto PLL = PipelineLayouts[0];
-
-					const std::array DSs = { DescriptorSets[0] };
-					constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-					vkCmdBindDescriptorSets(CB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
-				}
+				//!< 描画毎にユニフォームバッファのアクセス先をオフセットする
+				const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
+				//!< アライメントが必要
+				VkMemoryRequirements MR;
+				vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);
 
 				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
@@ -433,6 +433,16 @@ public:
 
 					vkCmdSetViewport(CB, 0, Count, &QuiltViewports[Offset]);
 					vkCmdSetScissor(CB, 0, Count, &QuiltScissorRects[Offset]);
+
+					//!< デスクリプタ
+					{
+						const auto PLL = PipelineLayouts[0];
+
+						const std::array DSs = { DescriptorSets[0] };
+						const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
+						//constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+						vkCmdBindDescriptorSets(CB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+					}
 
 					const std::array SCBs = { SCB0 };
 					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));

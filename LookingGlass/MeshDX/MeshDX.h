@@ -58,6 +58,7 @@ public:
 
 		//!<【パス0】メッシュ描画用
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
 		UploadResource UploadPass0Vertex;
 		UploadPass0Vertex.Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), data(Vertices));
@@ -371,37 +372,43 @@ public:
 			{
 				DCL->SetGraphicsRootSignature(RS0);
 
-				//!< デスクリプタ
+				//!< レンダーターゲット
 				{
-					//!< レンダーターゲット
-					{
-						//!< レンダーテクスチャ
-						const auto& HandleRTV = RtvDescs[0].second[0];
-						//!< デプス
-						const auto& HandleDSV = DsvDescs[0].second[0];
+					//!< レンダーテクスチャ
+					const auto& HandleRTV = RtvDescs[0].second[0];
+					//!< デプス
+					const auto& HandleDSV = DsvDescs[0].second[0];
 
-						constexpr std::array<D3D12_RECT, 0> Rects = {};
-						DCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
-						DCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
+					constexpr std::array<D3D12_RECT, 0> Rects = {};
+					DCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
+					DCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
 
-						const std::array CHs = { HandleRTV };
-						DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
-					}
-					//!< コンスタントバッファ
-					{
-						const auto& Desc = CbvSrvUavDescs[0];
-						const auto& Heap = Desc.first;
-						const auto& Handle = Desc.second;
-						const std::array DHs = { COM_PTR_GET(Heap) };
-						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-						DCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
-					}
+					const std::array CHs = { HandleRTV };
+					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
 				}
+
+				//!< 描画毎にコンスタントバッファのアクセス先をオフセットする
+				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
 
 				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
+
+					//!< コンスタントバッファ
+					{
+						const auto& Desc = CbvSrvUavDescs[0];
+						const auto& Heap = Desc.first;
+#if 1
+						const auto& Handle = Desc.second[0];
+#else
+						auto Handle = D3D12_GPU_DESCRIPTOR_HANDLE(Desc.second[0]);
+						Handle.ptr += DynamicOffset * j;
+#endif
+						const std::array DHs = { COM_PTR_GET(Heap) };
+						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+						DCL->SetGraphicsRootDescriptorTable(0, Handle);
+					}
 
 					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
