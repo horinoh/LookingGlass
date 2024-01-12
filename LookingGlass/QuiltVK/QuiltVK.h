@@ -28,9 +28,6 @@ public:
 	}
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
-		//for (size_t i = 0; i < size(SwapchainImages); ++i) {
-		//	UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
-		//}
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく
@@ -52,9 +49,6 @@ public:
 			//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること
 			Holo::UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
 
-			//for (auto i : UniformBuffers) {
-			//	CopyToHostVisibleDeviceMemory(Device, i.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
-			//}
 			auto& UB = UniformBuffers[0];
 			CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
 		}
@@ -102,10 +96,9 @@ public:
 		for (auto i : SMs) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
-		const auto DescCount = 1;//static_cast<uint32_t>(size(SwapchainImages));
 		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1}),
-			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
 		});
 
 		auto DSL = DescriptorSetLayouts[0];
@@ -117,9 +110,7 @@ public:
 			.descriptorPool = DP,
 			.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
 		};
-		for (size_t i = 0; i < DescCount; ++i) {
-			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
-		}
+		VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 
 		struct DescriptorUpdateInfo
 		{
@@ -139,51 +130,52 @@ public:
 				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
 			}),
 		}, DSL);
-		for (size_t i = 0; i < DescCount; ++i) {
-			const DescriptorUpdateInfo DUI = {
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
-			};
-			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[i], DUT, &DUI);
-		}
+		const DescriptorUpdateInfo DUI = {
+			VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
+			VkDescriptorBufferInfo({.buffer = UniformBuffers[0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+		};
+		vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[0], DUT, &DUI);
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
 	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
-		const auto RP = RenderPasses[0];
-		const auto FB = Framebuffers[0];
-		const auto PL = Pipelines[0];
+		if (0 == i) {
+			const auto RP = RenderPasses[0];
+			const auto PL = Pipelines[0];
+			const auto PLL = PipelineLayouts[0];
+			const auto SCB = SecondaryCommandBuffers[0];
 
-		const auto SCB = SecondaryCommandBuffers[0];
-		const VkCommandBufferInheritanceInfo CBII = {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-			.pNext = nullptr,
-			.renderPass = RP,
-			.subpass = 0,
-			.framebuffer = FB,
-			.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
-			.pipelineStatistics = 0,
-		};
-		const VkCommandBufferBeginInfo SCBBI = {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-			.pNext = nullptr,
-			.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-			.pInheritanceInfo = &CBII
-		};
-		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
-			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+			const VkCommandBufferInheritanceInfo CBII = {
+				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+				.pNext = nullptr,
+				.renderPass = RP,
+				.subpass = 0,
+				.framebuffer = VK_NULL_HANDLE,
+				.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
+				.pipelineStatistics = 0,
+			};
+			const VkCommandBufferBeginInfo SCBBI = {
+				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+				.pNext = nullptr,
+				.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+				.pInheritanceInfo = &CBII
+			};
+			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
+				vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
+				vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
 
-			//!< デスクリプタ はここではやらず、DXに合わせてコマンドバッファ内で行う
+				vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
+				const std::array DSs = { DescriptorSets[0] };
+				constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
 
-			vkCmdDrawIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
-		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+				vkCmdDrawIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
+			} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+		}
 	}
 	virtual void PopulateCommandBuffer(const size_t i) override {
 		const auto RP = RenderPasses[0];
 		const auto FB = Framebuffers[i];
-
 		const auto SCB = SecondaryCommandBuffers[0];
 		const auto CB = CommandBuffers[i];
 
@@ -204,16 +196,6 @@ public:
 				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
 			};
 			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
-
-				//!< デスクリプタ (DXに合わせてコマンドバッファ内で行う)
-				{
-					const auto PLL = PipelineLayouts[0];
-
-					const std::array DSs = { DescriptorSets[0] };
-					constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-					vkCmdBindDescriptorSets(CB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
-				}
-
 				const std::array SCBs = { SCB };
 				vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
 			} vkCmdEndRenderPass(CB);

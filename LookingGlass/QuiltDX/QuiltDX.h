@@ -27,11 +27,6 @@ public:
 		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA).ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), sizeof(DA), &DA);
 	}
 	virtual void CreateConstantBuffer() override {
-		//DXGI_SWAP_CHAIN_DESC1 SCD;
-		//SwapChain->GetDesc1(&SCD);
-		//for (UINT i = 0; i < SCD.BufferCount; ++i) {
-		//	ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
-		//}
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく
@@ -53,9 +48,6 @@ public:
 			//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること
 			Holo::UpdateLenticularBuffer(8, 6, static_cast<uint32_t>(RD.Width), RD.Height);
 
-			//for (auto i : ConstantBuffers) {
-			//	CopyToUploadResource(COM_PTR_GET(i.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
-			//}
 			auto& CB = ConstantBuffers[0];
 			CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
 		}
@@ -121,7 +113,12 @@ public:
 		auto& Heap = Desc.first;
 		auto& Handle = Desc.second;
 
-		const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 }; //!< SRV
+		//!< SRV
+		const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+			.NumDescriptors = 1, 
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0
+		}; 
 		VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 
 		auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
@@ -134,18 +131,12 @@ public:
 		CDH.ptr += IncSize;
 		GDH.ptr += IncSize;
 
-		//DXGI_SWAP_CHAIN_DESC1 SCD;
-		//SwapChain->GetDesc1(&SCD);
-		//for (UINT i = 0; i < SCD.BufferCount; ++i) {
-		//	const auto& CB = ConstantBuffers[i];
-		//	const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)};
-		//	Device->CreateConstantBufferView(&CBVD, CDH);
-		//	Handle.emplace_back(GDH);
-		//	CDH.ptr += IncSize;
-		//	GDH.ptr += IncSize;
-		//}
+		//!< CBV
 		const auto& CB = ConstantBuffers[0];
-		const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
+		const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
+			.BufferLocation = CB.Resource->GetGPUVirtualAddress(), 
+			.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+		};
 		Device->CreateConstantBufferView(&CBVD, CDH);
 		Handle.emplace_back(GDH);
 		CDH.ptr += IncSize;
@@ -153,7 +144,6 @@ public:
 	}
 	virtual	void PopulateBundleCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
-
 		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 
@@ -166,7 +156,6 @@ public:
 	}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
-
 		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
@@ -184,7 +173,7 @@ public:
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
-				//!< デスクリプタ (DXではダイレクトコマンドリスト内で行う必要がある)
+				//!< デスクリプタ
 				{
 					const auto& Desc = CbvSrvUavDescs[0];
 					const auto& Heap = Desc.first;

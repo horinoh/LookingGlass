@@ -214,8 +214,8 @@ public:
 		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
-		//!< 【パス0】
-		//!< ダイナミックオフセットを使用する為、UNIFORM_BUFFER_DYNAMIC
+		//!<【パス0】
+		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用
 		{
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1 }),
@@ -243,8 +243,12 @@ public:
 					.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
 				}),
 			}, DSL);
+
+			//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
+			//!<	100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
+			const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
 			const DescriptorUpdateInfo DUI = {
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[0].Buffer, .offset = 0, .range = DynamicOffset }),
 			};
 			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[0], DUT, &DUI);
 			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
@@ -322,84 +326,100 @@ public:
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
-		const auto RP0 = RenderPasses[0];
-		const auto RP1 = RenderPasses[1];
-		const auto FB0 = Framebuffers[0];
-		const auto FB1 = Framebuffers[1];
+		if (0 == i) {
+			//!<【パス0】
+			{
+				const auto RP = RenderPasses[0];
+				const auto FB = Framebuffers[0];
+				const auto PL = Pipelines[0];
+				const auto PLL = PipelineLayouts[0];
+				const auto SCB = SecondaryCommandBuffers[0];
 
-		//!<【パス0】セカンダリコマンドバッファ
-		const auto SCB0 = SecondaryCommandBuffers[0];
-		{
-			const auto PL = Pipelines[0];
-			const VkCommandBufferInheritanceInfo CBII = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-				.pNext = nullptr,
-				.renderPass = RP0,
-				.subpass = 0,
-				.framebuffer = FB0,
-				.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
-				.pipelineStatistics = 0,
-			};
-			const VkCommandBufferBeginInfo SCBBI = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-				.pNext = nullptr,
-				.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-				.pInheritanceInfo = &CBII
-			};
-			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB0, &SCBBI)); {
-				vkCmdBindPipeline(SCB0, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
+				const VkCommandBufferInheritanceInfo CBII = {
+					.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+					.pNext = nullptr,
+					.renderPass = RP,
+					.subpass = 0,
+					.framebuffer = FB,
+					.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
+					.pipelineStatistics = 0,
+				};
+				const VkCommandBufferBeginInfo SCBBI = {
+					.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+					.pNext = nullptr,
+					.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+					.pInheritanceInfo = &CBII
+				};
+				VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
+					vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-				const std::array VBs = { VertexBuffers[0].Buffer };
-				const std::array NBs = { VertexBuffers[1].Buffer };
-				const std::array Offsets = { VkDeviceSize(0) };
-				vkCmdBindVertexBuffers(SCB0, 0, static_cast<uint32_t>(size(VBs)), data(VBs), data(Offsets));
-				vkCmdBindVertexBuffers(SCB0, 1, static_cast<uint32_t>(size(NBs)), data(NBs), data(Offsets));
-				vkCmdBindIndexBuffer(SCB0, IndexBuffers[0].Buffer, 0, VK_INDEX_TYPE_UINT32);
+					//!< 描画毎にユニフォームバッファのアクセス先をオフセットする
+					const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
+					//!< アライメントが必要
+					VkMemoryRequirements MR;
+					vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);
 
-				vkCmdDrawIndexedIndirect(SCB0, IndirectBuffers[0].Buffer, 0, 1, 0);
-			} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB0));
+					//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
+					for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+						const auto Offset = GetViewportSetOffset(j);
+						const auto Count = GetViewportSetCount(j);
+
+						vkCmdSetViewport(SCB, 0, Count, &QuiltViewports[Offset]);
+						vkCmdSetScissor(SCB, 0, Count, &QuiltScissorRects[Offset]);
+
+						const std::array DSs = { DescriptorSets[0] };
+						const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
+						vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+
+						const std::array VBs = { VertexBuffers[0].Buffer };
+						const std::array NBs = { VertexBuffers[1].Buffer };
+						const std::array Offsets = { VkDeviceSize(0) };
+						vkCmdBindVertexBuffers(SCB, 0, static_cast<uint32_t>(size(VBs)), data(VBs), data(Offsets));
+						vkCmdBindVertexBuffers(SCB, 1, static_cast<uint32_t>(size(NBs)), data(NBs), data(Offsets));
+						vkCmdBindIndexBuffer(SCB, IndexBuffers[0].Buffer, 0, VK_INDEX_TYPE_UINT32);
+
+						vkCmdDrawIndexedIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
+					}
+				} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+			}
+			//!<【パス1】
+			{
+				const auto RP = RenderPasses[1];
+				const auto PL = Pipelines[1];
+				const auto PLL = PipelineLayouts[1];
+				const auto SCB = SecondaryCommandBuffers[1];
+
+				const VkCommandBufferInheritanceInfo CBII = {
+					.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+					.pNext = nullptr,
+					.renderPass = RP,
+					.subpass = 0,
+					.framebuffer = VK_NULL_HANDLE,
+					.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
+					.pipelineStatistics = 0,
+				};
+				const VkCommandBufferBeginInfo SCBBI = {
+					.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+					.pNext = nullptr,
+					.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+					.pInheritanceInfo = &CBII
+				};
+				VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
+					vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
+
+					vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
+					vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+
+					const std::array DSs = { DescriptorSets[1] };
+					constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+					vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+
+					vkCmdDrawIndirect(SCB, IndirectBuffers[1].Buffer, 0, 1, 0);
+				} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+			}
 		}
-
-		//!<【パス1】セカンダリコマンドバッファ
-		const auto SCB1 = SecondaryCommandBuffers[1];
-		{
-			const auto PL = Pipelines[1];
-			const VkCommandBufferInheritanceInfo CBII = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-				.pNext = nullptr,
-				.renderPass = RP1,
-				.subpass = 0,
-				.framebuffer = FB1,
-				.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
-				.pipelineStatistics = 0,
-			};
-			const VkCommandBufferBeginInfo SCBBI = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-				.pNext = nullptr,
-				.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
-				.pInheritanceInfo = &CBII
-			};
-			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB1, &SCBBI)); {
-				vkCmdSetViewport(SCB1, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-				vkCmdSetScissor(SCB1, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
-
-				vkCmdBindPipeline(SCB1, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
-
-				vkCmdDrawIndirect(SCB1, IndirectBuffers[1].Buffer, 0, 1, 0);
-			} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB1));
-		}
-
 	}
 	virtual void PopulateCommandBuffer(const size_t i) override {
-		const auto RP0 = RenderPasses[0];
-		const auto RP1 = RenderPasses[1];
-		const auto FB0 = Framebuffers[0];
-		const auto FB1 = Framebuffers[1 + i];
-
-		const auto SCB0 = SecondaryCommandBuffers[0];
-		const auto SCB1 = SecondaryCommandBuffers[1];
-
-		//!< コマンドバッファ
 		const auto CB = CommandBuffers[i];
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -409,81 +429,54 @@ public:
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
 			//!<【パス0】
-			constexpr std::array CVs = { VkClearValue({.color = Colors::SkyBlue }), VkClearValue({.depthStencil = {.depth = 1.0f, .stencil = 0 } }) };
-			const VkRenderPassBeginInfo RPBI = {
-				.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-				.pNext = nullptr,
-				.renderPass = RP0,
-				.framebuffer = FB0,
-				.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = QuiltWidth, .height = QuiltHeight})}), //!< キルトサイズ
-				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
-			};
-			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
+			{
+				const auto RP = RenderPasses[0];
+				const auto FB = Framebuffers[0];
+				const auto SCB = SecondaryCommandBuffers[0];
 
-				//!< 描画毎にユニフォームバッファのアクセス先をオフセットする
-				const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
-				//!< アライメントが必要
-				VkMemoryRequirements MR;
-				vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);
-
-				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
-				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
-					const auto Offset = GetViewportSetOffset(j);
-					const auto Count = GetViewportSetCount(j);
-
-					vkCmdSetViewport(CB, 0, Count, &QuiltViewports[Offset]);
-					vkCmdSetScissor(CB, 0, Count, &QuiltScissorRects[Offset]);
-
-					//!< デスクリプタ
-					{
-						const auto PLL = PipelineLayouts[0];
-
-						const std::array DSs = { DescriptorSets[0] };
-						const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
-						//constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-						vkCmdBindDescriptorSets(CB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
-					}
-
-					const std::array SCBs = { SCB0 };
+				constexpr std::array CVs = { VkClearValue({.color = Colors::SkyBlue }), VkClearValue({.depthStencil = {.depth = 1.0f, .stencil = 0 } }) };
+				const VkRenderPassBeginInfo RPBI = {
+					.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+					.pNext = nullptr,
+					.renderPass = RP,
+					.framebuffer = FB,
+					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = QuiltWidth, .height = QuiltHeight})}), //!< キルトサイズ
+					.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
+				};
+				vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
+					const std::array SCBs = { SCB };
 					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
-				}
-			} vkCmdEndRenderPass(CB);
+				} vkCmdEndRenderPass(CB);
+			}
 
 			//!< バリア
 			//!< カラーアタッチメント から シェーダリードへ
 			ImageMemoryBarrier(CB,
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				RenderTextures[0].Image);
 
 			//!<【パス1】
 			{
+				const auto RP = RenderPasses[1];
+				const auto FB = Framebuffers[1 + i];
+				const auto SCB = SecondaryCommandBuffers[1];
+
 				constexpr std::array<VkClearValue, 0> CVs = {};
 				const VkRenderPassBeginInfo RPBI = {
 					.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 					.pNext = nullptr,
-					.renderPass = RP1,
-					.framebuffer = FB1,
+					.renderPass = RP,
+					.framebuffer = FB,
 					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = SurfaceExtent2D }), //!< スクリーンサイズ
 					.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
 				};
 				vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
-
-					//!< デスクリプタ
-					{
-						const auto PLL = PipelineLayouts[1];
-
-						const std::array DSs = { DescriptorSets[1] };
-						constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-						vkCmdBindDescriptorSets(CB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
-					}
-
-					const std::array SCBs = { SCB1 };
+					const std::array SCBs = { SCB };
 					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
 				} vkCmdEndRenderPass(CB);				
 			}
-
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
 

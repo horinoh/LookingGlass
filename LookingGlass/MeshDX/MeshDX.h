@@ -261,7 +261,13 @@ public:
 				auto& Heap = Desc.first;
 				auto& Handle = Desc.second;
 
-				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 };
+				//!< オフセット回数分のデスクリプタ数を確保
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
+					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+					.NumDescriptors = GetViewportDrawCount(), 
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 
+					.NodeMask = 0
+				};
 				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 
 				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
@@ -269,11 +275,20 @@ public:
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
 				const auto& CB = ConstantBuffers[0];
-				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
-				Device->CreateConstantBufferView(&CBVD, CDH);
-				Handle.emplace_back(GDH);
-				CDH.ptr += IncSize;
-				GDH.ptr += IncSize;
+				//!< オフセット毎に使用するサイズ
+				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
+				//!< ビュー、ハンドルをオフセット分用意する
+				for (UINT i = 0; i < DHD.NumDescriptors; ++i) {
+					//!< オフセット毎の位置、サイズ
+					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
+						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
+						.SizeInBytes = static_cast<UINT>(DynamicOffset)
+					};
+					Device->CreateConstantBufferView(&CBVD, CDH);
+					Handle.emplace_back(GDH);
+					CDH.ptr += IncSize;
+					GDH.ptr += IncSize;
+				}
 			}
 		}
 
@@ -329,48 +344,51 @@ public:
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateBundleCommandList(const size_t i) override {
-		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+		if (0 == i) {
+			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 
-		//!<【パス0】バンドルコマンドリスト
-		const auto BCL0 = COM_PTR_GET(BundleCommandLists[0]);
-		const auto PS0 = COM_PTR_GET(PipelineStates[0]);
-		VERIFY_SUCCEEDED(BCL0->Reset(BCA, PS0));
-		{
-			BCL0->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			//!<【パス0】
+			{
+				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
+				const auto PS = COM_PTR_GET(PipelineStates[0]);
+				VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+				{
+					BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-			BCL0->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
-			BCL0->IASetIndexBuffer(&IndexBuffers[0].View);
+					const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
+					BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+					BCL->IASetIndexBuffer(&IndexBuffers[0].View);
 
-			const auto IB = IndirectBuffers[0];
-			BCL0->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
+					const auto IB = IndirectBuffers[0];
+					BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
+				}
+				VERIFY_SUCCEEDED(BCL->Close());
+			}
+
+			//!<【パス1】
+			{
+				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
+				const auto PS = COM_PTR_GET(PipelineStates[1]);
+				VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+				{
+					BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+					BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
+				}
+				VERIFY_SUCCEEDED(BCL->Close());
+			}
 		}
-		VERIFY_SUCCEEDED(BCL0->Close());
-
-		//!<【パス1】バンドルコマンドリスト
-		const auto BCL1 = COM_PTR_GET(BundleCommandLists[1]);
-		const auto PS1 = COM_PTR_GET(PipelineStates[1]);
-		VERIFY_SUCCEEDED(BCL1->Reset(BCA, PS1));
-		{
-			BCL1->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			BCL1->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
-		}
-		VERIFY_SUCCEEDED(BCL1->Close());
 	}
 	virtual void PopulateCommandList(const size_t i) override {
-		const auto RS0 = COM_PTR_GET(RootSignatures[0]);
-		const auto RS1 = COM_PTR_GET(RootSignatures[1]);
-		const auto BCL0 = COM_PTR_GET(BundleCommandLists[0]);
-		const auto BCL1 = COM_PTR_GET(BundleCommandLists[1]);
-
-		//!< ダイレクトコマンドリスト
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(DCL->Reset(DCA, nullptr));
 		{
 			//!<【パス0】
 			{
-				DCL->SetGraphicsRootSignature(RS0);
+				const auto RS = COM_PTR_GET(RootSignatures[0]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
+
+				DCL->SetGraphicsRootSignature(RS);
 
 				//!< レンダーターゲット
 				{
@@ -395,31 +413,26 @@ public:
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
 
+					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
+					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
+
 					//!< コンスタントバッファ
 					{
 						const auto& Desc = CbvSrvUavDescs[0];
 						const auto& Heap = Desc.first;
-#if 1
-						const auto& Handle = Desc.second[0];
-#else
-						auto Handle = D3D12_GPU_DESCRIPTOR_HANDLE(Desc.second[0]);
-						Handle.ptr += DynamicOffset * j;
-#endif
+						const auto& Handle = Desc.second;
 						const std::array DHs = { COM_PTR_GET(Heap) };
 						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-						DCL->SetGraphicsRootDescriptorTable(0, Handle);
+						//!< オフセット毎のハンドルを使用
+						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]);
 					}
-
-					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
-					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
-
-					DCL->ExecuteBundle(BCL0);
+					
+					DCL->ExecuteBundle(BCL);
 				}
 			}
 
 			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
-
 			//!< スワップチェインをレンダーターゲット、レンダーテクスチャをシェーダリソースとする
 			ResourceBarrier2(DCL,
 				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -427,8 +440,14 @@ public:
 
 			//!<【パス1】
 			{
-				DCL->SetGraphicsRootSignature(RS1);
+				const auto RS = COM_PTR_GET(RootSignatures[1]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
+
+				DCL->SetGraphicsRootSignature(RS);
 				
+				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
+				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+
 				const std::array CHs = { SwapChainCPUHandles[i] };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
@@ -444,10 +463,7 @@ public:
 					DCL->SetGraphicsRootDescriptorTable(1, Handle[1]); //!< CBV
 				}
 
-				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
-				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
-
-				DCL->ExecuteBundle(BCL1);
+				DCL->ExecuteBundle(BCL);
 			}
 
 			//!< スワップチェインをプレゼント、レンダーテクスチャをレンダーターゲットとする
