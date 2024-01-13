@@ -723,14 +723,14 @@ protected:
 	}
 
 	void CreateFrameBuffer_Default(const VkRenderPass RP, const uint32_t Width, const uint32_t Height) {
-		for (auto i : SwapchainImageViews) {
-			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, Width, Height, 1, { i });
+		for (const auto& i : SwapchainBackBuffers) {
+			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, Width, Height, 1, { i.ImageView });
 		}
 	}
 	void CreateFrameBuffer_Default(const VkRenderPass RP) { CreateFrameBuffer_Default(RP, SurfaceExtent2D.width, SurfaceExtent2D.height); }
 	void CreateFrameBuffer_Depth(const VkRenderPass RP, const VkImageView DepthView, const uint32_t Width, const uint32_t Height) {
-		for (auto i : SwapchainImageViews) {
-			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, Width, Height, 1, { i, DepthView });
+		for (const auto& i : SwapchainBackBuffers) {
+			VK::CreateFramebuffer(Framebuffers.emplace_back(), RP, Width, Height, 1, { i.ImageView, DepthView });
 		}
 	}
 	void CreateFrameBuffer_Depth(const VkRenderPass RP, const VkImageView DepthView) { CreateFrameBuffer_Depth(RP, DepthView, SurfaceExtent2D.width, SurfaceExtent2D.height); }
@@ -1026,10 +1026,16 @@ protected:
 
 	VkExtent2D SurfaceExtent2D;
 	VkFormat ColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
+
 	VkSwapchainKHR Swapchain = VK_NULL_HANDLE;
-	std::vector<VkImage> SwapchainImages;
 	uint32_t SwapchainImageIndex = 0;
-	std::vector<VkImageView> SwapchainImageViews;
+	struct SwapchainBackBuffer
+	{
+		SwapchainBackBuffer(VkImage Img) { Image = Img; }
+		VkImage Image;
+		VkImageView ImageView;
+	};
+	std::vector<SwapchainBackBuffer> SwapchainBackBuffers;
 
 	std::vector<VkCommandPool> CommandPools;
 	std::vector<VkCommandBuffer> CommandBuffers;

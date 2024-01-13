@@ -431,7 +431,7 @@ public:
 				}
 			}
 
-			const auto SCR = COM_PTR_GET(SwapChainResDescs[i].first);
+			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
 			//!< スワップチェインをレンダーターゲット、レンダーテクスチャをシェーダリソースとする
 			ResourceBarrier2(DCL,
@@ -448,7 +448,7 @@ public:
 				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
 
-				const std::array CHs = { SwapChainResDescs[i].second };
+				const std::array CHs = { SwapchainBackBuffers[i].Handle };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
 				//!< デスクリプタ

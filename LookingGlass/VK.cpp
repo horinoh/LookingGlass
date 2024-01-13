@@ -103,10 +103,10 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 	}
 	CommandPools.clear();
 
-	for (auto i : SwapchainImageViews) {
-		vkDestroyImageView(Device, i, GetAllocationCallbacks());
+	for (auto& i : SwapchainBackBuffers) {
+		vkDestroyImageView(Device, i.ImageView, GetAllocationCallbacks());
 	} 
-	SwapchainImageViews.clear();
+	SwapchainBackBuffers.clear();
 	if (VK_NULL_HANDLE != Swapchain) [[likely]] { 
 		vkDestroySwapchainKHR(Device, Swapchain, GetAllocationCallbacks()); 
 		Swapchain = VK_NULL_HANDLE;
@@ -436,16 +436,17 @@ void VK::CreateSwapchain(VkPhysicalDevice PD, VkSurfaceKHR Sfc, const uint32_t W
 }
 void VK::GetSwapchainImages()
 {
-	for (auto i : SwapchainImageViews) {
-		vkDestroyImageView(Device, i, GetAllocationCallbacks());
+	for (auto i : SwapchainBackBuffers) {
+		vkDestroyImageView(Device, i.ImageView, GetAllocationCallbacks());
 	}
-	SwapchainImageViews.clear();
+	SwapchainBackBuffers.clear();
 
 	uint32_t Count;
 	VERIFY_SUCCEEDED(vkGetSwapchainImagesKHR(Device, Swapchain, &Count, nullptr));
-	SwapchainImages.clear(); SwapchainImages.resize(Count);
-	VERIFY_SUCCEEDED(vkGetSwapchainImagesKHR(Device, Swapchain, &Count, data(SwapchainImages)));
-	for (auto i : SwapchainImages) {
+	std::vector<VkImage> Images(Count);
+	VERIFY_SUCCEEDED(vkGetSwapchainImagesKHR(Device, Swapchain, &Count, data(Images)));
+	for (auto i : Images) {
+		auto& SBB = SwapchainBackBuffers.emplace_back(SwapchainBackBuffer(i));
 		const VkImageViewCreateInfo IVCI = {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 			.pNext = nullptr,
@@ -456,7 +457,7 @@ void VK::GetSwapchainImages()
 			.components = VkComponentMapping({.r = VK_COMPONENT_SWIZZLE_IDENTITY, .g = VK_COMPONENT_SWIZZLE_IDENTITY, .b = VK_COMPONENT_SWIZZLE_IDENTITY, .a = VK_COMPONENT_SWIZZLE_IDENTITY, }),
 			.subresourceRange = VkImageSubresourceRange({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1 })
 		};
-		VERIFY_SUCCEEDED(vkCreateImageView(Device, &IVCI, GetAllocationCallbacks(), &SwapchainImageViews.emplace_back()));
+		VERIFY_SUCCEEDED(vkCreateImageView(Device, &IVCI, GetAllocationCallbacks(), &SBB.ImageView));
 	}
 }
 
@@ -470,7 +471,7 @@ void VK::AllocatePrimaryCommandBuffer()
 	};
 	VERIFY_SUCCEEDED(vkCreateCommandPool(Device, &CPCI, GetAllocationCallbacks(), &CommandPools.emplace_back()));
 
-	CommandBuffers.resize(size(SwapchainImages));
+	CommandBuffers.resize(size(SwapchainBackBuffers));
 	const VkCommandBufferAllocateInfo CBAI = {
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.pNext = nullptr,

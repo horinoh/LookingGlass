@@ -469,11 +469,11 @@ protected:
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
 			CL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 			CL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
-			const auto SCR = COM_PTR_GET(SwapChainResDescs[i].first);
+			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
 				constexpr std::array<D3D12_RECT, 0> Rects = {};
-				CL->ClearRenderTargetView(SwapChainResDescs[i].second, Color, static_cast<UINT>(size(Rects)), data(Rects));
+				CL->ClearRenderTargetView(SwapchainBackBuffers[i].Handle, Color, static_cast<UINT>(size(Rects)), data(Rects));
 			}
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		} VERIFY_SUCCEEDED(CL->Close());
@@ -651,7 +651,12 @@ protected:
 
 	COM_PTR<IDXGISwapChain4> SwapChain;
 	COM_PTR<ID3D12DescriptorHeap> SwapChainDescriptorHeap;				
-	std::vector<std::pair<COM_PTR<ID3D12Resource>, D3D12_CPU_DESCRIPTOR_HANDLE>> SwapChainResDescs;
+	struct SwapChainBackBuffer
+	{
+		COM_PTR<ID3D12Resource> Resource;
+		D3D12_CPU_DESCRIPTOR_HANDLE Handle;
+	};
+	std::vector<SwapChainBackBuffer> SwapchainBackBuffers;
 
 	std::vector<COM_PTR<ID3D12CommandAllocator>> DirectCommandAllocators;
 	std::vector<COM_PTR<ID3D12GraphicsCommandList>> DirectCommandLists;
