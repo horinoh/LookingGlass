@@ -210,13 +210,11 @@ public:
 protected:
 	int DeviceIndex = -1;
 
+	uint32_t QuiltWidth = 3360, QuiltHeight = 3360;
 	float ViewCone = TO_RADIAN(40.0f);
 
-	uint32_t QuiltWidth = 3360;
-	uint32_t QuiltHeight = 3360;
-
-	const float CameraSize = 5.0f; //!< 焦点面の垂直半径
 	const float Fov = TO_RADIAN(14.0f);
+	const float CameraSize = 5.0f; //!< 焦点面の垂直半径
 	const float CameraDistance = -CameraSize / std::tan(Fov / 2.0f); //!< 焦点面の垂直半径と、視野角からカメラ距離を算出
 
 	//!< ピクセルシェーダパラメータ
@@ -266,10 +264,11 @@ protected:
 		//!< Gi == 1 は確定 (RGB or BGR ということ)
 		int Ri = 0;
 		int Bi = 2;
-
-		float Column = 8;
-		float Row = 6;
-
+#if 1
+		float Column = 8, Row = 6;
+#else
+		float Column = 2, Row = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン)
+#endif
 		float QuiltAspect = Column / Row;
 	};
 	LENTICULAR_BUFFER* LenticularBuffer = nullptr;

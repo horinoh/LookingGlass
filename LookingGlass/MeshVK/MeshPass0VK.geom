@@ -12,15 +12,15 @@ layout (set = 0, binding = 0) uniform ViewProjectionBuffer
 layout (location = 0) out vec3 OutNormal;
 
 layout (triangles, invocations = 16) in;
-layout (line_strip, max_vertices = 3) out;
+layout (triangle_strip, max_vertices = 3) out;
 void main()
 {	
-	const float Scale = 5.0f;
-	//const float Scale = gl_InvocationID + ViewportOffset;
-	const mat4 World = mat4(Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, 1);
+	//const float Scale = 5.0f;
+	//const mat4 World = mat4(Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, 1);
 	
 	for(int i=0;i<gl_in.length();++i) {
-		gl_Position = VPB.ViewProjection[gl_InvocationID + 0] * World * gl_in[i].gl_Position;
+		gl_Position = VPB.ViewProjection[gl_InvocationID] * gl_in[i].gl_Position;
+		//gl_Position = VPB.ViewProjection[gl_InvocationID] * World * gl_in[i].gl_Position;
 
 		OutNormal = normalize(InNormal[i]);
 		//OutNormal = normalize(WIT * InNormal[i]);

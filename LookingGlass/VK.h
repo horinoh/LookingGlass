@@ -76,7 +76,8 @@ public:
 		CreatePipeline();
 		CreateFramebuffer();
 		CreateDescriptor();
-		//CreateShaderBindingTable();
+		CreateShaderBindingTable();
+		CreateVideo();
 
 		OnExitSizeMove(hWnd, hInstance);
 	}
@@ -87,7 +88,7 @@ public:
 			GetClientRect(hWnd, &Rect);
 
 			//Swapchain->ResizeBuffers() でリサイズ
-			//その他のリソースはほぼ作り直し
+			//その他のリソースはほぼ作り直し #TODO
 			LOG("OnExitSizeMove\n");
 
 			const auto W = Rect.right - Rect.left, H = Rect.bottom - Rect.top;
@@ -257,7 +258,9 @@ public:
 	}
 	virtual void CreateDescriptor() {}
 
-	//virtual void CreateShaderBindingTable() {}
+	virtual void CreateShaderBindingTable() {}
+
+	virtual void CreateVideo() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
 	virtual void PopulateSecondaryCommandBuffer([[maybe_unused]] const size_t i) {}

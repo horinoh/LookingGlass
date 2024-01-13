@@ -14,7 +14,7 @@ public:
 
 		CreateProjectionMatrices();
 		{
-			const auto Pos = glm::vec3(0.0f, 0.0f, 3.0f);
+			const auto Pos = glm::vec3(0.0f, 0.0f, 1.0f);
 			const auto Tag = glm::vec3(0.0f);
 			const auto Up = glm::vec3(0.0f, 1.0f, 0.0f);
 			View = glm::lookAt(Pos, Tag, Up);
@@ -35,7 +35,7 @@ public:
 				Vertices.emplace_back(ToVec3(Mesh->GetControlPoints()[Mesh->GetPolygonVertex(i, j)]));
 			}
 		}
-		AdjustScale(Vertices, 1.0f);
+		AdjustScale(Vertices, 5.0f);
 
 		FbxArray<FbxVector4> Nrms;
 		Mesh->GetPolygonVertexNormals(Nrms);

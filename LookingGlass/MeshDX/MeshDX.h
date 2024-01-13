@@ -14,7 +14,7 @@ public:
 
 		CreateProjectionMatrices();
 		{
-			const auto Pos = DirectX::XMVectorSet(0.0f, 0.0f, 3.0f, 1.0f);
+			const auto Pos = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f);
 			const auto Tag = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 			const auto Up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 			View = DirectX::XMMatrixLookAtRH(Pos, Tag, Up);
@@ -35,7 +35,7 @@ public:
 				Vertices.emplace_back(ToFloat3(Mesh->GetControlPoints()[Mesh->GetPolygonVertex(i, j)]));
 			}
 		}
-		AdjustScale(Vertices, 1.0f);
+		AdjustScale(Vertices, 5.0f);
 
 		FbxArray<FbxVector4> Nrms;
 		Mesh->GetPolygonVertexNormals(Nrms);
@@ -431,7 +431,7 @@ public:
 				}
 			}
 
-			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
+			const auto SCR = COM_PTR_GET(SwapChainResDescs[i].first);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
 			//!< スワップチェインをレンダーターゲット、レンダーテクスチャをシェーダリソースとする
 			ResourceBarrier2(DCL,
@@ -448,7 +448,7 @@ public:
 				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
 
-				const std::array CHs = { SwapChainCPUHandles[i] };
+				const std::array CHs = { SwapChainResDescs[i].second };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
 				//!< デスクリプタ

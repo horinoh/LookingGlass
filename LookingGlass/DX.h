@@ -60,8 +60,9 @@ public:
 		CreateRootSignature();
 		CreatePipelineState();
 		CreateDescriptor();
-		//CreateShaderTable();
-		
+		CreateShaderTable();
+		CreateVideo();
+
 		OnExitSizeMove(hWnd, hInstance);
 	}
 	virtual void OnExitSizeMove(HWND hWnd, HINSTANCE hInstance) {
@@ -71,7 +72,7 @@ public:
 			GetClientRect(hWnd, &Rect);
 
 			//SwapChain->ResizeBuffers() でリサイズ
-			//その他のリソースはほぼ作り直し
+			//その他のリソースはほぼ作り直し #TODO
 			LOG("OnExitSizeMove\n");
 
 			const auto W = Rect.right - Rect.left, H = Rect.bottom - Rect.top;
@@ -135,7 +136,9 @@ public:
 	virtual void CreatePipelineState() {}
 	
 	virtual void CreateDescriptor() {}
-	//virtual void CreateShaderTable() {}
+	virtual void CreateShaderTable() {}
+
+	virtual void CreateVideo() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
 	virtual void PopulateBundleCommandList([[maybe_unused]] const size_t i) {}
@@ -466,11 +469,11 @@ protected:
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
 			CL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 			CL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
-			const auto SCR = COM_PTR_GET(SwapChainResources[i]);
+			const auto SCR = COM_PTR_GET(SwapChainResDescs[i].first);
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
 				constexpr std::array<D3D12_RECT, 0> Rects = {};
-				CL->ClearRenderTargetView(SwapChainCPUHandles[i], Color, static_cast<UINT>(size(Rects)), data(Rects));
+				CL->ClearRenderTargetView(SwapChainResDescs[i].second, Color, static_cast<UINT>(size(Rects)), data(Rects));
 			}
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		} VERIFY_SUCCEEDED(CL->Close());
@@ -648,8 +651,7 @@ protected:
 
 	COM_PTR<IDXGISwapChain4> SwapChain;
 	COM_PTR<ID3D12DescriptorHeap> SwapChainDescriptorHeap;				
-	std::vector<COM_PTR<ID3D12Resource>> SwapChainResources;
-	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> SwapChainCPUHandles;
+	std::vector<std::pair<COM_PTR<ID3D12Resource>, D3D12_CPU_DESCRIPTOR_HANDLE>> SwapChainResDescs;
 
 	std::vector<COM_PTR<ID3D12CommandAllocator>> DirectCommandAllocators;
 	std::vector<COM_PTR<ID3D12GraphicsCommandList>> DirectCommandLists;

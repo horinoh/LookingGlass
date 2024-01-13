@@ -147,9 +147,10 @@ void DX::GetSwapChainResource()
 	auto CDH = SwapChainDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	const auto IncSize = Device->GetDescriptorHandleIncrementSize(SwapChainDescriptorHeap->GetDesc().Type);
 	for (UINT i = 0; i < SCD.BufferCount; ++i) {
-		VERIFY_SUCCEEDED(SwapChain->GetBuffer(i, COM_PTR_UUIDOF_PUTVOID(SwapChainResources.emplace_back())));
-		Device->CreateRenderTargetView(COM_PTR_GET(SwapChainResources.back()), nullptr, CDH);
-		SwapChainCPUHandles.emplace_back(CDH);
+		auto& ResDesc = SwapChainResDescs.emplace_back();
+		VERIFY_SUCCEEDED(SwapChain->GetBuffer(i, COM_PTR_UUIDOF_PUTVOID(ResDesc.first)));
+		Device->CreateRenderTargetView(COM_PTR_GET(ResDesc.first), nullptr, CDH);
+		ResDesc.second = CDH;
 
 		CDH.ptr += IncSize;
 	}
