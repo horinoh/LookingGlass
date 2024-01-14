@@ -2,11 +2,11 @@
 
 #include "resource.h"
 
-#include "../VK.h"
+#include "../VKImage.h"
 #include "../Holo.h"
 #include "../FBX.h"
 
-class MeshVK : public VK, public Holo, public Fbx
+class MeshVK : public VKImage, public Holo, public Fbx
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -448,6 +448,10 @@ public:
 					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
 				} vkCmdEndRenderPass(CB);
 			}
+
+#if 0
+			SaveToFile(RenderTextures[0].Image, "hoge.dds");
+#endif
 
 			//!< バリア
 			//!< カラーアタッチメント から シェーダリードへ

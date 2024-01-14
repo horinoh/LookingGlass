@@ -2,11 +2,11 @@
 
 #include "resource.h"
 
-#include "../DX.h"
+#include "../DXImage.h"
 #include "../Holo.h"
 #include "../FBX.h"
 
-class MeshDX : public DX, public Holo, public Fbx
+class MeshDX : public DXImage, public Holo, public Fbx
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -430,6 +430,14 @@ public:
 					DCL->ExecuteBundle(BCL);
 				}
 			}
+
+#if 0
+			static bool Saved = false;
+			if (Saved == false) {
+				Saved = true;
+				SaveToFile(RenderTextures[0], std::wstring_view(L"../Asset/MeshDX.dds"));
+			}
+#endif
 
 			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);

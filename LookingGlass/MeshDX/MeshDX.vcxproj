@@ -68,12 +68,14 @@
     <Import Project="..\Prop\HLSL.props" />
     <Import Project="..\Prop\HOLO.props" />
     <Import Project="..\Prop\FBX.props" />
+    <Import Project="..\Prop\DX_TEX.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Prop\HLSL.props" />
     <Import Project="..\Prop\HOLO.props" />
     <Import Project="..\Prop\FBX.props" />
+    <Import Project="..\Prop\DX_TEX.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -137,6 +139,7 @@
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\DX.h" />
+    <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\FBX.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="framework.h" />
@@ -147,6 +150,7 @@
   <ItemGroup>
     <ClCompile Include="..\BorderlessWin.cpp" />
     <ClCompile Include="..\DX.cpp" />
+    <ClCompile Include="..\DXImage.cpp" />
     <ClCompile Include="..\FBX.cpp" />
     <ClCompile Include="..\Holo.cpp" />
     <ClCompile Include="MeshDX.cpp" />

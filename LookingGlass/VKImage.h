@@ -178,5 +178,10 @@ public:
 		}
 	};
 
+	void SaveToFile(const char *Data, const size_t Size, std::string_view FileName) { SaveToFile(gli::load(Data, Size), FileName); }
+	void SaveToFile(gli::texture GLITex, std::string_view FileName) {
+		gli::save(GLITex, data(FileName));
+	}
+
 	std::vector<GLITexture> GLITextures;
 };
