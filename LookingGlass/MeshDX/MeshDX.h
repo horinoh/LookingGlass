@@ -43,6 +43,7 @@ public:
 			Normals.emplace_back(ToFloat3(Nrms[i]));
 		}
 	}
+
 	virtual void CreateCommandList() override {
 		//!< 【パス0】コマンドリスト [Pass0]
 		DX::CreateCommandList();
@@ -59,6 +60,10 @@ public:
 		//!<【パス0】メッシュ描画用 [Pass0 To draw mesh] 
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip_res2.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Bee.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "ALucy.FBX");
+
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
 		UploadResource UploadPass0Vertex;
 		UploadPass0Vertex.Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), data(Vertices));
@@ -520,7 +525,7 @@ protected:
 	std::vector<DirectX::XMMATRIX> ViewMatrices;
 
 	struct VIEW_PROJECTION_BUFFER {
-		DirectX::XMFLOAT4X4 ViewProjection[64];
+		DirectX::XMFLOAT4X4 ViewProjection[64]; //!< 64 もあれば十分 [64 will be enough]
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };

@@ -58,6 +58,10 @@ public:
 		//!<yƒpƒX0zƒƒbƒVƒ…•`‰æ—p [Pass0 To draw mesh] 
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip_res2.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Bee.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "ALucy.FBX");
+
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
 		VK::Scoped<StagingBuffer> StagingPass0Vertex(Device);
 		StagingPass0Vertex.Create(Device, PDMP, TotalSizeOf(Vertices), data(Vertices));
@@ -528,7 +532,7 @@ protected:
 	std::vector<glm::mat4> ViewMatrices;
 
 	struct VIEW_PROJECTION_BUFFER {
-		glm::mat4 ViewProjection[64];
+		glm::mat4 ViewProjection[64]; //!< 64 ‚à‚ ‚ê‚Î\•ª [64 will be enough]
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };
