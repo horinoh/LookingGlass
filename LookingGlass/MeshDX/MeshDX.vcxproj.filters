@@ -42,9 +42,6 @@
     <ClInclude Include="..\FBX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DXImage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MeshDX.cpp">
@@ -60,9 +57,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\FBX.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\DXImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

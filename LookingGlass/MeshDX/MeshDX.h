@@ -2,11 +2,11 @@
 
 #include "resource.h"
 
-#include "../DXImage.h"
+#include "../DX.h"
 #include "../Holo.h"
 #include "../FBX.h"
 
-class MeshDX : public DXImage, public Holo, public Fbx
+class MeshDX : public DX, public Holo, public Fbx
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -44,9 +44,9 @@ public:
 		}
 	}
 	virtual void CreateCommandList() override {
-		//!< 【パス0】コマンドリスト
+		//!< 【パス0】コマンドリスト [Pass0]
 		DX::CreateCommandList();
-		//!< 【パス1】バンドルコマンドリスト
+		//!< 【パス1】バンドルコマンドリスト [Pass1]
 		DX::CreateBundleCommandList(2);
 	}
 
@@ -56,7 +56,7 @@ public:
 		const auto GCQ = COM_PTR_GET(GraphicsCommandQueue);
 		const auto GF = COM_PTR_GET(GraphicsFence);
 
-		//!<【パス0】メッシュ描画用
+		//!<【パス0】メッシュ描画用 [Pass0 To draw mesh] 
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
@@ -82,7 +82,7 @@ public:
 		UploadResource UploadPass0Indirect;
 		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DIA), &DIA);
 
-		//!<【パス1】フルスクリーン描画用
+		//!<【パス1】フルスクリーン描画用 [Pass1 To draw render texture]
 		constexpr D3D12_DRAW_ARGUMENTS DA = {
 			.VertexCountPerInstance = 4, 
 			.InstanceCount = 1, 
@@ -93,7 +93,7 @@ public:
 		UploadResource UploadPass1Indirect;
 		UploadPass1Indirect.Create(COM_PTR_GET(Device), sizeof(DA), &DA);
 
-		//!< コマンド発行
+		//!< コマンド発行 [Issue copy command]
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
 			//!< 【パス0】
 			VertexBuffers[0].PopulateCopyCommand(CL, TotalSizeOf(Vertices), COM_PTR_GET(UploadPass0Vertex.Resource));
@@ -101,31 +101,31 @@ public:
 			IndexBuffers[0].PopulateCopyCommand(CL, TotalSizeOf(Indices), COM_PTR_GET(UploadPass0Index.Resource));
 			IndirectBuffers[0].PopulateCopyCommand(CL, sizeof(DIA), COM_PTR_GET(UploadPass0Indirect.Resource));
 
-			//!< 【パス1】
+			//!<【パス1】[Pass0]
 			IndirectBuffers[1].PopulateCopyCommand(CL, sizeof(DA), COM_PTR_GET(UploadPass1Indirect.Resource));
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(GCQ, CL, COM_PTR_GET(GraphicsFence));
 	}
 	virtual void CreateConstantBuffer() override {
-		//!<【パス0】
+		//!<【パス0】[Pass0]
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(ViewProjectionBuffer));
 		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[0].Resource), RoundUp256(sizeof(ViewProjectionBuffer)), &ViewProjectionBuffer);
 
-		//!<【パス1】
-		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(*LenticularBuffer));
-		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[1].Resource), RoundUp256(sizeof(*LenticularBuffer)), LenticularBuffer);
+		//!<【パス1】[Pass1]
+		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(LenticularBuffer));
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[1].Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
 	}
 	virtual void CreateTexture() override {
-		//!<【パス0】レンダーターゲット、デプス
+		//!<【パス0】レンダーターゲット、デプス (キルトサイズ)  [Pass0 Render target and depth (quilt size)]
 		CreateTexture_Render(QuiltWidth, QuiltHeight);
 		CreateTexture_Depth(QuiltWidth, QuiltHeight);
 	}
 	virtual void CreateStaticSampler() override {
-		//!<【パス1】
+		//!<【パス1】[Pass1]
 		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 	}
 	virtual void CreateRootSignature() override {
-		//!<【パス0】
+		//!<【パス0】[Pass0]
 		{
 			COM_PTR<ID3DBlob> Blob;
 			constexpr std::array DRs_Cbv = {
@@ -145,7 +145,7 @@ public:
 				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_GS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 		}
-		//!<【パス1】
+		//!<【パス1】[Pass1]
 		{
 			COM_PTR<ID3DBlob> Blob;
 			constexpr std::array DRs_Srv = {
@@ -189,7 +189,7 @@ public:
 			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
 		};
 
-		//!< 【パス0】
+		//!< 【パス0】[Pass0]
 		const std::vector IEDs = {
 			D3D12_INPUT_ELEMENT_DESC({ .SemanticName = "POSITION", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0 }),
 			D3D12_INPUT_ELEMENT_DESC({ .SemanticName = "NORMAL", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 1, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0 }),
@@ -205,7 +205,7 @@ public:
 		};
 		CreatePipelineState_VsPsGs_Input(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
-		//!< 【パス1】
+		//!< 【パス1】[Pass1]
 		std::vector<COM_PTR<ID3DBlob>> SBsPass1;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass1DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "MeshPass1DX.ps.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
@@ -219,9 +219,9 @@ public:
 		Threads.clear();
 	}
 	virtual void CreateDescriptor() override {
-		//!<【パス0】
+		//!<【パス0】[Pass0]
 		{
-			//!< レンダーターゲットビュー
+			//!< レンダーターゲットビュー [Render target view]
 			{
 				auto& Desc = RtvDescs.emplace_back();
 				auto& Heap = Desc.first;
@@ -238,7 +238,7 @@ public:
 				Handle.emplace_back(CDH);
 				CDH.ptr += IncSize;
 			}
-			//!< デプスステンシルビュー
+			//!< デプスステンシルビュー [Depth stencil view]
 			{
 				auto& Desc = DsvDescs.emplace_back();
 				auto& Heap = Desc.first;
@@ -255,13 +255,13 @@ public:
 				Handle.emplace_back(CDH);
 				CDH.ptr += IncSize;
 			}
-			//!< コンスタントバッファービュー
+			//!< コンスタントバッファービュー [Constant buffer view]
 			{
 				auto& Desc = CbvSrvUavDescs.emplace_back();
 				auto& Heap = Desc.first;
 				auto& Handle = Desc.second;
 
-				//!< オフセット回数分のデスクリプタ数を確保
+				//!< 描画回数分のデスクリプタ数を確保 [Allocate descriptors of draw count]
 				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
 					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
 					.NumDescriptors = GetViewportDrawCount(), 
@@ -275,11 +275,11 @@ public:
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
 				const auto& CB = ConstantBuffers[0];
-				//!< オフセット毎に使用するサイズ
+				//!< オフセット毎に使用するサイズ [Offset size]
 				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
-				//!< ビュー、ハンドルをオフセット分用意する
+				//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
 				for (UINT i = 0; i < DHD.NumDescriptors; ++i) {
-					//!< オフセット毎の位置、サイズ
+					//!< オフセット毎の位置、サイズ [Offset location and size]
 					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
 						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
 						.SizeInBytes = static_cast<UINT>(DynamicOffset)
@@ -292,20 +292,20 @@ public:
 			}
 		}
 
-		//!<【パス1】
+		//!<【パス1】[Pass0]
 		{
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
 			auto& Handle = Desc.second;
 
-			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 }; //!< SRV
+			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 };
 			VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 
 			auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 			auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 			const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
-			//!< シェーダリソースビュー
+			//!< シェーダリソースビュー [Shader resource view]
 			{
 				const auto& Tex = RenderTextures[0];
 				Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
@@ -313,7 +313,7 @@ public:
 				CDH.ptr += IncSize;
 				GDH.ptr += IncSize;
 			}
-			//!< コンスタントバッファービュー
+			//!< コンスタントバッファービュー [Constant buffer view]
 			{
 				const auto& CB = ConstantBuffers[1];
 				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
@@ -329,25 +329,25 @@ public:
 		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
 		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
 
-		//!<【パス0】キルトレンダーターゲットを分割
-		const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
-		for (auto i = 0; i < LenticularBuffer->Row; ++i) {
+		//!<【パス0】キルトレンダーターゲットを分割 [Pass0 Split quilt render target]
+		const auto W = QuiltWidth / LenticularBuffer.Column, H = QuiltHeight / LenticularBuffer.Row;
+		for (auto i = 0; i < LenticularBuffer.Row; ++i) {
 			const auto Y = QuiltHeight - H * (i + 1);
-			for (auto j = 0; j < LenticularBuffer->Column; ++j) {
+			for (auto j = 0; j < LenticularBuffer.Column; ++j) {
 				const auto X = j * W;
 				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = X, .TopLeftY = Y, .Width = W, .Height = H, .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
 				QuiltScissorRects.emplace_back(D3D12_RECT({ .left = static_cast<LONG>(X), .top = static_cast<LONG>(Y), .right = static_cast<LONG>(X + W), .bottom = static_cast<LONG>(Y + H) }));
 			}
 		}
 
-		//!<【パス1】スクリーンを使用
+		//!<【パス1】スクリーンを使用 [Pass1 Using screen]
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateBundleCommandList(const size_t i) override {
 		if (0 == i) {
 			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 
-			//!<【パス0】
+			//!<【パス0】[Pass0]
 			{
 				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 				const auto PS = COM_PTR_GET(PipelineStates[0]);
@@ -365,7 +365,7 @@ public:
 				VERIFY_SUCCEEDED(BCL->Close());
 			}
 
-			//!<【パス1】
+			//!<【パス1】[Pass1]
 			{
 				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
 				const auto PS = COM_PTR_GET(PipelineStates[1]);
@@ -383,7 +383,7 @@ public:
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(DCL->Reset(DCA, nullptr));
 		{
-			//!<【パス0】
+			//!<【パス0】[Pass0]
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[0]);
 				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
@@ -392,9 +392,9 @@ public:
 
 				//!< レンダーターゲット
 				{
-					//!< レンダーテクスチャ
+					//!< レンダーテクスチャ [Render texture]
 					const auto& HandleRTV = RtvDescs[0].second[0];
-					//!< デプス
+					//!< デプス [Depth]
 					const auto& HandleDSV = DsvDescs[0].second[0];
 
 					constexpr std::array<D3D12_RECT, 0> Rects = {};
@@ -405,10 +405,10 @@ public:
 					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
 				}
 
-				//!< 描画毎にコンスタントバッファのアクセス先をオフセットする
+				//!< 描画毎にコンスタントバッファのアクセス先をオフセットする [Offset constant buffer access on each draw]
 				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
 
-				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
+				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行) [Because viewport max is 16, need to draw few times]
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
@@ -416,28 +416,20 @@ public:
 					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
-					//!< コンスタントバッファ
+					//!< コンスタントバッファ [Constant buffer]
 					{
 						const auto& Desc = CbvSrvUavDescs[0];
 						const auto& Heap = Desc.first;
 						const auto& Handle = Desc.second;
 						const std::array DHs = { COM_PTR_GET(Heap) };
 						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-						//!< オフセット毎のハンドルを使用
+						//!< オフセット毎のハンドルを使用 [Use handle on each offset]
 						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]);
 					}
 					
 					DCL->ExecuteBundle(BCL);
 				}
 			}
-
-#if 0
-			static bool Saved = false;
-			if (Saved == false) {
-				Saved = true;
-				SaveToFile(RenderTextures[0], std::wstring_view(L"../Asset/MeshDX.dds"));
-			}
-#endif
 
 			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
@@ -446,7 +438,7 @@ public:
 				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
 				RT, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-			//!<【パス1】
+			//!<【パス1】[Pass1]
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[1]);
 				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
@@ -489,19 +481,19 @@ public:
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
 		//!< 左右方向にずれている角度(ラジアン)
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer->Column * LenticularBuffer->Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
 		//!< 左右方向にずれている距離
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
-		auto Prj = DirectX::XMMatrixPerspectiveFovRH(Fov, LenticularBuffer->DisplayAspect, 0.1f, 100.0f);
-		Prj.r[2].m128_f32[0] += OffsetX / (CameraSize * LenticularBuffer->DisplayAspect);
+		auto Prj = DirectX::XMMatrixPerspectiveFovRH(Fov, LenticularBuffer.DisplayAspect, 0.1f, 100.0f);
+		Prj.r[2].m128_f32[0] += OffsetX / (CameraSize * LenticularBuffer.DisplayAspect);
 
 		ProjectionMatrices.emplace_back(Prj);
 	}
 	virtual void CreateViewMatrix(const int i) override {
 		if (-1 == i) { ViewMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer->Column * LenticularBuffer->Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		const auto OffsetLocal = DirectX::XMVector4Transform(DirectX::XMVectorSet(OffsetX, 0.0f, CameraDistance, 1.0f), View);
@@ -509,7 +501,7 @@ public:
 
 	}
 	virtual void updateViewProjectionBuffer() {
-		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
 		for (auto i = 0; i < ColRow; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}
@@ -531,9 +523,4 @@ protected:
 		DirectX::XMFLOAT4X4 ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
-
-	//struct WORLD_BUFFER {
-	//	DirectX::XMFLOAT4X4 World;
-	//};
-	//WORLD_BUFFER WorldBuffer;
 };

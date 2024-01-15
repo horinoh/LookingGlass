@@ -2,11 +2,11 @@
 
 #include "resource.h"
 
-#include "../VKImage.h"
+#include "../VK.h"
 #include "../Holo.h"
 #include "../FBX.h"
 
-class MeshVK : public VKImage, public Holo, public Fbx
+class MeshVK : public VK, public Holo, public Fbx
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -45,9 +45,9 @@ public:
 	}
 
 	virtual void AllocateCommandBuffer() override {
-		//!<【パス0】コマンドバッファ
+		//!<【パス0】コマンドバッファ [Pass0]
 		VK::AllocateCommandBuffer();
-		//!<【パス1】セカンダリコマンドバッファ
+		//!<【パス1】セカンダリコマンドバッファ [Pass1]
 		VK::AllocateSecondaryCommandBuffer(2);
 	}
 
@@ -55,7 +55,7 @@ public:
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
 
-		//!<【パス0】メッシュ描画用
+		//!<【パス0】メッシュ描画用 [Pass0 To draw mesh] 
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
@@ -81,7 +81,7 @@ public:
 		VK::Scoped<StagingBuffer> StagingPass0Indirect(Device);
 		StagingPass0Indirect.Create(Device, PDMP, sizeof(DIIC), &DIIC);
 
-		//!<【パス0】レンダーテクスチャ描画用
+		//!<【パス0】レンダーテクスチャ描画用 [Pass1 To draw render texture]
 		constexpr VkDrawIndirectCommand DIC = { 
 			.vertexCount = 4, 
 			.instanceCount = 1, 
@@ -92,7 +92,7 @@ public:
 		VK::Scoped<StagingBuffer> StagingPass1Indirect(Device);
 		StagingPass1Indirect.Create(Device, PDMP, sizeof(DIC), &DIC);
 
-		//!< コピーコマンド発行
+		//!< コピーコマンド発行 [Issue copy command]
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, 
 			.pNext = nullptr, 
@@ -100,13 +100,13 @@ public:
 			.pInheritanceInfo = nullptr 
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			//!< 【パス0】
+			//!< 【パス0】[Pass0]
 			VertexBuffers[0].PopulateCopyCommand(CB, TotalSizeOf(Vertices), StagingPass0Vertex.Buffer);
 			VertexBuffers[1].PopulateCopyCommand(CB, TotalSizeOf(Normals), StagingPass0Normal.Buffer);
 			IndexBuffers[0].PopulateCopyCommand(CB, TotalSizeOf(Indices), StagingPass0Index.Buffer);
 			IndirectBuffers[0].PopulateCopyCommand(CB, sizeof(DIIC), StagingPass0Indirect.Buffer);
 
-			//!< 【パス1】
+			//!< 【パス1】[Pass1]
 			IndirectBuffers[1].PopulateCopyCommand(CB, sizeof(DIC), StagingPass1Indirect.Buffer);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
@@ -115,25 +115,25 @@ public:
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 
-		//!<【パス0】
+		//!<【パス0】[Pass0]
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(ViewProjectionBuffer));
 		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[0].DeviceMemory, 0, sizeof(ViewProjectionBuffer), &ViewProjectionBuffer);
 
-		//!<【パス1】
-		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
-		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[1].DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
+		//!<【パス1】[Pass1]
+		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(LenticularBuffer));
+		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[1].DeviceMemory, 0, sizeof(LenticularBuffer), &LenticularBuffer);
 	}
 	virtual void CreateTexture() override {
-		//!<【パス0】レンダーターゲット、デプス (キルトサイズ)
+		//!<【パス0】レンダーターゲット、デプス (キルトサイズ) [Pass0 Render target and depth (quilt size)]
 		CreateTexture_Render(QuiltWidth, QuiltHeight);
 		CreateTexture_Depth(QuiltWidth, QuiltHeight);
 	}
 	virtual void CreateImmutableSampler() override {
-		//!< 【パス1】
+		//!< 【パス1】[Pass1]
 		CreateImmutableSampler_LinearRepeat();
 	}
 	virtual void CreatePipelineLayout() override {
-		//!<【パス0】
+		//!<【パス0】[Pass0 Using dynamic offset UNIFORM_BUFFER_DYNAMIC]
 		//!< ダイナミックオフセットを使用する為、UNIFORM_BUFFER_DYNAMIC
 		{
 			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
@@ -142,7 +142,7 @@ public:
 			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
 		}
 
-		//!<【パス1】
+		//!<【パス1】[Pass1]
 		{
 			const std::array ISs = { Samplers[0] };
 			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
@@ -153,9 +153,9 @@ public:
 		}
 	}
 	virtual void CreateRenderPass() override { 
-		//!< 【パス0】
+		//!< 【パス0】[Pass0]
 		CreateRenderPass_Depth();
-		//!< 【パス1】
+		//!< 【パス1】[Pass1]
 		CreateRenderPass_None();
 	}
 	virtual void CreatePipeline() override {
@@ -175,7 +175,7 @@ public:
 			.lineWidth = 1.0f
 		};
 		
-		//!<【パス0】
+		//!<【パス0】[Pass0]
 		const std::vector VIBDs = {
 			VkVertexInputBindingDescription({.binding = 0, .stride = sizeof(Vertices[0]), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX }),
 			VkVertexInputBindingDescription({.binding = 1, .stride = sizeof(Normals[0]), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX }),
@@ -196,7 +196,7 @@ public:
 		};
 		CreatePipelineState_VsFsGs_Input(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
 		
-		//!<【パス1】
+		//!<【パス1】[Pass1]
 		const std::array SMsPass1 = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.vert.spv"),
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.frag.spv"),
@@ -214,7 +214,7 @@ public:
 		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
-		//!<【パス0】
+		//!<【パス0】[Pass0 Using dynamic offset UNIFORM_BUFFER_DYNAMIC]
 		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用
 		{
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
@@ -245,6 +245,7 @@ public:
 			}, DSL);
 
 			//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
+			//!< [When using dynamic offset, .range value is data size used in each offset]
 			//!<	100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
 			const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
 			const DescriptorUpdateInfo DUI = {
@@ -254,7 +255,7 @@ public:
 			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 		}
 
-		//!< 【パス1】
+		//!< 【パス1】[Pass1]
 		{
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
@@ -299,35 +300,35 @@ public:
 		}
 	}
 	virtual void CreateFramebuffer() override {
-		//!< 【パス0】
+		//!< 【パス0】[Pass0 Render target (quilt size)]
 		//!< レンダーターゲット (キルトサイズ)
 		VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], QuiltWidth, QuiltHeight, 1, { RenderTextures[0].View, DepthTextures[0].View });
 
-		//!<【パス1】
+		//!<【パス1】[Pass1 Swapchain (screen size)]
 		//!< スワップチェイン (スクリーンサイズ)
 		for (const auto& i : SwapchainBackBuffers) {
 			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[1], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i.ImageView });
 		}
 	}
 	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
-		//!<【パス0】キルトレンダーターゲットを分割
-		const auto W = QuiltWidth / LenticularBuffer->Column, H = QuiltHeight / LenticularBuffer->Row;
+		//!<【パス0】キルトレンダーターゲットを分割 [Pass0 Split quilt render target]
+		const auto W = QuiltWidth / LenticularBuffer.Column, H = QuiltHeight / LenticularBuffer.Row;
 		const auto Ext2D = VkExtent2D({ .width = static_cast<uint32_t>(W), .height = static_cast<uint32_t>(H) });
-		for (auto i = 0; i < LenticularBuffer->Row; ++i) {
+		for (auto i = 0; i < LenticularBuffer.Row; ++i) {
 			const auto Y = QuiltHeight - H * i;
-			for (auto j = 0; j < LenticularBuffer->Column; ++j) {
+			for (auto j = 0; j < LenticularBuffer.Column; ++j) {
 				const auto X = j * W;
 				QuiltViewports.emplace_back(VkViewport({ .x = X, .y = Y, .width = W, .height = -H, .minDepth = MinDepth, .maxDepth = MaxDepth }));
 				QuiltScissorRects.emplace_back(VkRect2D({ VkOffset2D({.x = static_cast<int32_t>(X), .y = static_cast<int32_t>(Y - H) }), Ext2D }));
 			}
 		}
 
-		//!<【パス1】スクリーンを使用
+		//!<【パス1】スクリーンを使用 [Pass1 Using screen]
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
 		if (0 == i) {
-			//!<【パス0】
+			//!<【パス0】[Pass0]
 			{
 				const auto RP = RenderPasses[0];
 				const auto FB = Framebuffers[0];
@@ -353,13 +354,13 @@ public:
 				VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
 					vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-					//!< 描画毎にユニフォームバッファのアクセス先をオフセットする
+					//!< 描画毎にユニフォームバッファのアクセス先をオフセットする [Offset uniform buffer access on each draw]
 					const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
 					//!< アライメントが必要
 					VkMemoryRequirements MR;
 					vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);
 
-					//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行)
+					//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行) [Because viewport max is 16, need to draw few times]
 					for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 						const auto Offset = GetViewportSetOffset(j);
 						const auto Count = GetViewportSetCount(j);
@@ -382,7 +383,7 @@ public:
 					}
 				} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
 			}
-			//!<【パス1】
+			//!<【パス1】[Pass1]
 			{
 				const auto RP = RenderPasses[1];
 				const auto PL = Pipelines[1];
@@ -428,7 +429,7 @@ public:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			//!<【パス0】
+			//!<【パス0】[Pass0]
 			{
 				const auto RP = RenderPasses[0];
 				const auto FB = Framebuffers[0];
@@ -449,11 +450,7 @@ public:
 				} vkCmdEndRenderPass(CB);
 			}
 
-#if 0
-			SaveToFile(RenderTextures[0].Image, "hoge.dds");
-#endif
-
-			//!< バリア
+			//!< バリア [Barrier]
 			//!< カラーアタッチメント から シェーダリードへ
 			ImageMemoryBarrier(CB,
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -461,7 +458,7 @@ public:
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				RenderTextures[0].Image);
 
-			//!<【パス1】
+			//!<【パス1】[Pass1]
 			{
 				const auto RP = RenderPasses[1];
 				const auto FB = Framebuffers[1 + i];
@@ -493,26 +490,26 @@ public:
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
 		//!< 左右方向にずれている角度(ラジアン)
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer->Column * LenticularBuffer->Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
 		//!< 左右方向にずれている距離
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
-		auto Prj = glm::perspective(Fov, LenticularBuffer->DisplayAspect, 0.1f, 100.0f);
-		Prj[2][0] += OffsetX / (CameraSize * LenticularBuffer->DisplayAspect);
+		auto Prj = glm::perspective(Fov, LenticularBuffer.DisplayAspect, 0.1f, 100.0f);
+		Prj[2][0] += OffsetX / (CameraSize * LenticularBuffer.DisplayAspect);
 
 		ProjectionMatrices.emplace_back(Prj);
 	}
 	virtual void CreateViewMatrix(const int i) override {
 		if (-1 == i) { ViewMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer->Column * LenticularBuffer->Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		const auto OffsetLocal = glm::vec3(View * glm::vec4(OffsetX, 0.0f, CameraDistance, 1.0f));
 		ViewMatrices.emplace_back(glm::translate(View, OffsetLocal));
 	}
 	virtual void updateViewProjectionBuffer() {
-		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
 		for (auto i = 0; i < ColRow; ++i) {
 			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
 		}
@@ -534,9 +531,4 @@ protected:
 		glm::mat4 ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
-
-	//struct WORLD_BUFFER {
-	//	glm::mat4 World;
-	//};
-	//WORLD_BUFFER WorldBuffer;
 };

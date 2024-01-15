@@ -30,3 +30,7 @@
         - Texdiag
 ### VK
 - [gli](https://github.com/g-truc/gli) ライブラリ
+
+## [FBX](https://aps.autodesk.com/developer/overview/fbx-sdk)
+- SDK をインストールして、環境変数 FBX_SDK_PATH をインストール先に設定しておく
+

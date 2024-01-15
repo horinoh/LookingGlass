@@ -24,18 +24,14 @@ void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instan
 {
 	OUT Out;
 
-	//const float Scale = 5.0f;
-	//const float4x4 World = float4x4(Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, 1);
-	
 	[unroll]
 	for (int i = 0; i < 3; ++i) {
 		Out.Position = mul(VPB.ViewProjection[instanceID], float4(In[i].Position, 1.0f));
 		//Out.Position = mul(mul(VPB.ViewProjection[instanceID], World), float4(In[i].Position, 1.0f));
 
 		Out.Normal = normalize(In[i].Normal);
-		//Out.Normal = normalize(mul(WIT, In[i].Normal));
 
-		Out.Viewport = instanceID; //!< GSインスタンシング(ビューポート毎)
+		Out.Viewport = instanceID; //!< GSインスタンシング (ビューポート毎) [GS instancing (each viewport)]
 
 		stream.Append(Out);
 	}

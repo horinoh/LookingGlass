@@ -28,9 +28,9 @@ public:
 	}
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
-		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(*LenticularBuffer));
+		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(LenticularBuffer));
 	}
-	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく
+	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく [Convert quilt image to dds format, and put in Asset folder]
 	virtual void CreateTexture() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
@@ -44,14 +44,12 @@ public:
 		//Jane_Guan_Space_Nap_qs8x6.dds //https://docs.lookingglassfactory.com/keyconcepts/quilts
 		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Jane_Guan_Space_Nap_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-		if (nullptr != LenticularBuffer) {
-			const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
-			//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること
-			Holo::UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
+		const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
+		//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること [Specify Column Row to suit quilt image]
+		Holo::UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
 
-			auto& UB = UniformBuffers[0];
-			CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(*LenticularBuffer), LenticularBuffer);
-		}
+		auto& UB = UniformBuffers[0];
+		CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(LenticularBuffer), &LenticularBuffer);
 	}
 	virtual void CreateImmutableSampler() override {
 		CreateImmutableSampler_LinearRepeat();

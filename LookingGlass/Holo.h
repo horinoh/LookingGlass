@@ -8,7 +8,7 @@
 #include <format>
 
 #include <HoloPlayCore.h>
-#include <HoloPlayShaders.h>
+//#include <HoloPlayShaders.h>
 
 #ifdef _DEBUG
 #define LOG(x) OutputDebugStringA((x))
@@ -110,16 +110,14 @@ public:
 		}
 
 		//!< レンチキュラー
-		LenticularBuffer = new LENTICULAR_BUFFER(DeviceIndex);
-		if (nullptr != LenticularBuffer) {
-			LOG(data(std::format("Pitch = {}\n", LenticularBuffer->Pitch)));
-			LOG(data(std::format("Tilt = {}\n", LenticularBuffer->Tilt)));
-			LOG(data(std::format("Center = {}\n", LenticularBuffer->Center)));
-			LOG(data(std::format("Subp = {}\n", LenticularBuffer->Subp)));
-			LOG(data(std::format("DisplayAspect = {}\n", LenticularBuffer->DisplayAspect)));
-			LOG(data(std::format("InvView = {}\n", LenticularBuffer->InvView)));
-			LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer->Ri, LenticularBuffer->Bi, (LenticularBuffer->Ri == 0 && LenticularBuffer->Bi == 2) ? "RGB" : "BGR")));
-		}
+		LenticularBuffer = LENTICULAR_BUFFER(DeviceIndex);
+		LOG(data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
+		LOG(data(std::format("Tilt = {}\n", LenticularBuffer.Tilt)));
+		LOG(data(std::format("Center = {}\n", LenticularBuffer.Center)));
+		LOG(data(std::format("Subp = {}\n", LenticularBuffer.Subp)));
+		LOG(data(std::format("DisplayAspect = {}\n", LenticularBuffer.DisplayAspect)));
+		LOG(data(std::format("InvView = {}\n", LenticularBuffer.InvView)));
+		LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer.Ri, LenticularBuffer.Bi, (LenticularBuffer.Ri == 0 && LenticularBuffer.Bi == 2) ? "RGB" : "BGR")));
 		if (-1 != DeviceIndex) {
 			ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
 
@@ -141,9 +139,6 @@ public:
 		}
 	}
 	virtual ~Holo() {
-		if (nullptr != LenticularBuffer) {
-			delete LenticularBuffer;
-		}
 		hpc_CloseApp();
 	}
 
@@ -162,37 +157,33 @@ public:
 	}
 	
 	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint32_t Width, const uint32_t Height) {
-		LenticularBuffer->Column = Column;
-		LenticularBuffer->Row = Row;
+		LenticularBuffer.Column = Column;
+		LenticularBuffer.Row = Row;
 		
 		QuiltWidth = Width;
 		QuiltHeight = Height;
-		const auto ViewWidth = static_cast<float>(QuiltWidth) / LenticularBuffer->Column;
-		const auto ViewHeight = static_cast<float>(QuiltHeight) / LenticularBuffer->Row;
-		LenticularBuffer->QuiltAspect = ViewWidth / ViewHeight;
+		const auto ViewWidth = static_cast<float>(QuiltWidth) / LenticularBuffer.Column;
+		const auto ViewHeight = static_cast<float>(QuiltHeight) / LenticularBuffer.Row;
+		LenticularBuffer.QuiltAspect = ViewWidth / ViewHeight;
 		LOG(data(std::format("QuiltAspect = {}\n", ViewWidth / ViewHeight)));
-		LOG(data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer->Column / static_cast<float>(QuiltWidth), static_cast<float>(ViewHeight) * LenticularBuffer->Row / static_cast<float>(QuiltHeight))));
-
-		//!< DX では Y が上であり、(ここでは)VK も DX に合わせて Y が上にしている為
-		//!< Tilt の値を正にすることで辻褄を合わせている
-		LenticularBuffer->Tilt = abs(LenticularBuffer->Tilt);
+		LOG(data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer.Column / static_cast<float>(QuiltWidth), static_cast<float>(ViewHeight) * LenticularBuffer.Row / static_cast<float>(QuiltHeight))));
 	}
 
 	virtual uint32_t GetViewportMax() const { return 16; }
 	uint32_t GetViewportDrawCount() const {
-		const auto ColRow = static_cast<uint32_t>(LenticularBuffer->Column * LenticularBuffer->Row);
+		const auto ColRow = static_cast<uint32_t>(LenticularBuffer.Column * LenticularBuffer.Row);
 		const auto ViewportCount = GetViewportMax();
 		return ColRow / ViewportCount + ((ColRow % ViewportCount) ? 1 : 0);
 	}
 	uint32_t GetViewportSetOffset(const uint32_t i) const { return GetViewportMax() * i; }
 	uint32_t GetViewportSetCount(const uint32_t i) const {
-		return (std::min)(static_cast<int32_t>(LenticularBuffer->Column * LenticularBuffer->Row) - GetViewportSetOffset(i), GetViewportMax());
+		return (std::min)(static_cast<int32_t>(LenticularBuffer.Column * LenticularBuffer.Row) - GetViewportSetOffset(i), GetViewportMax());
 	}
 
 	virtual void CreateProjectionMatrix(const int i) {}
 	void CreateProjectionMatrices() {
 		CreateProjectionMatrix(-1);
-		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
 		for (auto i = 0; i < ColRow; ++i) {
 			CreateProjectionMatrix(i);
 		}
@@ -200,7 +191,7 @@ public:
 	virtual void CreateViewMatrix(const int i) {}
 	void CreateViewMatrices() {
 		CreateViewMatrix(-1);
-		const auto ColRow = static_cast<int>(LenticularBuffer->Column * LenticularBuffer->Row);
+		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
 		for (auto i = 0; i < ColRow; ++i) {
 			CreateViewMatrix(i);
 		}
@@ -219,6 +210,10 @@ protected:
 
 	//!< ピクセルシェーダパラメータ
 	struct LENTICULAR_BUFFER {
+		LENTICULAR_BUFFER() {
+			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている
+			Tilt = abs(Tilt);
+		}
 		LENTICULAR_BUFFER(const int Index) {
 			if (-1 != Index) {
 				Pitch = hpc_GetDevicePropertyPitch(Index);
@@ -253,6 +248,7 @@ protected:
 					}
 				}
 			}
+			Tilt = abs(Tilt);
 		}
 		float Pitch = 246.866f;
 		float Tilt = -0.185377f;
@@ -271,5 +267,5 @@ protected:
 #endif
 		float QuiltAspect = Column / Row;
 	};
-	LENTICULAR_BUFFER* LenticularBuffer = nullptr;
+	LENTICULAR_BUFFER LenticularBuffer;
 };

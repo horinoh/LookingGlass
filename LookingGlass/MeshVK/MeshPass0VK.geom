@@ -15,17 +15,13 @@ layout (triangles, invocations = 16) in;
 layout (triangle_strip, max_vertices = 3) out;
 void main()
 {	
-	//const float Scale = 5.0f;
-	//const mat4 World = mat4(Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, Scale, 0, 0, 0, 0, 1);
-	
 	for(int i=0;i<gl_in.length();++i) {
 		gl_Position = VPB.ViewProjection[gl_InvocationID] * gl_in[i].gl_Position;
 		//gl_Position = VPB.ViewProjection[gl_InvocationID] * World * gl_in[i].gl_Position;
 
 		OutNormal = normalize(InNormal[i]);
-		//OutNormal = normalize(WIT * InNormal[i]);
 	
-		gl_ViewportIndex = gl_InvocationID; //!< GSインスタンシング(ビューポート毎)
+		gl_ViewportIndex = gl_InvocationID; //!< GSインスタンシング (ビューポート毎) [GS instancing (each viewport)]
 
 		EmitVertex();
 	}
