@@ -137,7 +137,6 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 	if (!FreeLibrary(VulkanLibrary)) [[likely]] { VulkanLibrary = nullptr; }
 }
 
-
 void VK::LoadVulkanLibrary() 
 {
 	VulkanLibrary = LoadLibrary(TEXT("vulkan-1.dll"));

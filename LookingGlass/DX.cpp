@@ -148,7 +148,6 @@ void DX::GetSwapChainResource()
 	const auto IncSize = Device->GetDescriptorHandleIncrementSize(SwapChainDescriptorHeap->GetDesc().Type);
 	for (UINT i = 0; i < SCD.BufferCount; ++i) {
 		auto& SCBB = SwapchainBackBuffers.emplace_back();
-		//auto& ResDesc = SwapChainResDescs.emplace_back();
 		VERIFY_SUCCEEDED(SwapChain->GetBuffer(i, COM_PTR_UUIDOF_PUTVOID(SCBB.Resource)));
 		Device->CreateRenderTargetView(COM_PTR_GET(SCBB.Resource), nullptr, CDH);
 		SCBB.Handle = CDH;
@@ -178,18 +177,6 @@ void DX::CreateBundleCommandList(const UINT Num)
 		VERIFY_SUCCEEDED(BundleCommandLists.back()->Close());
 	}
 }
-//void DX::CreateBundleCommandList()
-//{
-//	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_UUIDOF_PUTVOID(BundleCommandAllocators.emplace_back())));
-//
-//	const auto BCA = BundleCommandAllocators[0];
-//	DXGI_SWAP_CHAIN_DESC1 SCD;
-//	SwapChain->GetDesc1(&SCD);
-//	for (UINT i = 0; i < SCD.BufferCount; ++i) {
-//		VERIFY_SUCCEEDED(Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_GET(BCA), nullptr, COM_PTR_UUIDOF_PUTVOID(BundleCommandLists.emplace_back())));
-//		VERIFY_SUCCEEDED(BundleCommandLists.back()->Close());
-//	}
-//}
 
 template<> void DX::SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<D3D12_ROOT_PARAMETER>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags)
 {
@@ -254,12 +241,7 @@ void DX::CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
 		.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
 		.NodeMask = 0, //!< マルチGPUの場合に使用(1つしか使わない場合は0で良い)
 		.CachedPSO = D3D12_CACHED_PIPELINE_STATE({.pCachedBlob = nullptr != CachedBlob ? CachedBlob->GetBufferPointer() : nullptr, .CachedBlobSizeInBytes = nullptr != CachedBlob ? CachedBlob->GetBufferSize() : 0 }),
-#if defined(_DEBUG) && defined(USE_WARP)
-		//!< パイプラインがデバッグ用付加情報ありでコンパイルされる、WARP時のみ使用可能
-		.Flags = D3D12_PIPELINE_STATE_FLAG_TOOL_DEBUG
-#else
 		.Flags = D3D12_PIPELINE_STATE_FLAG_NONE
-#endif
 	};
 
 	//!< レンダーターゲット数分だけ必要なもの
@@ -311,7 +293,6 @@ void DX::SubmitGraphics(const UINT i)
 }
 void DX::Present()
 {
-	//!< 垂直同期を待つ
 	VERIFY_SUCCEEDED(SwapChain->Present(1, 0));
 }
 void DX::Draw()

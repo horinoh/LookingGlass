@@ -29,12 +29,8 @@
 #define COM_PTR_COPY(_x, _y) _x.copy_from(COM_PTR_GET(_y))
 
 #define SHADER_ROOT_ACCESS_DENY_ALL (D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS)
-//#define SHADER_ROOT_ACCESS_VS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS)
 #define SHADER_ROOT_ACCESS_GS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS)
 #define SHADER_ROOT_ACCESS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS)
-//#define SHADER_ROOT_ACCESS_GS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS))
-//#define SHADER_ROOT_ACCESS_DS_GS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS))
-//#define SHADER_ROOT_ACCESS_MS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS)
 
 #define VERIFY_SUCCEEDED(x) { const auto HR = (x); assert(SUCCEEDED(HR) && ""); }
 
@@ -69,11 +65,9 @@ public:
 #define TIMER_ID 1000 //!< 何でも良い
 		KillTimer(hWnd, TIMER_ID);
 		{
-			GetClientRect(hWnd, &Rect);
+			OnPreDestroy();
 
-			//SwapChain->ResizeBuffers() でリサイズ
-			//その他のリソースはほぼ作り直し #TODO
-			LOG("OnExitSizeMove\n");
+			GetClientRect(hWnd, &Rect);
 
 			const auto W = Rect.right - Rect.left, H = Rect.bottom - Rect.top;
 			CreateViewport(static_cast<const FLOAT>(W), static_cast<const FLOAT>(H));
@@ -106,7 +100,6 @@ public:
 		CreateSwapChain(hWnd, ColorFormat, Rect.right - Rect.left, Rect.bottom - Rect.top);
 		GetSwapChainResource();
 	}
-	//virtual void ResizeSwapChain(const UINT Width, const UINT Height);
 
 	virtual void CreateDirectCommandList();
 	virtual void CreateBundleCommandList(const UINT Num);
@@ -676,7 +669,6 @@ protected:
 	
 	std::vector<COM_PTR<ID3D12PipelineState>> PipelineStates;
 
-	//!< first にヒープ、second にハンドル
 	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>>> CbvSrvUavDescs;
 	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>>> RtvDescs;
 	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>>> DsvDescs;

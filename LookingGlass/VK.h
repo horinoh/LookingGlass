@@ -23,9 +23,6 @@
 #pragma warning(disable : 4201)
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-//#include <glm/gtc/quaternion.hpp>
-//#include <glm/gtc/type_ptr.hpp>
-//#include <glm/gtx/quaternion.hpp>
 #pragma warning(pop)
 
 namespace Colors
@@ -85,11 +82,9 @@ public:
 #define TIMER_ID 1000 //!< 何でも良い
 		KillTimer(hWnd, TIMER_ID);
 		{
-			GetClientRect(hWnd, &Rect);
+			OnPreDestroy();
 
-			//Swapchain->ResizeBuffers() でリサイズ
-			//その他のリソースはほぼ作り直し #TODO
-			LOG("OnExitSizeMove\n");
+			GetClientRect(hWnd, &Rect);
 
 			const auto W = Rect.right - Rect.left, H = Rect.bottom - Rect.top;
 			CreateViewport(static_cast<const FLOAT>(W), static_cast<const FLOAT>(H));
@@ -143,7 +138,6 @@ public:
 		CreateSwapchain(CurrentPhysicalDevice, Surface, Rect.right - Rect.left, Rect.bottom - Rect.top);
 		GetSwapchainImages();
 	}
-	//virtual void ResizeSwapchain(const uint32_t Width, const uint32_t Height);
 
 	virtual void AllocatePrimaryCommandBuffer();
 	void AllocateSecondaryCommandBuffer(const size_t Num);

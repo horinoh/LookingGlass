@@ -32,8 +32,6 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 //!< 絶対テクスチャ座標へ変換する
 vec2 ToTexcoord(vec3 CoordZ)
 {
-	//const vec2 ViewPortion = vec2(0.999755859f, 0.999755859f);
-	//return (vec2(mod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / vec2(LB.Column, Row) * ViewPortion;
 	return (vec2(mod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / vec2(LB.Column, LB.Row);
 }
 

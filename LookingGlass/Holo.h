@@ -70,8 +70,6 @@ public:
 				//!< Display fringe correction uniform (currently only applicable to 15.6" Developer/Pro units)
 				LOG(data(std::format("\thpc_GetDevicePropertyFringe = {}\n", hpc_GetDevicePropertyFringe(i))));//!< 参考値) 0
 
-				//!< 基本的に libHoloPlayCore.h の内容は理解する必要はないと書いてあるが、サンプルでは使っている…
-				//!< ビューの取りうる範囲 [-viewCone * 0.5f, viewCone * 0.5f]
 				LOG(data(std::format("\thpc_GetDevicePropertyFloat(viewCone) = {}\n", hpc_GetDevicePropertyFloat(i, "/calibration/viewCone/value")))); //!< 参考値) 40
 			}
 		}
@@ -100,16 +98,10 @@ public:
 					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 5, 9, 4096, 4096)));
 				}
 			}
-			//!< [ DX, VK ] 一度に描画できるビュー数
-			//!<	DX : D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE 16
-			//!<	VK : VkPhysicalDeviceProperties.limits.maxViewports = 16
-			//!<	トータルのビュー数が 45 や 48 だったりするので、3 回くらいは描画することになる
-			//!<	もしくは、歯抜けに 16 パターン分描画して間は補完する
 		} else {
 			LOG("[ Holo ] Device not found\n");
 		}
 
-		//!< レンチキュラー
 		LenticularBuffer = LENTICULAR_BUFFER(DeviceIndex);
 		LOG(data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
 		LOG(data(std::format("Tilt = {}\n", LenticularBuffer.Tilt)));
@@ -144,14 +136,14 @@ public:
 
 	void SetHoloWindow(HWND hWnd, HINSTANCE hInstance)  
 	{
-		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する
+		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する [Get window position, size from Looking Glass and apply]
 		const auto Index = DeviceIndex;
 		if (-1 != Index) {
 			LOG(data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(Index), hpc_GetDevicePropertyWinY(Index), hpc_GetDevicePropertyScreenW(Index), hpc_GetDevicePropertyScreenH(Index))));
 			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(Index), hpc_GetDevicePropertyWinY(Index), hpc_GetDevicePropertyScreenW(Index), hpc_GetDevicePropertyScreenH(Index), SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);
 		} else {
-			::SetWindowPos(hWnd, nullptr, /*1920*/0, 0, 1536, 2048, SWP_FRAMECHANGED);
+			::SetWindowPos(hWnd, nullptr, 0, 0, 1536, 2048, SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);
 		}
 	}
@@ -208,10 +200,9 @@ protected:
 	const float CameraSize = 5.0f; //!< 焦点面の垂直半径
 	const float CameraDistance = -CameraSize / std::tan(Fov / 2.0f); //!< 焦点面の垂直半径と、視野角からカメラ距離を算出
 
-	//!< ピクセルシェーダパラメータ
 	struct LENTICULAR_BUFFER {
 		LENTICULAR_BUFFER() {
-			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている
+			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている [Here Y is up, so changing tilt value to positive]
 			Tilt = abs(Tilt);
 		}
 		LENTICULAR_BUFFER(const int Index) {
@@ -257,13 +248,12 @@ protected:
 
 		float DisplayAspect = 0.75f;
 		int InvView = 1;
-		//!< Gi == 1 は確定 (RGB or BGR ということ)
 		int Ri = 0;
 		int Bi = 2;
 #if 1
 		float Column = 8, Row = 6;
 #else
-		float Column = 2, Row = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン)
+		float Column = 2, Row = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
 #endif
 		float QuiltAspect = Column / Row;
 	};
