@@ -155,7 +155,7 @@ void DX::GetSwapChainResource()
 		CDH.ptr += IncSize;
 	}
 }
-void DX::CreateDirectCommandList()
+void DX::CreateDirectCommandList(const size_t Num)
 {
 	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, COM_PTR_UUIDOF_PUTVOID(DirectCommandAllocators.emplace_back())));
 
@@ -167,7 +167,7 @@ void DX::CreateDirectCommandList()
 		VERIFY_SUCCEEDED(DirectCommandLists.back()->Close());
 	}
 }
-void DX::CreateBundleCommandList(const UINT Num)
+void DX::CreateBundleCommandList(const size_t Num)
 {
 	VERIFY_SUCCEEDED(Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, COM_PTR_UUIDOF_PUTVOID(BundleCommandAllocators.emplace_back())));
 

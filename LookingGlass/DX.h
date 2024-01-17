@@ -101,8 +101,10 @@ public:
 		GetSwapChainResource();
 	}
 
-	virtual void CreateDirectCommandList();
-	virtual void CreateBundleCommandList(const UINT Num);
+	void CreateDirectCommandList(const size_t Num);
+	virtual void CreateDirectCommandList() { CreateDirectCommandList(size(SwapchainBackBuffers)); }
+	void CreateBundleCommandList(const size_t Num);
+	virtual void CreateBundleCommandList() { CreateBundleCommandList(size(SwapchainBackBuffers)); }
 	virtual void CreateCommandList() {
 		CreateDirectCommandList();
 		CreateBundleCommandList(1);

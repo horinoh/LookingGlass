@@ -139,8 +139,10 @@ public:
 		GetSwapchainImages();
 	}
 
-	virtual void AllocatePrimaryCommandBuffer();
+	void AllocatePrimaryCommandBuffer(const size_t Num);
+	virtual void AllocatePrimaryCommandBuffer() { AllocatePrimaryCommandBuffer(size(SwapchainBackBuffers)); }
 	void AllocateSecondaryCommandBuffer(const size_t Num);
+	virtual void AllocateSecondaryCommandBuffer() { AllocateSecondaryCommandBuffer(size(SwapchainBackBuffers)); }
 	virtual void AllocateCommandBuffer() {
 		AllocatePrimaryCommandBuffer();
 		AllocateSecondaryCommandBuffer(1);
