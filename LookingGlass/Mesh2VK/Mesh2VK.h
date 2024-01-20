@@ -40,7 +40,7 @@ public:
 				Vertices.emplace_back(ToVec3(Mesh->GetControlPoints()[Mesh->GetPolygonVertex(i, j)]));
 			}
 		}
-		AdjustScale(Vertices, 5.0f);
+		AdjustScale(Vertices, 3.0f);
 
 		FbxArray<FbxVector4> Nrms;
 		Mesh->GetPolygonVertexNormals(Nrms);
@@ -75,8 +75,7 @@ public:
 
 		const VkDrawIndexedIndirectCommand DIIC = {
 			.indexCount = static_cast<uint32_t>(size(Indices)),
-			//.instanceCount = 1,
-			.instanceCount = 10,
+			.instanceCount = 16,
 			.firstIndex = 0,
 			.vertexOffset = 0,
 			.firstInstance = 0
@@ -522,9 +521,20 @@ public:
 		while (Angle > 360.0f) { Angle -= 360.0f; }
 		while (Angle < 0.0f) { Angle += 360.0f; }
 
+		const auto Identity = glm::mat4(1.0f);
+		const auto AxisX = glm::vec3(1.0f, 0.0f, 0.0f);
+		const auto AxisY = glm::vec3(0.0f, 1.0f, 0.0f);
+		constexpr auto Radius = 2.0f;
 		for (auto i = 0; i < _countof(WorldBuffer.World); ++i) {
-			const auto Rot = glm::rotate(glm::mat4(1.0f), glm::radians(i * 45.0f + Angle), glm::vec3(0.0f, 1.0f, 0.0f));
-			WorldBuffer.World[i] = glm::translate(Rot, glm::vec3(0.0f, static_cast<float>(i) - 5.0f, 0.0f));
+			const auto Radian = glm::radians(static_cast<float>(i) * 90.0f);
+			const auto X = Radius * cos(Radian);
+			const auto Y = (static_cast<float>(i) - static_cast<float>(_countof(WorldBuffer.World)) * 0.5f) * 0.5f;
+			const auto Z = Radius * sin(Radian);
+
+			//const auto RotL = glm::rotate(Identity, glm::radians(i * 45.0f + Angle), AxisX);
+			const auto RotL = Identity;
+			const auto RotG = glm::rotate(Identity, glm::radians(i * 45.0f + Angle), AxisY);
+			WorldBuffer.World[i] = glm::translate(RotG, glm::vec3(X, Y, Z)) * RotL;
 		}
 	}
 protected:

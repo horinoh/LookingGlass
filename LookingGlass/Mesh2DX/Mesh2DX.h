@@ -40,7 +40,7 @@ public:
 				Vertices.emplace_back(ToFloat3(Mesh->GetControlPoints()[Mesh->GetPolygonVertex(i, j)]));
 			}
 		}
-		AdjustScale(Vertices, 5.0f);
+		AdjustScale(Vertices, 3.0f);
 
 		FbxArray<FbxVector4> Nrms;
 		Mesh->GetPolygonVertexNormals(Nrms);
@@ -77,8 +77,7 @@ public:
 
 		const D3D12_DRAW_INDEXED_ARGUMENTS DIA = {
 			.IndexCountPerInstance = static_cast<UINT32>(size(Indices)),
-			//.InstanceCount = 1,
-			.InstanceCount = 5,
+			.InstanceCount = 16,
 			.StartIndexLocation = 0,
 			.BaseVertexLocation = 0,
 			.StartInstanceLocation = 0
@@ -517,8 +516,17 @@ public:
 		while (Angle > 360.0f) { Angle -= 360.0f; }
 		while (Angle < 0.0f) { Angle += 360.0f; }
 
+		constexpr auto Radius = 2.0f;
 		for (auto i = 0; i < _countof(WorldBuffer.World); ++i) {
-			DirectX::XMStoreFloat4x4(&WorldBuffer.World[i], DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(i * 45.0f + Angle)) * DirectX::XMMatrixTranslation(0.0f, i * 3-6, 0.0f));
+			const auto Radian = DirectX::XMConvertToRadians(static_cast<float>(i) * 90.0f);
+			const auto X = Radius * cos(Radian);
+			const auto Y = (static_cast<float>(i) - static_cast<float>(_countof(WorldBuffer.World)) * 0.5f) * 0.5f;
+			const auto Z = Radius * sin(Radian);
+
+			//const auto RotL = DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(i * 45.0f + Angle));
+			const auto RotL = DirectX::XMMatrixIdentity();
+			const auto RotG = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(i * 45.0f + Angle));
+			DirectX::XMStoreFloat4x4(&WorldBuffer.World[i], RotL * DirectX::XMMatrixTranslation(X, Y, Z) * RotG);
 		}
 	}
 
