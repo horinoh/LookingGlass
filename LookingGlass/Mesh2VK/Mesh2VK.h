@@ -20,13 +20,13 @@ public:
 			View = glm::lookAt(Pos, Tag, Up);
 			CreateViewMatrices();
 		}
-		updateViewProjectionBuffer();
-		updateWorldBuffer();
+		UpdateViewProjectionBuffer();
+		UpdateWorldBuffer();
 
 		VK::OnCreate(hWnd, hInstance, Title);
 	}
 	virtual void DrawFrame(const UINT i) override {
-		updateWorldBuffer();
+		UpdateWorldBuffer();
 		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
 	}
 
@@ -118,7 +118,6 @@ public:
 			UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(WorldBuffer));
 			CopyToHostVisibleDeviceMemory(Device, UniformBuffers.back().DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
 		}
-
 		for (const auto& i : SwapchainBackBuffers) {
 			UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(ViewProjectionBuffer));
 			CopyToHostVisibleDeviceMemory(Device, UniformBuffers.back().DeviceMemory, 0, sizeof(ViewProjectionBuffer), &ViewProjectionBuffer);
@@ -211,9 +210,10 @@ public:
 	virtual void CreateDescriptor() override {
 		{
 			const auto DescCount = static_cast<uint32_t>(size(SwapchainBackBuffers));
+			
 			const auto UB0Index = 0;
 			const auto UB1Index = static_cast<uint32_t>(size(SwapchainBackBuffers));
-			const auto DescIndex = 0;
+			const auto DSIndex = 0;
 
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
@@ -256,14 +256,15 @@ public:
 					VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
 					VkDescriptorBufferInfo({.buffer = UniformBuffers[UB1Index + i].Buffer, .offset = 0, .range = DynamicOffset }),
 				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DescIndex + i], DUT, &DUI);
+				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
 			}
 			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 		}
 		{
 			const auto DescCount = 1;
-			const auto DescIndex = static_cast<uint32_t>(size(SwapchainBackBuffers));
+
 			const auto UBIndex = static_cast<uint32_t>(size(SwapchainBackBuffers)) * 2;
+			const auto DSIndex = static_cast<uint32_t>(size(SwapchainBackBuffers));
 
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
@@ -306,7 +307,7 @@ public:
 					VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
 					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
 				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DescIndex + i], DUT, &DUI);
+				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
 			}
 			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 		}
@@ -341,6 +342,9 @@ public:
 			const auto SCB = SecondaryCommandBuffers[i];
 			const auto DS = DescriptorSets[i];
 
+			VkMemoryRequirements MR;
+			vkGetBufferMemoryRequirements(Device, UniformBuffers[size(SwapchainBackBuffers)].Buffer, &MR);
+
 			const VkCommandBufferInheritanceInfo CBII = {
 				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
 				.pNext = nullptr,
@@ -360,9 +364,6 @@ public:
 				vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
 				const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
-				VkMemoryRequirements MR;
-				vkGetBufferMemoryRequirements(Device, UniformBuffers[3].Buffer, &MR);
-
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
@@ -391,6 +392,7 @@ public:
 			const auto RP = RenderPasses[1];
 			const auto PL = Pipelines[1];
 			const auto PLL = PipelineLayouts[1];
+
 			const auto SCB = SecondaryCommandBuffers[Index];
 			const auto DS = DescriptorSets[Index];
 
@@ -425,7 +427,6 @@ public:
 	}
 	virtual void PopulateCommandBuffer(const size_t i) override {
 		const auto CB = CommandBuffers[i];
-
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			.pNext = nullptr,
@@ -444,7 +445,7 @@ public:
 					.pNext = nullptr,
 					.renderPass = RP,
 					.framebuffer = FB,
-					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = QuiltWidth, .height = QuiltHeight})}), //!< キルトサイズ
+					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = QuiltWidth, .height = QuiltHeight})}),
 					.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
 				};
 				vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
@@ -461,6 +462,7 @@ public:
 
 			{
 				const auto Index = size(SwapchainBackBuffers);
+
 				const auto RP = RenderPasses[1];
 				const auto FB = Framebuffers[1 + i];
 				const auto SCB = SecondaryCommandBuffers[Index];
@@ -509,16 +511,17 @@ public:
 		const auto OffsetLocal = glm::vec3(View * glm::vec4(OffsetX, 0.0f, CameraDistance, 1.0f));
 		ViewMatrices.emplace_back(glm::translate(View, OffsetLocal));
 	}
-	virtual void updateViewProjectionBuffer() {
-		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
-		for (auto i = 0; i < ColRow; ++i) {
+	virtual void UpdateViewProjectionBuffer() {
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+		for (auto i = 0; i < Count; ++i) {
 			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
 		}
 	}
-	virtual void updateWorldBuffer() {
+	virtual void UpdateWorldBuffer() {
 		Angle += 1.0f;
 		while (Angle > 360.0f) { Angle -= 360.0f; }
 		while (Angle < 0.0f) { Angle += 360.0f; }
+
 		for (auto i = 0; i < _countof(WorldBuffer.World); ++i) {
 			const auto Rot = glm::rotate(glm::mat4(1.0f), glm::radians(i * 45.0f + Angle), glm::vec3(0.0f, 1.0f, 0.0f));
 			WorldBuffer.World[i] = glm::translate(Rot, glm::vec3(0.0f, static_cast<float>(i) - 5.0f, 0.0f));
@@ -542,7 +545,7 @@ protected:
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 
 	struct WORLD_BUFFER {
-		glm::mat4 World[64];
+		glm::mat4 World[16];
 	};
 	WORLD_BUFFER WorldBuffer;
 

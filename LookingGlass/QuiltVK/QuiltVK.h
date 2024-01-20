@@ -29,6 +29,7 @@ public:
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(LenticularBuffer));
+		//!< CopyToHostVisibleDeviceMemory() は CreateTexture() 内でやっている
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく [Convert quilt image to dds format, and put in Asset folder]
 	virtual void CreateTexture() override {
@@ -94,6 +95,8 @@ public:
 		for (auto i : SMs) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	virtual void CreateDescriptor() override {
+		const auto DescCount = 1;
+
 		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1}),
 			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
@@ -102,13 +105,15 @@ public:
 		auto DSL = DescriptorSetLayouts[0];
 		auto DP = DescriptorPools[0];
 		const std::array DSLs = { DSL };
-		const VkDescriptorSetAllocateInfo DSAI = {
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-			.pNext = nullptr,
-			.descriptorPool = DP,
-			.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
-		};
-		VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		for (uint32_t i = 0; i < DescCount; ++i) {
+			const VkDescriptorSetAllocateInfo DSAI = {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.pNext = nullptr,
+				.descriptorPool = DP,
+				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+			};
+			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		}
 
 		struct DescriptorUpdateInfo
 		{
@@ -128,11 +133,13 @@ public:
 				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
 			}),
 		}, DSL);
-		const DescriptorUpdateInfo DUI = {
-			VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-			VkDescriptorBufferInfo({.buffer = UniformBuffers[0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
-		};
-		vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[0], DUT, &DUI);
+		for (uint32_t i = 0; i < DescCount; ++i) {
+			const DescriptorUpdateInfo DUI = {
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+			};
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[0], DUT, &DUI);
+		}
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
 	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {

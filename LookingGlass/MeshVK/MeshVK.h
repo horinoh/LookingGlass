@@ -20,7 +20,7 @@ public:
 			View = glm::lookAt(Pos, Tag, Up);
 			CreateViewMatrices();
 		}
-		updateViewProjectionBuffer();
+		UpdateViewProjectionBuffer();
 
 		VK::OnCreate(hWnd, hInstance, Title);
 	}
@@ -222,7 +222,9 @@ public:
 		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用
 		{
 			const auto DescCount = 1;
-			const auto Index = 0;
+
+			const auto UBIndex = 0;
+			const auto DSIndex = 0;
 
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = DescCount }),
@@ -259,9 +261,9 @@ public:
 			const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
 			for (uint32_t i = 0; i < DescCount; ++i) {
 				const DescriptorUpdateInfo DUI = {
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[Index + i].Buffer, .offset = 0, .range = DynamicOffset }),
+					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = DynamicOffset }),
 				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[Index + i], DUT, &DUI);
+				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
 			}
 			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 		}
@@ -269,7 +271,9 @@ public:
 		//!< 【パス1】[Pass1]
 		{
 			const auto DescCount = 1;
-			const auto Index = 1;
+
+			const auto UBIndex = 1;
+			const auto DSIndex = 1;
 
 			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
@@ -310,9 +314,9 @@ public:
 			for (uint32_t i = 0; i < DescCount; ++i) {
 				const DescriptorUpdateInfo DUI = {
 					VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[Index + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
 				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[Index + i], DUT, &DUI);
+				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
 			}
 			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 		}
@@ -528,9 +532,9 @@ public:
 		const auto OffsetLocal = glm::vec3(View * glm::vec4(OffsetX, 0.0f, CameraDistance, 1.0f));
 		ViewMatrices.emplace_back(glm::translate(View, OffsetLocal));
 	}
-	virtual void updateViewProjectionBuffer() {
-		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
-		for (auto i = 0; i < ColRow; ++i) {
+	virtual void UpdateViewProjectionBuffer() {
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+		for (auto i = 0; i < Count; ++i) {
 			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
 		}
 	}

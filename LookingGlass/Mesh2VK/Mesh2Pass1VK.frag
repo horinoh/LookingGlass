@@ -35,7 +35,7 @@ vec2 ToTexcoord(vec3 CoordZ)
 
 void main()
 {
-#if 0
+#if 1
 	OutColor = texture(Sampler2D, InTexcoord);
 #else
 	vec2 UV = InTexcoord;

@@ -30,6 +30,7 @@
 
 #define SHADER_ROOT_ACCESS_DENY_ALL (D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS)
 #define SHADER_ROOT_ACCESS_GS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS)
+#define SHADER_ROOT_ACCESS_VS_GS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS))
 #define SHADER_ROOT_ACCESS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS)
 
 #define VERIFY_SUCCEEDED(x) { const auto HR = (x); assert(SUCCEEDED(HR) && ""); }
@@ -102,9 +103,9 @@ public:
 	}
 
 	void CreateDirectCommandList(const size_t Num);
-	virtual void CreateDirectCommandList() { CreateDirectCommandList(size(SwapchainBackBuffers)); }
+	virtual void CreateDirectCommandList() { CreateDirectCommandList(size(SwapChainBackBuffers)); }
 	void CreateBundleCommandList(const size_t Num);
-	virtual void CreateBundleCommandList() { CreateBundleCommandList(size(SwapchainBackBuffers)); }
+	virtual void CreateBundleCommandList() { CreateBundleCommandList(size(SwapChainBackBuffers)); }
 	virtual void CreateCommandList() {
 		CreateDirectCommandList();
 		CreateBundleCommandList(1);
@@ -464,11 +465,11 @@ protected:
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
 			CL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 			CL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
-			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
+			const auto SCR = COM_PTR_GET(SwapChainBackBuffers[i].Resource);
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
 				constexpr std::array<D3D12_RECT, 0> Rects = {};
-				CL->ClearRenderTargetView(SwapchainBackBuffers[i].Handle, Color, static_cast<UINT>(size(Rects)), data(Rects));
+				CL->ClearRenderTargetView(SwapChainBackBuffers[i].Handle, Color, static_cast<UINT>(size(Rects)), data(Rects));
 			}
 			ResourceBarrier(CL, SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 		} VERIFY_SUCCEEDED(CL->Close());
@@ -651,7 +652,7 @@ protected:
 		COM_PTR<ID3D12Resource> Resource;
 		D3D12_CPU_DESCRIPTOR_HANDLE Handle;
 	};
-	std::vector<SwapChainBackBuffer> SwapchainBackBuffers;
+	std::vector<SwapChainBackBuffer> SwapChainBackBuffers;
 
 	std::vector<COM_PTR<ID3D12CommandAllocator>> DirectCommandAllocators;
 	std::vector<COM_PTR<ID3D12GraphicsCommandList>> DirectCommandLists;
@@ -674,6 +675,7 @@ protected:
 	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>>> CbvSrvUavDescs;
 	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>>> RtvDescs;
 	std::vector<std::pair<COM_PTR<ID3D12DescriptorHeap>, std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>>> DsvDescs;
+	COM_PTR<ID3D12DescriptorHeap> DescHeap;
 
 	std::vector<D3D12_VIEWPORT> Viewports;
 	std::vector<D3D12_RECT> ScissorRects;

@@ -7,7 +7,7 @@ layout (location = 1) in vec3 InNormal;
 
 layout (set = 0, binding = 0) uniform WorldBuffer
 {
-	mat4 World[64];
+	mat4 World[16];
 } WB;
 
 layout (location = 0) out vec3 OutNormal;

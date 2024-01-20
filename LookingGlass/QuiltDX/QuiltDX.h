@@ -28,6 +28,7 @@ public:
 	}
 	virtual void CreateConstantBuffer() override {
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(LenticularBuffer));
+		//!< CopyToUploadResource() は CreateTexture() 内でやっている
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく [Convert quilt image to dds format, and put in Asset folder]
 	virtual void CreateTexture() override {
@@ -63,13 +64,13 @@ public:
 		};
 		DX::SerializeRootSignature(Blob, 
 			{
-				//!< SRV
+				//!< SRV -> SetGraphicsRootDescriptorTable(0,..)
 				D3D12_ROOT_PARAMETER({
 					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
 					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 				}),
-				//!< CBV
+				//!< CBV -> SetGraphicsRootDescriptorTable(1,..)
 				D3D12_ROOT_PARAMETER({
 					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
@@ -111,40 +112,42 @@ public:
 		auto& Heap = Desc.first;
 		auto& Handle = Desc.second;
 
-		//!< SRV
 		const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
 			.NumDescriptors = 1, 
 			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0
 		}; 
 		VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 		auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 		auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 		const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
-		const auto& Tex = XTKTextures[0];
-		Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
-		Handle.emplace_back(GDH);
-		CDH.ptr += IncSize;
-		GDH.ptr += IncSize;
+		//!< SRV
+		{
+			const auto& Tex = XTKTextures[0];
+			Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
+			Handle.emplace_back(GDH);
+			CDH.ptr += IncSize;
+			GDH.ptr += IncSize;
+		}
 
 		//!< CBV
-		const auto& CB = ConstantBuffers[0];
-		const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
-			.BufferLocation = CB.Resource->GetGPUVirtualAddress(), 
-			.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
-		};
-		Device->CreateConstantBufferView(&CBVD, CDH);
-		Handle.emplace_back(GDH);
-		CDH.ptr += IncSize;
-		GDH.ptr += IncSize;
+		{
+			const auto& CB = ConstantBuffers[0];
+			const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+				.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
+				.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+			};
+			Device->CreateConstantBufferView(&CBVD, CDH);
+			Handle.emplace_back(GDH);
+			CDH.ptr += IncSize;
+			GDH.ptr += IncSize;
+		}
 	}
 	virtual	void PopulateBundleCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-
 		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
@@ -155,8 +158,8 @@ public:
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
-		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
+		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
 
 		VERIFY_SUCCEEDED(DCL->Reset(DCA, PS));
 		{
@@ -165,10 +168,10 @@ public:
 			DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 			DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
 
-			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
+			const auto SCR = COM_PTR_GET(SwapChainBackBuffers[i].Resource);
 			ResourceBarrier(DCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
-				const std::array CHs = { SwapchainBackBuffers[i].Handle };
+				const std::array CHs = { SwapChainBackBuffers[i].Handle };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
 				//!< デスクリプタ

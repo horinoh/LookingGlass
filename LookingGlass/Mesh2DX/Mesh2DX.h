@@ -20,14 +20,14 @@ public:
 			View = DirectX::XMMatrixLookAtRH(Pos, Tag, Up);
 		}
 		CreateViewMatrices();
-		updateViewProjectionBuffer();
-		updateWorldBuffer();
+		UpdateViewProjectionBuffer();
+		UpdateWorldBuffer();
 
 		DX::OnCreate(hWnd, hInstance, Title);
 	}
 	virtual void DrawFrame(const UINT i) override {
-		updateWorldBuffer();
-		//CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer)
+		UpdateWorldBuffer();
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
 	}
 
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -51,7 +51,7 @@ public:
 
 	virtual void CreateCommandList() override {
 		DX::CreateCommandList();
-		DX::CreateBundleCommandList(size(SwapchainBackBuffers) + 1);
+		DX::CreateBundleCommandList(size(SwapChainBackBuffers) + 1);
 	}
 
 	virtual void CreateGeometry() override {
@@ -77,7 +77,8 @@ public:
 
 		const D3D12_DRAW_INDEXED_ARGUMENTS DIA = {
 			.IndexCountPerInstance = static_cast<UINT32>(size(Indices)),
-			.InstanceCount = 1,
+			//.InstanceCount = 1,
+			.InstanceCount = 5,
 			.StartIndexLocation = 0,
 			.BaseVertexLocation = 0,
 			.StartInstanceLocation = 0
@@ -107,13 +108,17 @@ public:
 		DX::ExecuteAndWait(GCQ, CL, COM_PTR_GET(GraphicsFence));
 	}
 	virtual void CreateConstantBuffer() override {
-		for (const auto& i : SwapchainBackBuffers) {
+		for (const auto& i : SwapChainBackBuffers) {
+			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(WorldBuffer));
+			CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
+		}
+		for (const auto& i : SwapChainBackBuffers) {
 			ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(ViewProjectionBuffer));
-			CopyToUploadResource(COM_PTR_GET(ConstantBuffers[0].Resource), RoundUp256(sizeof(ViewProjectionBuffer)), &ViewProjectionBuffer);
+			CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(ViewProjectionBuffer)), &ViewProjectionBuffer);
 		}
 
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(LenticularBuffer));
-		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[1].Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
 	}
 	virtual void CreateTexture() override {
 		CreateTexture_Render(QuiltWidth, QuiltHeight);
@@ -133,12 +138,17 @@ public:
 					D3D12_ROOT_PARAMETER({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX
+					}),
+					D3D12_ROOT_PARAMETER({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
 					}),
 				},
 				{
 				},
-				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_GS);
+				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_VS_GS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 		}
 		{
@@ -219,12 +229,11 @@ public:
 
 				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
 					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
-					.NumDescriptors = 1, 
+					.NumDescriptors = 1,
 					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 
 					.NodeMask = 0 
 				};
 				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
@@ -245,7 +254,6 @@ public:
 					.NodeMask = 0 
 				};
 				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
@@ -255,45 +263,59 @@ public:
 				CDH.ptr += IncSize;
 			}
 			{
-				const auto DescCount = size(SwapchainBackBuffers);
-				const auto Index = 0;
+				const auto DescCount = size(SwapChainBackBuffers);
+				const auto CB0Index = 0;
+				const auto CB1Index = size(SwapChainBackBuffers);
 
-				for (auto i = 0; i < 1/*DescCount*/; ++i) {
-					const auto& CB = ConstantBuffers[Index + i];
-
+				for (auto i = 0; i < DescCount; ++i) {
 					auto& Desc = CbvSrvUavDescs.emplace_back();
 					auto& Heap = Desc.first;
 					auto& Handle = Desc.second;
 
 					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-						.NumDescriptors = GetViewportDrawCount(),
+						.NumDescriptors = 2,
 						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 						.NodeMask = 0
 					};
 					VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 					auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 					auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-
-					const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
-					for (UINT i = 0; i < DHD.NumDescriptors; ++i) {
+				
+					//!< [0]
+					{
+						const auto& CB = ConstantBuffers[CB0Index + i];
 						const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
-							.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
-							.SizeInBytes = static_cast<UINT>(DynamicOffset)
+							.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
+							.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
 						};
 						Device->CreateConstantBufferView(&CBVD, CDH);
 						Handle.emplace_back(GDH);
 						CDH.ptr += IncSize;
 						GDH.ptr += IncSize;
 					}
+					//!< [1]
+					{
+						const auto& CB = ConstantBuffers[CB1Index + i];
+						const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
+						for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
+							const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+								.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
+								.SizeInBytes = static_cast<UINT>(DynamicOffset)
+							};
+							Device->CreateConstantBufferView(&CBVD, CDH);
+							Handle.emplace_back(GDH);
+							CDH.ptr += IncSize;
+							GDH.ptr += IncSize;
+						}
+					}
 				}
 			}
 		}
 		{
 			const auto DescCount = 1;
-			const auto Index = size(SwapchainBackBuffers);
+			const auto CBIndex = size(SwapChainBackBuffers) * 2;
 
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
@@ -301,12 +323,11 @@ public:
 
 			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
 				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
-				.NumDescriptors = DescCount,
+				.NumDescriptors = 1,
 				.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 				.NodeMask = 0
 			};
 			VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 			auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 			auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 			const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
@@ -319,8 +340,11 @@ public:
 				GDH.ptr += IncSize;
 			}
 			{
-				const auto& CB = ConstantBuffers[1];
-				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
+				const auto& CB = ConstantBuffers[CBIndex];
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
+					.BufferLocation = CB.Resource->GetGPUVirtualAddress(), 
+					.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) 
+				};
 				Device->CreateConstantBufferView(&CBVD, CDH);
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;
@@ -346,36 +370,32 @@ public:
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateBundleCommandList(const size_t i) override {
+		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+		{
+			const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
+			const auto PS = COM_PTR_GET(PipelineStates[0]);
+			VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+			{
+				BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+				const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
+				BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+				BCL->IASetIndexBuffer(&IndexBuffers[0].View);
+
+				const auto IB = IndirectBuffers[0];
+				BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
+			}
+			VERIFY_SUCCEEDED(BCL->Close());
+		}
 		if (0 == i) {
-			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-
+			const auto BCL = COM_PTR_GET(BundleCommandLists[size(SwapChainBackBuffers)]);
+			const auto PS = COM_PTR_GET(PipelineStates[1]);
+			VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 			{
-				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
-				const auto PS = COM_PTR_GET(PipelineStates[0]);
-				VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
-				{
-					BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-					const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-					BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
-					BCL->IASetIndexBuffer(&IndexBuffers[0].View);
-
-					const auto IB = IndirectBuffers[0];
-					BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
-				}
-				VERIFY_SUCCEEDED(BCL->Close());
+				BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+				BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
 			}
-
-			{
-				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
-				const auto PS = COM_PTR_GET(PipelineStates[1]);
-				VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
-				{
-					BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-					BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
-				}
-				VERIFY_SUCCEEDED(BCL->Close());
-			}
+			VERIFY_SUCCEEDED(BCL->Close());
 		}
 	}
 	virtual void PopulateCommandList(const size_t i) override {
@@ -385,7 +405,7 @@ public:
 		{
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[0]);
-				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
 
 				DCL->SetGraphicsRootSignature(RS);
 
@@ -400,30 +420,30 @@ public:
 					const std::array CHs = { HandleRTV };
 					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
 				}
+				{
+					const auto& Desc = CbvSrvUavDescs[i];
+					const auto& Heap = Desc.first;
+					const auto& Handle = Desc.second;
+					const std::array DHs = { COM_PTR_GET(Heap) };
+					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
 
-				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
+					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
 
-				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
-					const auto Offset = GetViewportSetOffset(j);
-					const auto Count = GetViewportSetCount(j);
+					for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+						const auto Offset = GetViewportSetOffset(j);
+						const auto Count = GetViewportSetCount(j);
 
-					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
-					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
+						DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
+						DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
-					{
-						const auto& Desc = CbvSrvUavDescs[0];
-						const auto& Heap = Desc.first;
-						const auto& Handle = Desc.second;
-						const std::array DHs = { COM_PTR_GET(Heap) };
-						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
-						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]);
+						DCL->SetGraphicsRootDescriptorTable(1, Handle[j + 1]);
+
+						DCL->ExecuteBundle(BCL);
 					}
-
-					DCL->ExecuteBundle(BCL);
 				}
 			}
 
-			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
+			const auto SCR = COM_PTR_GET(SwapChainBackBuffers[i].Resource);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
 			ResourceBarrier2(DCL,
 				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -431,18 +451,18 @@ public:
 
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[1]);
-				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[size(SwapChainBackBuffers)]);
 
 				DCL->SetGraphicsRootSignature(RS);
 
 				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
 
-				const std::array CHs = { SwapchainBackBuffers[i].Handle };
+				const std::array CHs = { SwapChainBackBuffers[i].Handle };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
 				{
-					const auto& Desc = CbvSrvUavDescs[1];
+					const auto& Desc = CbvSrvUavDescs[size(SwapChainBackBuffers)];
 					const auto& Heap = Desc.first;
 					const auto& Handle = Desc.second;
 
@@ -486,13 +506,21 @@ public:
 		ViewMatrices.emplace_back(View * DirectX::XMMatrixTranslationFromVector(OffsetLocal));
 
 	}
-	virtual void updateViewProjectionBuffer() {
-		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
-		for (auto i = 0; i < ColRow; ++i) {
+	virtual void UpdateViewProjectionBuffer() {
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}
 	}
-	virtual void updateWorldBuffer() {}
+	virtual void UpdateWorldBuffer() {
+		Angle += 1.0f;
+		while (Angle > 360.0f) { Angle -= 360.0f; }
+		while (Angle < 0.0f) { Angle += 360.0f; }
+
+		for (auto i = 0; i < _countof(WorldBuffer.World); ++i) {
+			DirectX::XMStoreFloat4x4(&WorldBuffer.World[i], DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(i * 45.0f + Angle)) * DirectX::XMMatrixTranslation(0.0f, i * 3-6, 0.0f));
+		}
+	}
 
 protected:
 	std::vector<UINT32> Indices;
@@ -512,7 +540,9 @@ protected:
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 
 	struct WORLD_BUFFER {
-		DirectX::XMFLOAT4X4 World[64];
+		DirectX::XMFLOAT4X4 World[16];
 	};
 	WORLD_BUFFER WorldBuffer;
+
+	float Angle = 0.0f;
 };

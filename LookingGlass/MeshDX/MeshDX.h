@@ -20,7 +20,7 @@ public:
 			View = DirectX::XMMatrixLookAtRH(Pos, Tag, Up);
 		}
 		CreateViewMatrices();
-		updateViewProjectionBuffer();
+		UpdateViewProjectionBuffer();
 
 		DX::OnCreate(hWnd, hInstance, Title);
 	}
@@ -138,7 +138,7 @@ public:
 			};
 			DX::SerializeRootSignature(Blob, 
 				{
-					//!< CBV
+					//!< CBV -> SetGraphicsRootDescriptorTable(0,..)
 					D3D12_ROOT_PARAMETER({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
@@ -161,13 +161,13 @@ public:
 			};
 			DX::SerializeRootSignature(Blob, 
 				{
-					//!< SRV
+					//!< SRV -> SetGraphicsRootDescriptorTable(0,..)
 					D3D12_ROOT_PARAMETER({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 					}),
-					//!< CBV
+					//!< CBV -> SetGraphicsRootDescriptorTable(1,..)
 					D3D12_ROOT_PARAMETER({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
@@ -239,7 +239,6 @@ public:
 					.NodeMask = 0 
 				};
 				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
@@ -261,7 +260,6 @@ public:
 					.NodeMask = 0
 				};
 				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
@@ -276,15 +274,13 @@ public:
 				auto& Heap = Desc.first;
 				auto& Handle = Desc.second;
 
-				//!< 描画回数分のデスクリプタ数を確保 [Allocate descriptors of draw count]
 				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
 					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
-					.NumDescriptors = GetViewportDrawCount(), 
-					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 
+					.NumDescriptors = 1,
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 					.NodeMask = 0
 				};
 				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 				auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
@@ -293,7 +289,7 @@ public:
 				//!< オフセット毎に使用するサイズ [Offset size]
 				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
 				//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
-				for (UINT i = 0; i < DHD.NumDescriptors; ++i) {
+				for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 					//!< オフセット毎の位置、サイズ [Offset location and size]
 					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
 						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
@@ -313,9 +309,13 @@ public:
 			auto& Heap = Desc.first;
 			auto& Handle = Desc.second;
 
-			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { .Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, .NumDescriptors = 1, .Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0 };
+			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
+				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+				.NumDescriptors = 1,
+				.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 
+				.NodeMask = 0 
+			};
 			VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-
 			auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
 			auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 			const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
@@ -331,7 +331,10 @@ public:
 			//!< コンスタントバッファービュー [Constant buffer view]
 			{
 				const auto& CB = ConstantBuffers[1];
-				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { .BufferLocation = CB.Resource->GetGPUVirtualAddress(), .SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) };
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
+					.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
+					.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+				};
 				Device->CreateConstantBufferView(&CBVD, CDH);
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;
@@ -420,33 +423,31 @@ public:
 					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
 				}
 
-				//!< 描画毎にコンスタントバッファのアクセス先をオフセットする [Offset constant buffer access on each draw]
-				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
-
-				//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行) [Because viewport max is 16, need to draw few times]
-				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
-					const auto Offset = GetViewportSetOffset(j);
-					const auto Count = GetViewportSetCount(j);
-
-					DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
-					DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
-
+				{
 					//!< コンスタントバッファ [Constant buffer]
-					{
-						const auto& Desc = CbvSrvUavDescs[0];
-						const auto& Heap = Desc.first;
-						const auto& Handle = Desc.second;
-						const std::array DHs = { COM_PTR_GET(Heap) };
-						DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					const auto& Desc = CbvSrvUavDescs[0];
+					const auto& Heap = Desc.first;
+					const auto& Handle = Desc.second;
+					const std::array DHs = { COM_PTR_GET(Heap) };
+					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+
+					//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行) [Because viewport max is 16, need to draw few times]
+					for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+						const auto Offset = GetViewportSetOffset(j);
+						const auto Count = GetViewportSetCount(j);
+
+						DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
+						DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
+
 						//!< オフセット毎のハンドルを使用 [Use handle on each offset]
-						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]);
+						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]); //!< CBV
+
+						DCL->ExecuteBundle(BCL);
 					}
-					
-					DCL->ExecuteBundle(BCL);
 				}
 			}
 
-			const auto SCR = COM_PTR_GET(SwapchainBackBuffers[i].Resource);
+			const auto SCR = COM_PTR_GET(SwapChainBackBuffers[i].Resource);
 			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
 			//!< スワップチェインをレンダーターゲット、レンダーテクスチャをシェーダリソースとする
 			ResourceBarrier2(DCL,
@@ -463,7 +464,7 @@ public:
 				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
 				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
 
-				const std::array CHs = { SwapchainBackBuffers[i].Handle };
+				const std::array CHs = { SwapChainBackBuffers[i].Handle };
 				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
 
 				//!< デスクリプタ
@@ -515,9 +516,9 @@ public:
 		ViewMatrices.emplace_back(View * DirectX::XMMatrixTranslationFromVector(OffsetLocal));
 
 	}
-	virtual void updateViewProjectionBuffer() {
-		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
-		for (auto i = 0; i < ColRow; ++i) {
+	virtual void UpdateViewProjectionBuffer() {
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}
 	}
