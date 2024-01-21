@@ -222,47 +222,54 @@ public:
 	virtual void CreateDescriptor() override {
 		{
 			{
-				auto& Desc = RtvDescs.emplace_back();
-				auto& Heap = Desc.first;
-				auto& Handle = Desc.second;
+				const auto DescCount = 1;
 
-				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
-					.NumDescriptors = 1,
-					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 
-					.NodeMask = 0 
-				};
-				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+				for (auto i = 0; i < DescCount; ++i) {
+					{
+						auto& Desc = RtvDescs.emplace_back();
+						auto& Heap = Desc.first;
+						auto& Handle = Desc.second;
 
-				const auto& Tex = RenderTextures[0];
-				Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
-				Handle.emplace_back(CDH);
-				CDH.ptr += IncSize;
-			}
-			{
-				auto& Desc = DsvDescs.emplace_back();
-				auto& Heap = Desc.first;
-				auto& Handle = Desc.second;
+						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+							.NumDescriptors = 1,
+							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+							.NodeMask = 0
+						};
+						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
-				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-					.NumDescriptors = 1,
-					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 
-					.NodeMask = 0 
-				};
-				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+						const auto& Tex = RenderTextures[0];
+						Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
+						Handle.emplace_back(CDH);
+						CDH.ptr += IncSize;
+					}
+					{
+						auto& Desc = DsvDescs.emplace_back();
+						auto& Heap = Desc.first;
+						auto& Handle = Desc.second;
 
-				const auto& Tex = DepthTextures[0];
-				Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
-				Handle.emplace_back(CDH);
-				CDH.ptr += IncSize;
+						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+							.NumDescriptors = 1,
+							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+							.NodeMask = 0
+						};
+						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+						const auto& Tex = DepthTextures[0];
+						Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+						Handle.emplace_back(CDH);
+						CDH.ptr += IncSize;
+					}
+				}
 			}
 			{
 				const auto DescCount = size(SwapChainBackBuffers);
+
 				const auto CB0Index = 0;
 				const auto CB1Index = size(SwapChainBackBuffers);
 
@@ -282,7 +289,6 @@ public:
 					auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 				
-					//!< [0]
 					{
 						const auto& CB = ConstantBuffers[CB0Index + i];
 						const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
@@ -294,7 +300,6 @@ public:
 						CDH.ptr += IncSize;
 						GDH.ptr += IncSize;
 					}
-					//!< [1]
 					{
 						const auto& CB = ConstantBuffers[CB1Index + i];
 						const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
@@ -314,6 +319,7 @@ public:
 		}
 		{
 			const auto DescCount = 1;
+
 			const auto CBIndex = size(SwapChainBackBuffers) * 2;
 
 			auto& Desc = CbvSrvUavDescs.emplace_back();
@@ -409,15 +415,17 @@ public:
 				DCL->SetGraphicsRootSignature(RS);
 
 				{
-					const auto& HandleRTV = RtvDescs[0].second[0];
-					const auto& HandleDSV = DsvDescs[0].second[0];
+					const auto& DescRTV = RtvDescs[0];
+					const auto& DescDSV = DsvDescs[0];
+					const auto& HandleRTV = DescRTV.second;
+					const auto& HandleDSV = DescDSV.second;
 
 					constexpr std::array<D3D12_RECT, 0> Rects = {};
-					DCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
-					DCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
+					DCL->ClearRenderTargetView(HandleRTV[0], DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
+					DCL->ClearDepthStencilView(HandleDSV[0], D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
 
-					const std::array CHs = { HandleRTV };
-					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV);
+					const std::array CHs = { HandleRTV[0]};
+					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
 				}
 				{
 					const auto& Desc = CbvSrvUavDescs[i];

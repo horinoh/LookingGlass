@@ -209,7 +209,7 @@ public:
 	virtual void CreateDescriptor() override {
 		{
 			const auto DescCount = static_cast<uint32_t>(size(SwapchainBackBuffers));
-			
+
 			const auto UB0Index = 0;
 			const auto UB1Index = static_cast<uint32_t>(size(SwapchainBackBuffers));
 			const auto DSIndex = 0;
@@ -313,7 +313,7 @@ public:
 	}
 	virtual void CreateFramebuffer() override {
 		VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], QuiltWidth, QuiltHeight, 1, { RenderTextures[0].View, DepthTextures[0].View });
-
+		
 		for (const auto& i : SwapchainBackBuffers) {
 			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[1], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i.ImageView });
 		}
@@ -335,7 +335,6 @@ public:
 	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
 		{
 			const auto RP = RenderPasses[0];
-			const auto FB = Framebuffers[0];
 			const auto PL = Pipelines[0];
 			const auto PLL = PipelineLayouts[0];
 			const auto SCB = SecondaryCommandBuffers[i];
@@ -349,7 +348,7 @@ public:
 				.pNext = nullptr,
 				.renderPass = RP,
 				.subpass = 0,
-				.framebuffer = FB,
+				.framebuffer = VK_NULL_HANDLE,
 				.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
 				.pipelineStatistics = 0,
 			};
@@ -426,6 +425,7 @@ public:
 	}
 	virtual void PopulateCommandBuffer(const size_t i) override {
 		const auto CB = CommandBuffers[i];
+
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			.pNext = nullptr,
@@ -460,11 +460,9 @@ public:
 				RenderTextures[0].Image);
 
 			{
-				const auto Index = size(SwapchainBackBuffers);
-
 				const auto RP = RenderPasses[1];
-				const auto FB = Framebuffers[1 + i];
-				const auto SCB = SecondaryCommandBuffers[Index];
+				const auto FB = Framebuffers[i + 1];
+				const auto SCB = SecondaryCommandBuffers[size(SwapchainBackBuffers)];
 
 				constexpr std::array<VkClearValue, 0> CVs = {};
 				const VkRenderPassBeginInfo RPBI = {

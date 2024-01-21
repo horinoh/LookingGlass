@@ -226,79 +226,90 @@ public:
 	virtual void CreateDescriptor() override {
 		//!<【パス0】[Pass0]
 		{
-			//!< レンダーターゲットビュー [Render target view]
 			{
-				auto& Desc = RtvDescs.emplace_back();
-				auto& Heap = Desc.first;
-				auto& Handle = Desc.second;
+				const auto DescCount = 1;
 
-				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
-					.NumDescriptors = 1,
-					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 
-					.NodeMask = 0 
-				};
-				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+				for (auto i = 0; i < DescCount; ++i) {
+					//!< レンダーターゲットビュー [Render target view]
+					{
+						auto& Desc = RtvDescs.emplace_back();
+						auto& Heap = Desc.first;
+						auto& Handle = Desc.second;
 
-				const auto& Tex = RenderTextures[0];
-				Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
-				Handle.emplace_back(CDH);
-				CDH.ptr += IncSize;
+						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+							.NumDescriptors = 1,
+							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+							.NodeMask = 0
+						};
+						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+						const auto& Tex = RenderTextures[0];
+						Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
+						Handle.emplace_back(CDH);
+						CDH.ptr += IncSize;
+					}
+					//!< デプスステンシルビュー [Depth stencil view]
+					{
+						auto& Desc = DsvDescs.emplace_back();
+						auto& Heap = Desc.first;
+						auto& Handle = Desc.second;
+
+						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+							.NumDescriptors = 1,
+							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+							.NodeMask = 0
+						};
+						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+						const auto& Tex = DepthTextures[0];
+						Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+						Handle.emplace_back(CDH);
+						CDH.ptr += IncSize;
+					}
+				}
 			}
-			//!< デプスステンシルビュー [Depth stencil view]
-			{
-				auto& Desc = DsvDescs.emplace_back();
-				auto& Heap = Desc.first;
-				auto& Handle = Desc.second;
 
-				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 
-					.NumDescriptors = 1, 
-					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 
-					.NodeMask = 0
-				};
-				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-
-				const auto& Tex = DepthTextures[0];
-				Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
-				Handle.emplace_back(CDH);
-				CDH.ptr += IncSize;
-			}
 			//!< コンスタントバッファービュー [Constant buffer view]
 			{
-				auto& Desc = CbvSrvUavDescs.emplace_back();
-				auto& Heap = Desc.first;
-				auto& Handle = Desc.second;
+				const auto DescCount = 1;
 
-				const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
-					.NumDescriptors = 1,
-					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-					.NodeMask = 0
-				};
-				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-				auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
-				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+				for (auto i = 0; i < DescCount; ++i) {
+					auto& Desc = CbvSrvUavDescs.emplace_back();
+					auto& Heap = Desc.first;
+					auto& Handle = Desc.second;
 
-				const auto& CB = ConstantBuffers[0];
-				//!< オフセット毎に使用するサイズ [Offset size]
-				const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
-				//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
-				for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
-					//!< オフセット毎の位置、サイズ [Offset location and size]
-					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
-						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
-						.SizeInBytes = static_cast<UINT>(DynamicOffset)
+					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+						.NumDescriptors = 1,
+						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+						.NodeMask = 0
 					};
-					Device->CreateConstantBufferView(&CBVD, CDH);
-					Handle.emplace_back(GDH);
-					CDH.ptr += IncSize;
-					GDH.ptr += IncSize;
+					VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+					auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+					auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+					const auto& CB = ConstantBuffers[0];
+					//!< オフセット毎に使用するサイズ [Offset size]
+					const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
+					//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
+					for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
+						//!< オフセット毎の位置、サイズ [Offset location and size]
+						const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+							.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
+							.SizeInBytes = static_cast<UINT>(DynamicOffset)
+						};
+						Device->CreateConstantBufferView(&CBVD, CDH);
+						Handle.emplace_back(GDH);
+						CDH.ptr += IncSize;
+						GDH.ptr += IncSize;
+					}
 				}
 			}
 		}

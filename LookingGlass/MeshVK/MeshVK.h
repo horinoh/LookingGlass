@@ -353,7 +353,6 @@ public:
 			//!<yƒpƒX0z[Pass0]
 			{
 				const auto RP = RenderPasses[0];
-				const auto FB = Framebuffers[0];
 				const auto PL = Pipelines[0];
 				const auto PLL = PipelineLayouts[0];
 				const auto SCB = SecondaryCommandBuffers[0];
@@ -364,7 +363,7 @@ public:
 					.pNext = nullptr,
 					.renderPass = RP,
 					.subpass = 0,
-					.framebuffer = FB,
+					.framebuffer = VK_NULL_HANDLE,
 					.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
 					.pipelineStatistics = 0,
 				};
@@ -446,6 +445,7 @@ public:
 	}
 	virtual void PopulateCommandBuffer(const size_t i) override {
 		const auto CB = CommandBuffers[i];
+
 		constexpr VkCommandBufferBeginInfo CBBI = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 			.pNext = nullptr,
