@@ -302,7 +302,7 @@ public:
 					}
 					{
 						const auto& CB = ConstantBuffers[CB1Index + i];
-						const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
+						const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 						for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 							const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
 								.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
@@ -516,7 +516,8 @@ public:
 	virtual void UpdateViewProjectionBuffer() {
 		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
-			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
+			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i].View, ViewMatrices[i]);
+			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i].Projection, ProjectionMatrices[i]);
 		}
 	}
 	virtual void UpdateWorldBuffer() {
@@ -550,8 +551,12 @@ protected:
 	DirectX::XMMATRIX View;
 	std::vector<DirectX::XMMATRIX> ViewMatrices;
 
+	struct VIEW_PROJECTION {
+		DirectX::XMFLOAT4X4 View;
+		DirectX::XMFLOAT4X4 Projection;
+	};
 	struct VIEW_PROJECTION_BUFFER {
-		DirectX::XMFLOAT4X4 ViewProjection[64];
+		VIEW_PROJECTION ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 

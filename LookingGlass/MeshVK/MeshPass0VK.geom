@@ -4,7 +4,7 @@
 
 layout (location = 0) in vec3 InNormal[];
 
-layout (set = 0, binding = 0) uniform ViewProjectionBuffer
+layout (set = 0, binding = 0) uniform VIEW_PROJECTION_BUFFER
 {
 	mat4 ViewProjection[64];
 } VPB;

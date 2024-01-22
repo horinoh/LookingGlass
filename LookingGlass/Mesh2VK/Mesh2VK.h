@@ -249,7 +249,7 @@ public:
 					.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DescriptorUpdateInfo)
 				}),
 			}, DSL);
-			const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
+			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 			for (uint32_t i = 0; i < DescCount; ++i) {
 				const DescriptorUpdateInfo DUI = {
 					VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
@@ -361,7 +361,7 @@ public:
 			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
 				vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-				const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
+				const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 					const auto Offset = GetViewportSetOffset(j);
 					const auto Count = GetViewportSetCount(j);
@@ -511,7 +511,8 @@ public:
 	virtual void UpdateViewProjectionBuffer() {
 		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
-			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
+			ViewProjectionBuffer.ViewProjection[i].View = ViewMatrices[i];
+			ViewProjectionBuffer.ViewProjection[i].Projection = ProjectionMatrices[i];
 		}
 	}
 	virtual void UpdateWorldBuffer() {
@@ -547,8 +548,12 @@ protected:
 	glm::mat4 View;
 	std::vector<glm::mat4> ViewMatrices;
 
+	struct VIEW_PROJECTION {
+		glm::mat4 View;
+		glm::mat4 Projection;
+	};
 	struct VIEW_PROJECTION_BUFFER {
-		glm::mat4 ViewProjection[64];
+		VIEW_PROJECTION ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 

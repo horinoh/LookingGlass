@@ -258,7 +258,7 @@ public:
 			//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
 			//!< [When using dynamic offset, .range value is data size used in each offset]
 			//!<	100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
-			const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
+			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 			for (uint32_t i = 0; i < DescCount; ++i) {
 				const DescriptorUpdateInfo DUI = {
 					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = DynamicOffset }),
@@ -377,7 +377,7 @@ public:
 					vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
 					//!< 描画毎にユニフォームバッファのアクセス先をオフセットする [Offset uniform buffer access on each draw]
-					const auto DynamicOffset = GetViewportMax() * sizeof(glm::mat4);
+					const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 					//!< アライメントが必要
 					VkMemoryRequirements MR;
 					vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);

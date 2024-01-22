@@ -297,7 +297,7 @@ public:
 
 					const auto& CB = ConstantBuffers[0];
 					//!< オフセット毎に使用するサイズ [Offset size]
-					const auto DynamicOffset = GetViewportMax() * sizeof(DirectX::XMFLOAT4X4);
+					const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 					//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
 					for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 						//!< オフセット毎の位置、サイズ [Offset location and size]
