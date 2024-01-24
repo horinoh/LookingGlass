@@ -27,7 +27,8 @@ public:
 	}
 	virtual void DrawFrame(const UINT i) override {
 		UpdateWorldBuffer();
-		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
+		//CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer.World[0]) * GetInstanceCount()), &WorldBuffer);
 	}
 
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -77,7 +78,7 @@ public:
 
 		const D3D12_DRAW_INDEXED_ARGUMENTS DIA = {
 			.IndexCountPerInstance = static_cast<UINT32>(size(Indices)),
-			.InstanceCount = 16,
+			.InstanceCount = GetInstanceCount(),
 			.StartIndexLocation = 0,
 			.BaseVertexLocation = 0,
 			.StartInstanceLocation = 0
@@ -525,11 +526,15 @@ public:
 		while (Angle > 360.0f) { Angle -= 360.0f; }
 		while (Angle < 0.0f) { Angle += 360.0f; }
 
+		const auto Count = GetInstanceCount();
 		constexpr auto Radius = 2.0f;
-		for (auto i = 0; i < _countof(WorldBuffer.World); ++i) {
-			const auto Radian = DirectX::XMConvertToRadians(static_cast<float>(i) * 90.0f);
+		constexpr auto Height = 10.0f;
+		const auto OffsetY = Height / static_cast<float>(Count);
+		for (UINT i = 0; i < Count; ++i) {
+			const auto Index = static_cast<float>(i);
+			const auto Radian = DirectX::XMConvertToRadians(Index * 90.0f);
 			const auto X = Radius * cos(Radian);
-			const auto Y = (static_cast<float>(i) - static_cast<float>(_countof(WorldBuffer.World)) * 0.5f) * 0.5f;
+			const auto Y = OffsetY * (Index - static_cast<float>(Count) * 0.5f);
 			const auto Z = Radius * sin(Radian);
 
 			//const auto RotL = DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(i * 45.0f + Angle));
@@ -538,6 +543,8 @@ public:
 			DirectX::XMStoreFloat4x4(&WorldBuffer.World[i], RotL * DirectX::XMMatrixTranslation(X, Y, Z) * RotG);
 		}
 	}
+
+	UINT GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<UINT>(_countof(WorldBuffer.World))); }
 
 protected:
 	std::vector<UINT32> Indices;
@@ -566,4 +573,6 @@ protected:
 	WORLD_BUFFER WorldBuffer;
 
 	float Angle = 0.0f;
+
+	const UINT InstanceCount = 16;
 };

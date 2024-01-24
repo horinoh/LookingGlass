@@ -27,7 +27,8 @@ public:
 	}
 	virtual void DrawFrame(const UINT i) override {
 		UpdateWorldBuffer();
-		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
+		//CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
+		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer.World[0]) * GetInstanceCount(), &WorldBuffer);
 	}
 
 	glm::vec3 ToVec3(const FbxVector4& rhs) { return glm::vec3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -75,7 +76,7 @@ public:
 
 		const VkDrawIndexedIndirectCommand DIIC = {
 			.indexCount = static_cast<uint32_t>(size(Indices)),
-			.instanceCount = 16,
+			.instanceCount = GetInstanceCount(),
 			.firstIndex = 0,
 			.vertexOffset = 0,
 			.firstInstance = 0
@@ -489,9 +490,7 @@ public:
 	virtual void CreateProjectionMatrix(const int i) override {
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
-		//!< 左右方向にずれている角度(ラジアン)
 		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
-		//!< 左右方向にずれている距離
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		auto Prj = glm::perspective(Fov, LenticularBuffer.DisplayAspect, 0.1f, 100.0f);
@@ -523,11 +522,16 @@ public:
 		const auto Identity = glm::mat4(1.0f);
 		const auto AxisX = glm::vec3(1.0f, 0.0f, 0.0f);
 		const auto AxisY = glm::vec3(0.0f, 1.0f, 0.0f);
+		
+		const auto Count = GetInstanceCount();
 		constexpr auto Radius = 2.0f;
-		for (auto i = 0; i < _countof(WorldBuffer.World); ++i) {
-			const auto Radian = glm::radians(static_cast<float>(i) * 90.0f);
+		constexpr auto Height = 10.0f;
+		const auto OffsetY = Height / static_cast<float>(Count);
+		for (uint32_t i = 0; i < Count; ++i) {
+			const auto Index = static_cast<float>(i);
+			const auto Radian = glm::radians(Index * 90.0f);
 			const auto X = Radius * cos(Radian);
-			const auto Y = (static_cast<float>(i) - static_cast<float>(_countof(WorldBuffer.World)) * 0.5f) * 0.5f;
+			const auto Y = OffsetY * (Index - static_cast<float>(Count) * 0.5f);
 			const auto Z = Radius * sin(Radian);
 
 			//const auto RotL = glm::rotate(Identity, glm::radians(i * 45.0f + Angle), AxisX);
@@ -536,6 +540,9 @@ public:
 			WorldBuffer.World[i] = glm::translate(RotG, glm::vec3(X, Y, Z)) * RotL;
 		}
 	}
+
+	uint32_t GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<uint32_t>(_countof(WorldBuffer.World))); }
+
 protected:
 	std::vector<uint32_t> Indices;
 	std::vector<glm::vec3> Vertices;
@@ -563,4 +570,6 @@ protected:
 	WORLD_BUFFER WorldBuffer;
 
 	float Angle = 0.0f;
+
+	const uint32_t InstanceCount = 16;
 };
