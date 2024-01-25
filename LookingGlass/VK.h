@@ -43,7 +43,7 @@ namespace Colors
 	constexpr VkClearColorValue Yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
 }
 
-#define VERIFY_SUCCEEDED(x) { const auto VR = (x); assert(VK_SUCCESS == VR && ""); }
+#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ __debugbreak(); } }
 
 #include "Common.h"
 

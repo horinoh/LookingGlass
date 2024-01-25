@@ -33,9 +33,6 @@ float2 ToTexcoord(float3 CoordZ)
 
 float4 main(IN In) : SV_TARGET
 {
-#if 0
-	return Texture.Sample(Sampler, In.Texcoord);
-#else
 	float2 UV = In.Texcoord;
 
 	//!< 自前で描画しているので、キルトとディスプレイのアスペクト比調整は不要
@@ -57,5 +54,4 @@ float4 main(IN In) : SV_TARGET
 		RGB[i] = lerp(Color1, Color2, Z - CoordZ1.z);
 	}
 	return float4(RGB[LB.Ri].r, RGB[1].g, RGB[LB.Bi].b, 1.0);
-#endif
 }

@@ -89,5 +89,8 @@
     <CustomBuild Include="MeshPass1VK.vert">
       <Filter>Shader Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="MeshQuiltVK.frag">
+      <Filter>Shader Files</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

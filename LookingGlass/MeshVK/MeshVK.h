@@ -203,7 +203,11 @@ public:
 		//!<yƒpƒX1z[Pass1]
 		const std::array SMsPass1 = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.vert.spv"),
+#ifdef DISPLAY_QUILT
+			VK::CreateShaderModule(std::filesystem::path(".") / "MeshQuiltVK.frag.spv"),
+#else
 			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.frag.spv"),
+#endif
 		};
 		const std::array PSSCIsPass1 = {
 			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMsPass1[0], .pName = "main", .pSpecializationInfo = nullptr }),

@@ -18,6 +18,8 @@
 
 #define TO_RADIAN(x) ((x) * std::numbers::pi_v<float> / 180.0f)
 
+//#define DISPLAY_QUILT
+
 class Holo
 {
 public:

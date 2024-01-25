@@ -89,5 +89,8 @@
     <FxCompile Include="Mesh2Pass1DX.vs.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="Mesh2QuiltDX.ps.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

@@ -35,9 +35,6 @@ vec2 ToTexcoord(vec3 CoordZ)
 
 void main()
 {
-#if 0
-	OutColor = texture(Sampler2D, InTexcoord);
-#else
 	vec2 UV = InTexcoord;
 
 	if(any(lessThan(UV, vec2(0)))) discard;
@@ -57,5 +54,4 @@ void main()
 		RGB[i] = mix(Color1, Color2, Z - CoordZ1.z);
 	}
 	OutColor = vec4(RGB[LB.Ri].r, RGB[1].g, RGB[LB.Bi].b, 1.0);
-#endif
 }
