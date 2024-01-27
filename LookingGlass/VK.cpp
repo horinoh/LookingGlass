@@ -141,7 +141,7 @@ void VK::LoadVulkanLibrary()
 {
 	VulkanLibrary = LoadLibrary(TEXT("vulkan-1.dll"));
 
-#define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetInstanceProcAddr(nullptr, "vk" #proc)); assert(nullptr != vk ## proc && #proc);
+#define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetInstanceProcAddr(nullptr, "vk" #proc)); VERIFY(nullptr != vk ## proc && #proc);
 #include "VKGlobalProcAddr.h"
 #undef VK_PROC_ADDR
 }
@@ -188,7 +188,7 @@ void VK::CreateInstance(const std::vector<const char*>& AdditionalLayers, const 
 	};
 	VERIFY_SUCCEEDED(vkCreateInstance(&ICI, GetAllocationCallbacks(), &Instance));
 
-#define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetInstanceProcAddr(Instance, "vk" #proc)); assert(nullptr != vk ## proc && #proc);
+#define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetInstanceProcAddr(Instance, "vk" #proc)); VERIFY(nullptr != vk ## proc && #proc);
 #include "VKInstanceProcAddr.h"
 #undef VK_PROC_ADDR
 }
@@ -234,7 +234,7 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 
 		{
 			constexpr uint8_t QueueFamilyPropMax = 8;
-			assert(size(QFPs) <= QueueFamilyPropMax);
+			VERIFY(size(QFPs) <= QueueFamilyPropMax);
 			//!< 機能を持つキューファミリインデックスのビットを立てておく
 			std::bitset<QueueFamilyPropMax> GraphicsMask;
 			std::bitset<QueueFamilyPropMax> PresentMask;
@@ -301,7 +301,7 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 				VERIFY_SUCCEEDED(vkCreateDevice(PD, &DCI, GetAllocationCallbacks(), &Device));
 			}
 
-#define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetDeviceProcAddr(Device, "vk" #proc)); assert(nullptr != vk ## proc && #proc && #proc);
+#define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetDeviceProcAddr(Device, "vk" #proc)); VERIFY(nullptr != vk ## proc && #proc && #proc);
 #include "VKDeviceProcAddr.h"
 #undef VK_PROC_ADDR
 
@@ -330,7 +330,7 @@ VkSurfaceFormatKHR VK::SelectSurfaceFormat(VkPhysicalDevice PD, VkSurfaceKHR Sfc
 			}
 		}
 		//!< ここに来てはいけない
-		assert(false && "Valid surface format not found");
+		VERIFY(false);
 		return 0;
 	}();
 
@@ -344,13 +344,6 @@ VkPresentModeKHR VK::SelectSurfacePresentMode(VkPhysicalDevice PD, VkSurfaceKHR 
 	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfacePresentModesKHR(PD, Sfc, &Count, data(PMs)));
 
 	//!< 可能なら VK_PRESENT_MODE_MAILBOX_KHR を選択、そうでなければ VK_PRESENT_MODE_FIFO_KHR を選択 (Want to select VK_PRESENT_MODE_MAILBOX_KHR, or select VK_PRESENT_MODE_FIFO_KHR)
-	/**
-	@brief VkPresentModeKHR
-	* VK_PRESENT_MODE_IMMEDIATE_KHR		... vsyncを待たないのでテアリングが起こる (Tearing happen, no vsync wait)
-	* VK_PRESENT_MODE_MAILBOX_KHR		... キューは 1 つで常に最新で上書きされる、vsyncで更新される (Queue is 1, and always update to new image and updated on vsync)
-	* VK_PRESENT_MODE_FIFO_KHR			... VulkanAPI が必ずサポートする vsyncで更新 (VulkanAPI always support this, updated on vsync)
-	* VK_PRESENT_MODE_FIFO_RELAXED_KHR	... FIFOに在庫がある場合は vsyncを待つが、間に合わない場合は即座に更新されテアリングが起こる (If FIFO is not empty wait vsync. but if empty, updated immediately and tearing will happen)
-	*/
 	const auto SelectedPresentMode = [&]() {
 		for (auto i : PMs) {
 			if (VK_PRESENT_MODE_MAILBOX_KHR == i) {
@@ -364,7 +357,7 @@ VkPresentModeKHR VK::SelectSurfacePresentMode(VkPhysicalDevice PD, VkSurfaceKHR 
 				return i;
 			}
 		}
-		assert(false && "Not foud");
+		VERIFY(false);
 		return PMs[0];
 	}();
 
@@ -390,7 +383,7 @@ void VK::CreateSwapchain(VkPhysicalDevice PD, VkSurfaceKHR Sfc, const uint32_t W
 	//!< レイヤー、ステレオレンダリング等をしたい場合は1以上になるが、ここでは1
 	uint32_t ImageArrayLayers = 1;
 
-	assert((VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT & SC.supportedUsageFlags) && "VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT is not supported");
+	VERIFY(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT & SC.supportedUsageFlags);
 
 	//!< グラフィックとプレゼントのキューファミリが異なる場合はキューファミリインデックスの配列が必要、また VK_SHARING_MODE_CONCURRENT を指定すること
 	//!< (ただし VK_SHARING_MODE_CONCURRENT にするとパフォーマンスが落ちる場合がある)
@@ -534,7 +527,7 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 	if (nullptr != TES) { PSSCIs.emplace_back(*TES); }
 	if (nullptr != TCS) { PSSCIs.emplace_back(*TCS); }
 	if (nullptr != GS) { PSSCIs.emplace_back(*GS); }
-	assert(!empty(PSSCIs) && "");
+	VERIFY(!empty(PSSCIs));
 
 	//!< バーテックスインプット (VertexInput)
 	const VkPipelineVertexInputStateCreateInfo PVISCI = {
@@ -566,12 +559,12 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 	//assert((PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST || PDF.tessellationShader) && "");
 	//!< インデックス 0xffffffff(VK_INDEX_TYPE_UINT32), 0xffff(VK_INDEX_TYPE_UINT16) をプリミティブのリスタートとする、インデックス系描画の場合(vkCmdDrawIndexed, vkCmdDrawIndexedIndirect)のみ有効
 	//!< LIST 系使用時 primitiveRestartEnable 無効であること
-	assert((
+	VERIFY((
 		(PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST || PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST || PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST || PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY || PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY || PIASCI.topology != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
-		|| PIASCI.primitiveRestartEnable == VK_FALSE) /*&& ""*/);
+		|| PIASCI.primitiveRestartEnable == VK_FALSE));
 
 	//!< テセレーション (Tessellation)
-	assert((PT != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST || PatchControlPoints != 0) && "");
+	VERIFY((PT != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST || PatchControlPoints != 0));
 	const VkPipelineTessellationStateCreateInfo PTSCI = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
 		.pNext = nullptr,
@@ -611,7 +604,7 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 		.alphaToCoverageEnable = VK_FALSE, .alphaToOneEnable = VK_FALSE
 	};
 	//assert((PMSCI.sampleShadingEnable == VK_FALSE || PDF.sampleRateShading) && "");
-	assert((PMSCI.minSampleShading >= 0.0f && PMSCI.minSampleShading <= 1.0f) && "");
+	VERIFY((PMSCI.minSampleShading >= 0.0f && PMSCI.minSampleShading <= 1.0f));
 	//assert((PMSCI.alphaToOneEnable == VK_FALSE || PDF.alphaToOne) && "");
 
 	//!< カラーブレンド (ColorBlend)
@@ -729,7 +722,7 @@ void VK::Present()
 	//!< 同時に複数のプレゼントが可能だが、1つのスワップチェインからは1つのみ
 	const std::array Swapchains = { Swapchain };
 	const std::array ImageIndices = { SwapchainImageIndex };
-	assert(size(Swapchains) == size(ImageIndices) && "Must be same");
+	VERIFY(size(Swapchains) == size(ImageIndices));
 
 	//!< サブミット時に指定したセマフォ(RenderFinishedSemaphore)を待ってからプレゼントが行なわれる
 	const VkPresentInfoKHR PresentInfo = {

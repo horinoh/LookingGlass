@@ -65,7 +65,7 @@ void DX::CreateDevice([[maybe_unused]] HWND hWnd)
 			VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, reinterpret_cast<void*>(&FDFL), sizeof(FDFL)));
 #define D3D_FEATURE_LEVEL_ENTRY(fl) case D3D_FEATURE_LEVEL_##fl: break;
 			switch (FDFL.MaxSupportedFeatureLevel) {
-			default: assert(0 && "Unknown FeatureLevel"); break;
+			default: VERIFY(false); break;
 				D3D_FEATURE_LEVEL_ENTRY(12_2)
 				D3D_FEATURE_LEVEL_ENTRY(12_1)
 				D3D_FEATURE_LEVEL_ENTRY(12_0)
@@ -178,19 +178,20 @@ void DX::CreateBundleCommandList(const size_t Num)
 	}
 }
 
-template<> void DX::SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<D3D12_ROOT_PARAMETER>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags)
+template<> void DX::SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<D3D12_ROOT_PARAMETER1>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags)
 {
-	D3D12_FEATURE_DATA_ROOT_SIGNATURE FDRS = { .HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0 };
+	D3D12_FEATURE_DATA_ROOT_SIGNATURE FDRS = { .HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1 };
 	VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, reinterpret_cast<void*>(&FDRS), sizeof(FDRS)));
-	assert(FDRS.HighestVersion >= D3D_ROOT_SIGNATURE_VERSION_1_0 && "");
+	LOG(data(std::format("RootSignature HighestVersion = {:#x}\n", static_cast<UINT>(FDRS.HighestVersion))));
+	VERIFY(D3D_ROOT_SIGNATURE_VERSION_1_1 == FDRS.HighestVersion);
 
 	COM_PTR<ID3DBlob> ErrorBlob;
-	const D3D12_ROOT_SIGNATURE_DESC RSD = {
+	const D3D12_ROOT_SIGNATURE_DESC1 RSD = {
 		.NumParameters = static_cast<UINT>(size(RPs)), .pParameters = data(RPs),
 		.NumStaticSamplers = static_cast<UINT>(size(SSDs)), .pStaticSamplers = data(SSDs),
 		.Flags = Flags
 	};
-	const D3D12_VERSIONED_ROOT_SIGNATURE_DESC VRSD = { .Version = D3D_ROOT_SIGNATURE_VERSION_1_0, .Desc_1_0 = RSD, };
+	const D3D12_VERSIONED_ROOT_SIGNATURE_DESC VRSD = { .Version = D3D_ROOT_SIGNATURE_VERSION_1_1, .Desc_1_1 = RSD, };
 	VERIFY_SUCCEEDED(D3D12SerializeVersionedRootSignature(&VRSD, COM_PTR_PUT(Blob), COM_PTR_PUT(ErrorBlob)));
 }
 
@@ -205,7 +206,7 @@ void DX::CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
 	const std::vector<DXGI_FORMAT>& RTVFormats,
 	LPCWSTR Name)
 {
-	assert((VS.pShaderBytecode != nullptr && VS.BytecodeLength) && "");
+	VERIFY((VS.pShaderBytecode != nullptr && VS.BytecodeLength));
 
 	//!< キャッシュドパイプラインステート (CachedPipelineState)
 	//!< (VK の VkGraphicsPipelineCreateInfo.basePipelineHandle, basePipelineIndex 相当?)
@@ -245,14 +246,14 @@ void DX::CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
 	};
 
 	//!< レンダーターゲット数分だけ必要なもの
-	assert(size(RTBDs) <= _countof(GPSD.BlendState.RenderTarget) && "");
+	VERIFY(size(RTBDs) <= _countof(GPSD.BlendState.RenderTarget));
 	std::ranges::copy(RTBDs, GPSD.BlendState.RenderTarget);
 	//!< TRUE == IndependentBlendEnable の場合はレンダーターゲットの分だけ用意すること (If TRUE == IndependentBlendEnable, need NumRenderTarget elements)
-	assert((false == GPSD.BlendState.IndependentBlendEnable || size(RTBDs) == GPSD.NumRenderTargets) && "");
-	assert(GPSD.NumRenderTargets <= _countof(GPSD.RTVFormats) && "");
+	VERIFY((false == GPSD.BlendState.IndependentBlendEnable || size(RTBDs) == GPSD.NumRenderTargets) && "");
+	VERIFY(GPSD.NumRenderTargets <= _countof(GPSD.RTVFormats));
 	std::ranges::copy(RTVFormats, GPSD.RTVFormats);
 
-	assert((0 == GPSD.DS.BytecodeLength || 0 == GPSD.HS.BytecodeLength || GPSD.PrimitiveTopologyType == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH) && "");
+	VERIFY((0 == GPSD.DS.BytecodeLength || 0 == GPSD.HS.BytecodeLength || GPSD.PrimitiveTopologyType == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH) && "");
 
 	VERIFY_SUCCEEDED(Device->CreateGraphicsPipelineState(&GPSD, COM_PTR_UUIDOF_PUTVOID(PST)));
 }

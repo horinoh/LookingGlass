@@ -33,9 +33,15 @@
 #define SHADER_ROOT_ACCESS_VS_GS (SHADER_ROOT_ACCESS_DENY_ALL & ~(D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS))
 #define SHADER_ROOT_ACCESS_PS (SHADER_ROOT_ACCESS_DENY_ALL & ~D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS)
 
-#define VERIFY_SUCCEEDED(x) { const auto HR = (x); if(!SUCCEEDED(HR)){ __debugbreak(); } }
-
 #include "Common.h"
+
+#ifdef _DEBUG
+#define VERIFY_SUCCEEDED(x) { const auto HR = (x); if(!SUCCEEDED(HR)){ LOG(data(std::format("HRESULT = {:#x}\n", static_cast<UINT>(HR)))); __debugbreak(); } }
+#define VERIFY(x) if(!(x)){ __debugbreak(); }
+#else
+#define VERIFY_SUCCEEDED(x) (x)
+#define VERIFY(x) (x)
+#endif
 
 class DX
 {
@@ -57,8 +63,6 @@ public:
 		CreateRootSignature();
 		CreatePipelineState();
 		CreateDescriptor();
-		CreateShaderTable();
-		CreateVideo();
 
 		OnExitSizeMove(hWnd, hInstance);
 	}
@@ -116,7 +120,7 @@ public:
 	virtual void CreateTexture() {}
 	virtual void CreateStaticSampler() {}
 	
-	template<typename T = D3D12_ROOT_PARAMETER> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
+	template<typename T = D3D12_ROOT_PARAMETER1> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
 	virtual void CreateRootSignature() {}
 
 	static void CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
@@ -132,9 +136,6 @@ public:
 	virtual void CreatePipelineState() {}
 	
 	virtual void CreateDescriptor() {}
-	virtual void CreateShaderTable() {}
-
-	virtual void CreateVideo() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
 	virtual void PopulateBundleCommandList([[maybe_unused]] const size_t i) {}

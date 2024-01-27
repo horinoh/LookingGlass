@@ -43,9 +43,15 @@ namespace Colors
 	constexpr VkClearColorValue Yellow = { 1.0f, 1.0f, 0.0f, 1.0f };
 }
 
-#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ __debugbreak(); } }
-
 #include "Common.h"
+
+#ifdef _DEBUG
+#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ LOG(data(std::format("VkResult = {}\n", static_cast<int32_t>(VR)))); __debugbreak(); } }
+#define VERIFY(x) if(!(x)){ __debugbreak(); }
+#else
+#define VERIFY_SUCCEEDED(x) (x)
+#define VERIFY(x) (x)
+#endif
 
 class VK
 {
@@ -73,8 +79,6 @@ public:
 		CreatePipeline();
 		CreateFramebuffer();
 		CreateDescriptor();
-		CreateShaderBindingTable();
-		CreateVideo();
 
 		OnExitSizeMove(hWnd, hInstance);
 	}
@@ -253,10 +257,6 @@ public:
 		VERIFY_SUCCEEDED(vkCreateDescriptorUpdateTemplate(Device, &DUTCI, GetAllocationCallbacks(), &DUT));
 	}
 	virtual void CreateDescriptor() {}
-
-	virtual void CreateShaderBindingTable() {}
-
-	virtual void CreateVideo() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
 	virtual void PopulateSecondaryCommandBuffer([[maybe_unused]] const size_t i) {}
