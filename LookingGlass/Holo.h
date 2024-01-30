@@ -8,7 +8,7 @@
 #include <format>
 
 #include <HoloPlayCore.h>
-//#include <HoloPlayShaders.h>
+#include <HoloPlayShaders.h>
 
 #ifdef _DEBUG
 #define LOG(x) OutputDebugStringA((x))
@@ -24,8 +24,8 @@ class Holo
 {
 public:
 	Holo() {
-		//LOG(data(std::format("hpc_LightfieldVertShaderGLSL =\n{}\n", hpc_LightfieldVertShaderGLSL)));
-		//LOG(data(std::format("hpc_LightfieldFragShaderGLSL =\n{}\n", hpc_LightfieldFragShaderGLSL)));
+		LOG(data(std::format("hpc_LightfieldVertShaderGLSL =\n{}\n", hpc_LightfieldVertShaderGLSL)));
+		LOG(data(std::format("hpc_LightfieldFragShaderGLSL =\n{}\n", hpc_LightfieldFragShaderGLSL)));
 
 		if (hpc_CLIERR_NOERROR == hpc_InitializeApp("Holo", hpc_LICENSE_NONCOMMERCIAL)) {
 			{
@@ -76,7 +76,7 @@ public:
 			DeviceIndex = 0;
 			LOG(data(std::format("Selected DeviceIndex = {}\n", DeviceIndex)));
 		} else {
-			LOG("[ Holo ] Device not found\n");
+			LOG("Device not found\n");
 		}
 
 		LenticularBuffer = LENTICULAR_BUFFER(DeviceIndex);
@@ -89,6 +89,7 @@ public:
 		LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer.Ri, LenticularBuffer.Bi, (LenticularBuffer.Ri == 0 && LenticularBuffer.Bi == 2) ? "RGB" : "BGR")));
 		LOG(data(std::format("TileX, TileY = {}, {}\n", LenticularBuffer.TileX, LenticularBuffer.TileY)));
 		LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer.QuiltAspect)));
+
 		if (-1 != DeviceIndex) {
 			QuiltX = hpc_GetDevicePropertyQuiltX(DeviceIndex);
 			QuiltY = hpc_GetDevicePropertyQuiltY(DeviceIndex);
@@ -116,7 +117,6 @@ public:
 	virtual void UpdateLenticularBuffer(const int Column, const int Row, const int Width, const int Height) {
 		LenticularBuffer.TileX = Column;
 		LenticularBuffer.TileY = Row;
-		
 		QuiltX = Width;
 		QuiltY = Height;
 		const auto ViewWidth = static_cast<float>(QuiltX) / LenticularBuffer.TileX;
