@@ -129,8 +129,8 @@ public:
 	}
 	virtual void CreateTexture() override {
 		//!<【パス0】レンダーターゲット、デプス (キルトサイズ) [Pass0 Render target and depth (quilt size)]
-		CreateTexture_Render(QuiltWidth, QuiltHeight);
-		CreateTexture_Depth(QuiltWidth, QuiltHeight);
+		CreateTexture_Render(QuiltX, QuiltY);
+		CreateTexture_Depth(QuiltX, QuiltY);
 	}
 	virtual void CreateImmutableSampler() override {
 		//!< 【パス1】[Pass1]
@@ -328,7 +328,7 @@ public:
 	virtual void CreateFramebuffer() override {
 		//!< 【パス0】[Pass0 Render target (quilt size)]
 		//!< レンダーターゲット (キルトサイズ)
-		VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], QuiltWidth, QuiltHeight, 1, { RenderTextures[0].View, DepthTextures[0].View });
+		VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], QuiltX, QuiltY, 1, { RenderTextures[0].View, DepthTextures[0].View });
 
 		//!<【パス1】[Pass1 Swapchain (screen size)]
 		//!< スワップチェイン (スクリーンサイズ)
@@ -338,13 +338,13 @@ public:
 	}
 	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
 		//!<【パス0】キルトレンダーターゲットを分割 [Pass0 Split quilt render target]
-		const auto W = QuiltWidth / LenticularBuffer.Column, H = QuiltHeight / LenticularBuffer.Row;
+		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
 		const auto Ext2D = VkExtent2D({ .width = static_cast<uint32_t>(W), .height = static_cast<uint32_t>(H) });
-		for (auto i = 0; i < LenticularBuffer.Row; ++i) {
-			const auto Y = QuiltHeight - H * i;
-			for (auto j = 0; j < LenticularBuffer.Column; ++j) {
+		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
+			const auto Y = QuiltY - H * i;
+			for (auto j = 0; j < LenticularBuffer.TileX; ++j) {
 				const auto X = j * W;
-				QuiltViewports.emplace_back(VkViewport({ .x = X, .y = Y, .width = W, .height = -H, .minDepth = MinDepth, .maxDepth = MaxDepth }));
+				QuiltViewports.emplace_back(VkViewport({ .x = static_cast<float>(X), .y = static_cast<float>(Y), .width = static_cast<float>(W), .height = -static_cast<float>(H), .minDepth = MinDepth, .maxDepth = MaxDepth }));
 				QuiltScissorRects.emplace_back(VkRect2D({ VkOffset2D({.x = static_cast<int32_t>(X), .y = static_cast<int32_t>(Y - H) }), Ext2D }));
 			}
 		}
@@ -469,7 +469,7 @@ public:
 					.pNext = nullptr,
 					.renderPass = RP,
 					.framebuffer = FB,
-					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = QuiltWidth, .height = QuiltHeight})}), //!< キルトサイズ
+					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = static_cast<uint32_t>(QuiltX), .height = static_cast<uint32_t>(QuiltY) })}), //!< キルトサイズ
 					.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
 				};
 				vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
@@ -518,7 +518,7 @@ public:
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
 		//!< 左右方向にずれている角度(ラジアン)
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
 		//!< 左右方向にずれている距離
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
@@ -530,14 +530,14 @@ public:
 	virtual void CreateViewMatrix(const int i) override {
 		if (-1 == i) { ViewMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		const auto OffsetLocal = glm::vec3(View * glm::vec4(OffsetX, 0.0f, CameraDistance, 1.0f));
 		ViewMatrices.emplace_back(glm::translate(View, OffsetLocal));
 	}
-	virtual void UpdateViewProjectionBuffer() {
-		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+	virtual void UpdateViewProjectionBuffer() override {
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
 		}

@@ -77,11 +77,19 @@
     <CustomBuild Include="Mesh2Pass0VK.frag">
       <Filter>Shader Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="Mesh2Pass0VK.geom" />
-    <CustomBuild Include="Mesh2Pass0VK.vert" />
-    <CustomBuild Include="Mesh2Pass1VK.frag" />
-    <CustomBuild Include="Mesh2Pass1VK.vert" />
     <CustomBuild Include="Mesh2QuiltVK.frag">
+      <Filter>Shader Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Mesh2Pass0VK.geom">
+      <Filter>Shader Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Mesh2Pass0VK.vert">
+      <Filter>Shader Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Mesh2Pass1VK.frag">
+      <Filter>Shader Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Mesh2Pass1VK.vert">
       <Filter>Shader Files</Filter>
     </CustomBuild>
   </ItemGroup>

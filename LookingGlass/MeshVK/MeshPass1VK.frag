@@ -22,15 +22,14 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 	int Ri;
 	int Bi;
 
-	float Column;
-	float Row;
+	int TileX, TileY;
 
 	float QuiltAspect;
 } LB;
 
 vec2 ToTexcoord(vec3 CoordZ)
 {
-	return (vec2(mod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / vec2(LB.Column, LB.Row);
+	return (vec2(mod(CoordZ.z, LB.TileX), -sign(LB.Tilt) * floor(CoordZ.z / LB.TileX)) + CoordZ.xy) / vec2(LB.TileX, LB.TileY);
 }
 
 void main()
@@ -43,10 +42,10 @@ void main()
 	if(any(lessThan(1 - UV, vec2(0)))) discard;
 
 	vec3 RGB[3];
-	const float ColRow = LB.Column * LB.Row;
+	const float XY = LB.TileX * LB.TileY;
 	for(int i = 0;i < 3;++i) {
 		float Z = (InTexcoord.x + i * LB.Subp + InTexcoord.y * LB.Tilt) * LB.Pitch - LB.Center;
-		Z = mod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * ColRow;
+		Z = mod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * XY;
 
 		const float Y = clamp(UV.y, 0.005f, 0.995f);
 		const vec3 CoordZ1 = vec3(UV.x, Y, floor(Z));

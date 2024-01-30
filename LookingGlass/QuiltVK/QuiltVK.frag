@@ -22,8 +22,7 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 	int Ri;
 	int Bi;
 
-	float Column;
-	float Row;
+	int TileX, TileY;
 
 	float QuiltAspect;
 } LB;
@@ -32,7 +31,7 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 //!< 絶対テクスチャ座標へ変換する
 vec2 ToTexcoord(vec3 CoordZ)
 {
-	return (vec2(mod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / vec2(LB.Column, LB.Row);
+	return (vec2(mod(CoordZ.z, LB.TileX), -sign(LB.Tilt) * floor(CoordZ.z / LB.TileX)) + CoordZ.xy) / vec2(LB.TileX, LB.TileY);
 }
 
 void main()
@@ -59,11 +58,11 @@ void main()
 
 	//!< RGB サブピクセルは正弦波パターンに並んでいて、全体的に斜めになっている
 	vec3 RGB[3];
-	const float ColRow = LB.Column * LB.Row;
+	const float XY = LB.TileX * LB.TileY;
 	for(int i = 0;i < 3;++i) {
 		//!< キルトグリッド上のどのパターンか
 		float Z = (InTexcoord.x + i * LB.Subp + InTexcoord.y * LB.Tilt) * LB.Pitch - LB.Center;
-		Z = mod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * ColRow;
+		Z = mod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * XY;
 
 		//!< 前後のパターンから補完する
 		const float Y = clamp(UV.y, 0.005f, 0.995f);

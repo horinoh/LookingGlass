@@ -121,8 +121,8 @@ public:
 		CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
 	}
 	virtual void CreateTexture() override {
-		CreateTexture_Render(QuiltWidth, QuiltHeight);
-		CreateTexture_Depth(QuiltWidth, QuiltHeight);
+		CreateTexture_Render(QuiltX, QuiltY);
+		CreateTexture_Depth(QuiltX, QuiltY);
 	}
 	virtual void CreateStaticSampler() override {
 		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -388,12 +388,12 @@ public:
 		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
 		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
 
-		const auto W = QuiltWidth / LenticularBuffer.Column, H = QuiltHeight / LenticularBuffer.Row;
-		for (auto i = 0; i < LenticularBuffer.Row; ++i) {
-			const auto Y = QuiltHeight - H * (i + 1);
-			for (auto j = 0; j < LenticularBuffer.Column; ++j) {
+		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
+		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
+			const auto Y = QuiltY - H * (i + 1);
+			for (auto j = 0; j < LenticularBuffer.TileX; ++j) {
 				const auto X = j * W;
-				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = X, .TopLeftY = Y, .Width = W, .Height = H, .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
+				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = static_cast<FLOAT>(X), .TopLeftY = static_cast<FLOAT>(Y), .Width = static_cast<FLOAT>(W), .Height = static_cast<FLOAT>(H), .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
 				QuiltScissorRects.emplace_back(D3D12_RECT({ .left = static_cast<LONG>(X), .top = static_cast<LONG>(Y), .right = static_cast<LONG>(X + W), .bottom = static_cast<LONG>(Y + H) }));
 			}
 		}
@@ -521,7 +521,7 @@ public:
 	virtual void CreateProjectionMatrix(const int i) override {
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		auto Prj = DirectX::XMMatrixPerspectiveFovRH(Fov, LenticularBuffer.DisplayAspect, 0.1f, 100.0f);
@@ -532,7 +532,7 @@ public:
 	virtual void CreateViewMatrix(const int i) override {
 		if (-1 == i) { ViewMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		const auto OffsetLocal = DirectX::XMVector4Transform(DirectX::XMVectorSet(OffsetX, 0.0f, CameraDistance, 1.0f), View);
@@ -540,7 +540,7 @@ public:
 
 	}
 	virtual void UpdateViewProjectionBuffer() {
-		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i].View, ViewMatrices[i]);
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i].Projection, ProjectionMatrices[i]);

@@ -122,8 +122,8 @@ public:
 	}
 	virtual void CreateTexture() override {
 		//!<【パス0】レンダーターゲット、デプス (キルトサイズ)  [Pass0 Render target and depth (quilt size)]
-		CreateTexture_Render(QuiltWidth, QuiltHeight);
-		CreateTexture_Depth(QuiltWidth, QuiltHeight);
+		CreateTexture_Render(QuiltX, QuiltY);
+		CreateTexture_Depth(QuiltX, QuiltY);
 	}
 	virtual void CreateStaticSampler() override {
 		//!<【パス1】[Pass1]
@@ -384,12 +384,12 @@ public:
 		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
 
 		//!<【パス0】キルトレンダーターゲットを分割 [Pass0 Split quilt render target]
-		const auto W = QuiltWidth / LenticularBuffer.Column, H = QuiltHeight / LenticularBuffer.Row;
-		for (auto i = 0; i < LenticularBuffer.Row; ++i) {
-			const auto Y = QuiltHeight - H * (i + 1);
-			for (auto j = 0; j < LenticularBuffer.Column; ++j) {
+		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
+		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
+			const auto Y = QuiltY - H * (i + 1);
+			for (auto j = 0; j < LenticularBuffer.TileX; ++j) {
 				const auto X = j * W;
-				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = X, .TopLeftY = Y, .Width = W, .Height = H, .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
+				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = static_cast<FLOAT>(X), .TopLeftY = static_cast<FLOAT>(Y), .Width = static_cast<FLOAT>(W), .Height = static_cast<FLOAT>(H), .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
 				QuiltScissorRects.emplace_back(D3D12_RECT({ .left = static_cast<LONG>(X), .top = static_cast<LONG>(Y), .right = static_cast<LONG>(X + W), .bottom = static_cast<LONG>(Y + H) }));
 			}
 		}
@@ -533,7 +533,7 @@ public:
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
 		//!< 左右方向にずれている角度(ラジアン)
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
 		//!< 左右方向にずれている距離
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
@@ -545,15 +545,15 @@ public:
 	virtual void CreateViewMatrix(const int i) override {
 		if (-1 == i) { ViewMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.Column * LenticularBuffer.Row - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		const auto OffsetLocal = DirectX::XMVector4Transform(DirectX::XMVectorSet(OffsetX, 0.0f, CameraDistance, 1.0f), View);
 		ViewMatrices.emplace_back(View * DirectX::XMMatrixTranslationFromVector(OffsetLocal));
 
 	}
-	virtual void UpdateViewProjectionBuffer() {
-		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.Column * LenticularBuffer.Row), _countof(ViewProjectionBuffer.ViewProjection));
+	virtual void UpdateViewProjectionBuffer() override {
+		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}

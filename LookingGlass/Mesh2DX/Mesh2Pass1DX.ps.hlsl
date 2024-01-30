@@ -19,8 +19,7 @@ struct LENTICULAR_BUFFER
 	int Ri;
 	int Bi;
 
-	float Column;
-	float Row;
+	int TileX, TileY;
 
 	float QuiltAspect;
 };
@@ -28,7 +27,7 @@ ConstantBuffer<LENTICULAR_BUFFER> LB : register(b0, space0);
 
 float2 ToTexcoord(float3 CoordZ)
 {
-	return (float2(fmod(CoordZ.z, LB.Column), -sign(LB.Tilt) * floor(CoordZ.z / LB.Column)) + CoordZ.xy) / float2(LB.Column, LB.Row);
+	return (float2(fmod(CoordZ.z, LB.TileX), -sign(LB.Tilt) * floor(CoordZ.z / LB.TileX)) + CoordZ.xy) / float2(LB.TileX, LB.TileY);
 }
 
 float4 main(IN In) : SV_TARGET
@@ -39,10 +38,10 @@ float4 main(IN In) : SV_TARGET
 	clip(1 - UV);
 
 	float3 RGB[3];
-	const float ColRow = LB.Column * LB.Row;
+	const float XY = LB.TileX * LB.TileY;
 	for (int i = 0; i < 3; ++i) {
 		float Z = (In.Texcoord.x + i * LB.Subp + In.Texcoord.y * LB.Tilt) * LB.Pitch - LB.Center;
-		Z = fmod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * ColRow;
+		Z = fmod(Z + ceil(abs(Z)), 1.0f) * LB.InvView * XY;
 
 		const float Y = clamp(UV.y, 0.005f, 0.995f);
 		const float3 CoordZ1 = float3(UV.x, Y, floor(Z));

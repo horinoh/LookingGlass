@@ -61,18 +61,13 @@ public:
 					std::vector<char> Buf(hpc_GetDeviceType(i, nullptr, 0));
 					hpc_GetDeviceType(i, data(Buf), size(Buf));
 					LOG(data(std::format("\thpc_GetDeviceType = {}\n", data(Buf)))); //!< 参考値) portrait
+					//!< "standard"	4x8	2048x2048
+					//!< "8k"		5x9	8192x8192
+					//!< "portrait"	8x6	3360x3360
+					//!<			5x9	4096x4096
 				}
-
-				//!< ウインドウ位置
-				LOG(data(std::format("\thpc_GetDevicePropertyWinX, Y = {}, {}\n", hpc_GetDevicePropertyWinX(i), hpc_GetDevicePropertyWinY(i)))); //!< 参考値) 1920, 0
-
-				//!< ウインドウ幅高さ
-				LOG(data(std::format("\thpc_GetDevicePropertyScreenW, H = {}, {}\n", hpc_GetDevicePropertyScreenW(i), hpc_GetDevicePropertyScreenH(i)))); //!< 参考値) 1536, 2048
-
 				//!< Display fringe correction uniform (currently only applicable to 15.6" Developer/Pro units)
 				LOG(data(std::format("\thpc_GetDevicePropertyFringe = {}\n", hpc_GetDevicePropertyFringe(i))));//!< 参考値) 0
-
-				LOG(data(std::format("\thpc_GetDevicePropertyFloat(viewCone) = {}\n", hpc_GetDevicePropertyFloat(i, "/calibration/viewCone/value")))); //!< 参考値) 40
 			}
 		}
 
@@ -80,26 +75,6 @@ public:
 			//!< ここでは最初のデバイスを選択 (Select 1st device here)
 			DeviceIndex = 0;
 			LOG(data(std::format("Selected DeviceIndex = {}\n", DeviceIndex)));
-
-			//!< キルト
-			{
-				std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
-				hpc_GetDeviceType(DeviceIndex, data(Buf), size(Buf));
-				std::string_view TypeStr(data(Buf));
-
-				if ("standard" == TypeStr) {
-					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 4, 8, 2048, 2048)));
-				}
-				else if ("8k" == TypeStr) {
-					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 5, 9, 8192, 8192)));
-				}
-				else if ("portrait" == TypeStr) {
-					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 8, 6, 3360, 3360)));
-				}
-				else {
-					LOG(data(std::format("{} : QuiltDim={}x{}, Render={}x{}\n", TypeStr, 5, 9, 4096, 4096)));
-				}
-			}
 		} else {
 			LOG("[ Holo ] Device not found\n");
 		}
@@ -112,24 +87,12 @@ public:
 		LOG(data(std::format("DisplayAspect = {}\n", LenticularBuffer.DisplayAspect)));
 		LOG(data(std::format("InvView = {}\n", LenticularBuffer.InvView)));
 		LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer.Ri, LenticularBuffer.Bi, (LenticularBuffer.Ri == 0 && LenticularBuffer.Bi == 2) ? "RGB" : "BGR")));
+		LOG(data(std::format("TileX, TileY = {}, {}\n", LenticularBuffer.TileX, LenticularBuffer.TileY)));
+		LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer.QuiltAspect)));
 		if (-1 != DeviceIndex) {
+			QuiltX = hpc_GetDevicePropertyQuiltX(DeviceIndex);
+			QuiltY = hpc_GetDevicePropertyQuiltY(DeviceIndex);
 			ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
-
-			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
-			hpc_GetDeviceType(DeviceIndex, data(Buf), size(Buf));
-			std::string_view TypeStr(data(Buf));
-			if ("standard" == TypeStr) {
-				QuiltWidth = QuiltHeight = 2048;
-			}
-			else if ("8k" == TypeStr) {
-				QuiltWidth = QuiltHeight = 8192;
-			}
-			else if ("portrait" == TypeStr) {
-				QuiltWidth = QuiltHeight = 3360;
-			}
-			else {
-				QuiltWidth = QuiltHeight = 4096;
-			}
 		}
 	}
 	virtual ~Holo() {
@@ -150,56 +113,56 @@ public:
 		}
 	}
 	
-	virtual void UpdateLenticularBuffer(const float Column, const float Row, const uint32_t Width, const uint32_t Height) {
-		LenticularBuffer.Column = Column;
-		LenticularBuffer.Row = Row;
+	virtual void UpdateLenticularBuffer(const int Column, const int Row, const int Width, const int Height) {
+		LenticularBuffer.TileX = Column;
+		LenticularBuffer.TileY = Row;
 		
-		QuiltWidth = Width;
-		QuiltHeight = Height;
-		const auto ViewWidth = static_cast<float>(QuiltWidth) / LenticularBuffer.Column;
-		const auto ViewHeight = static_cast<float>(QuiltHeight) / LenticularBuffer.Row;
+		QuiltX = Width;
+		QuiltY = Height;
+		const auto ViewWidth = static_cast<float>(QuiltX) / LenticularBuffer.TileX;
+		const auto ViewHeight = static_cast<float>(QuiltY) / LenticularBuffer.TileY;
 		LenticularBuffer.QuiltAspect = ViewWidth / ViewHeight;
 		LOG(data(std::format("QuiltAspect = {}\n", ViewWidth / ViewHeight)));
-		LOG(data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer.Column / static_cast<float>(QuiltWidth), static_cast<float>(ViewHeight) * LenticularBuffer.Row / static_cast<float>(QuiltHeight))));
+		LOG(data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer.TileX / static_cast<float>(QuiltX), static_cast<float>(ViewHeight) * LenticularBuffer.TileY / static_cast<float>(QuiltY))));
 	}
 
 	virtual uint32_t GetViewportMax() const { return 16; }
 	uint32_t GetViewportDrawCount() const {
-		const auto ColRow = static_cast<uint32_t>(LenticularBuffer.Column * LenticularBuffer.Row);
+		const auto XY = static_cast<uint32_t>(LenticularBuffer.TileX * LenticularBuffer.TileY);
 		const auto ViewportCount = GetViewportMax();
-		return ColRow / ViewportCount + ((ColRow % ViewportCount) ? 1 : 0);
+		return XY / ViewportCount + ((XY % ViewportCount) ? 1 : 0);
 	}
 	uint32_t GetViewportSetOffset(const uint32_t i) const { return GetViewportMax() * i; }
 	uint32_t GetViewportSetCount(const uint32_t i) const {
-		return (std::min)(static_cast<int32_t>(LenticularBuffer.Column * LenticularBuffer.Row) - GetViewportSetOffset(i), GetViewportMax());
+		return (std::min)(static_cast<int32_t>(LenticularBuffer.TileX * LenticularBuffer.TileY) - GetViewportSetOffset(i), GetViewportMax());
 	}
 
 	virtual void CreateProjectionMatrix(const int i) {}
 	void CreateProjectionMatrices() {
 		CreateProjectionMatrix(-1);
-		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
-		for (auto i = 0; i < ColRow; ++i) {
+		const auto XY = static_cast<int>(LenticularBuffer.TileX * LenticularBuffer.TileY);
+		for (auto i = 0; i < XY; ++i) {
 			CreateProjectionMatrix(i);
 		}
 	}
 	virtual void CreateViewMatrix(const int i) {}
 	void CreateViewMatrices() {
 		CreateViewMatrix(-1);
-		const auto ColRow = static_cast<int>(LenticularBuffer.Column * LenticularBuffer.Row);
-		for (auto i = 0; i < ColRow; ++i) {
+		const auto XY = static_cast<int>(LenticularBuffer.TileX * LenticularBuffer.TileY);
+		for (auto i = 0; i < XY; ++i) {
 			CreateViewMatrix(i);
 		}
 	}
-	virtual void updateViewProjectionBuffer() {}
+	virtual void UpdateViewProjectionBuffer() {}
 
 protected:
 	int DeviceIndex = -1;
 
-	uint32_t QuiltWidth = 3360, QuiltHeight = 3360;
+	int QuiltX = 3360, QuiltY = 3360;
 	float ViewCone = TO_RADIAN(40.0f);
 
 	const float Fov = TO_RADIAN(14.0f);
-	const float CameraSize = 5.0f; //!< 焦点面の垂直半径
+	const float CameraSize = 5.0f; //!< 焦点面の垂直半径 [Focal plane vertical radius]
 	const float CameraDistance = -CameraSize / std::tan(Fov / 2.0f); //!< 焦点面の垂直半径と、視野角からカメラ距離を算出
 
 	struct LENTICULAR_BUFFER {
@@ -219,27 +182,9 @@ protected:
 				Ri = hpc_GetDevicePropertyRi(Index);
 				Bi = hpc_GetDevicePropertyBi(Index);
 
-				{
-					std::vector<char> Buf(hpc_GetDeviceType(Index, nullptr, 0));
-					hpc_GetDeviceType(Index, data(Buf), size(Buf));
-					std::string_view TypeStr(data(Buf));
-					if ("standard" == TypeStr) {
-						Column = 4;
-						Row = 8;
-					}
-					else if ("8k" == TypeStr) {
-						Column = 5;
-						Row = 9;
-					}
-					else if ("portrait" == TypeStr) {
-						Column = 8;
-						Row = 6;
-					}
-					else {
-						Column = 5;
-						Row = 9;
-					}
-				}
+				TileX = hpc_GetDevicePropertyTileX(Index);
+				TileY = hpc_GetDevicePropertyTileY(Index);
+				QuiltAspect = hpc_GetDevicePropertyQuiltAspect(Index);
 			}
 			Tilt = abs(Tilt);
 		}
@@ -253,11 +198,11 @@ protected:
 		int Ri = 0;
 		int Bi = 2;
 #if 1
-		float Column = 8, Row = 6;
+		int TileX = 8, TileY = 6;
 #else
-		float Column = 2, Row = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
+		int TileX = 2, TileY = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
 #endif
-		float QuiltAspect = Column / Row;
+		float QuiltAspect = static_cast<float>(TileX) / TileY;
 	};
 	LENTICULAR_BUFFER LenticularBuffer;
 };
