@@ -95,6 +95,8 @@ public:
 			QuiltY = hpc_GetDevicePropertyQuiltY(DeviceIndex);
 			ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
 		}
+		LOG(data(std::format("QuiltX, QuiltY = {}, {}\n", QuiltX, QuiltY)));
+		LOG(data(std::format("ViewCone = {}\n", ViewCone)));
 	}
 	virtual ~Holo() {
 		hpc_CloseApp();
