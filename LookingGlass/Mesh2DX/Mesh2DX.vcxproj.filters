@@ -42,6 +42,9 @@
     <ClInclude Include="..\Holo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\GltfSDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Mesh2DX.cpp">
@@ -92,5 +95,8 @@
     <FxCompile Include="Mesh2QuiltDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

@@ -5,8 +5,9 @@
 #include "../DX.h"
 #include "../Holo.h"
 #include "../FBX.h"
+#include "../GltfSDK.h"
 
-class Mesh2DX : public DX, public Holo, public Fbx
+class Mesh2DX : public DX, public Holo, public Fbx//, public Gltf::SDK
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -63,6 +64,11 @@ public:
 
 		//Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
+
+		//Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
 
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
 		UploadResource UploadPass0Vertex;
@@ -228,7 +234,6 @@ public:
 		};
 		CreatePipelineState_VsPsGs_Input(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
-		//!< yƒpƒX1z[Pass1]
 		std::vector<COM_PTR<ID3DBlob>> SBsPass1;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2Pass1DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
 #ifdef DISPLAY_QUILT
@@ -245,116 +250,117 @@ public:
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
 	}
-	virtual void CreateDescriptor() override {
+	void CreateDescriptor_Pass0() {
 		{
-			{
-				const auto DescCount = 1;
+			const auto DescCount = 1;
 
-				for (auto i = 0; i < DescCount; ++i) {
-					{
-						auto& Desc = RtvDescs.emplace_back();
-						auto& Heap = Desc.first;
-						auto& Handle = Desc.second;
-
-						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
-							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-							.NumDescriptors = 1,
-							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-							.NodeMask = 0
-						};
-						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-
-						const auto& Tex = RenderTextures[0];
-						Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
-						Handle.emplace_back(CDH);
-						CDH.ptr += IncSize;
-					}
-					{
-						auto& Desc = DsvDescs.emplace_back();
-						auto& Heap = Desc.first;
-						auto& Handle = Desc.second;
-
-						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
-							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-							.NumDescriptors = 1,
-							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-							.NodeMask = 0
-						};
-						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-
-						const auto& Tex = DepthTextures[0];
-						Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
-						Handle.emplace_back(CDH);
-						CDH.ptr += IncSize;
-					}
-				}
-			}
-			{
-				const auto DescCount = size(SwapChainBackBuffers);
-
-				const auto CB0Index = 0;
-				const auto CB1Index = size(SwapChainBackBuffers);
-
-				for (auto i = 0; i < DescCount; ++i) {
-					auto& Desc = CbvSrvUavDescs.emplace_back();
+			for (auto i = 0; i < 1; ++i) {
+				{
+					auto& Desc = RtvDescs.emplace_back();
 					auto& Heap = Desc.first;
 					auto& Handle = Desc.second;
 
 					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
-						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-						.NumDescriptors = 2,
-						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+						.NumDescriptors = DescCount,
+						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
 						.NodeMask = 0
 					};
 					VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 					auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-					auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-				
-					{
-						const auto& CB = ConstantBuffers[CB0Index + i];
+
+					const auto& Tex = RenderTextures[0];
+					Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
+					Handle.emplace_back(CDH);
+					CDH.ptr += IncSize;
+				}
+				{
+					auto& Desc = DsvDescs.emplace_back();
+					auto& Heap = Desc.first;
+					auto& Handle = Desc.second;
+
+					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+						.NumDescriptors = 1,
+						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+						.NodeMask = 0
+					};
+					VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+					auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+					const auto& Tex = DepthTextures[0];
+					Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+					Handle.emplace_back(CDH);
+					CDH.ptr += IncSize;
+				}
+			}
+		}
+		{
+			const auto BackBufferCount = size(SwapChainBackBuffers);
+			const auto DescCount = 2;
+
+			const auto CB0Index = 0;
+			const auto CB1Index = BackBufferCount;
+
+			for (auto i = 0; i < BackBufferCount; ++i) {
+				auto& Desc = CbvSrvUavDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+					.NumDescriptors = DescCount,
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+					.NodeMask = 0
+				};
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				{
+					const auto& CB = ConstantBuffers[CB0Index + i];
+					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+						.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
+						.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+					};
+					Device->CreateConstantBufferView(&CBVD, CDH);
+					Handle.emplace_back(GDH);
+					CDH.ptr += IncSize;
+					GDH.ptr += IncSize;
+				}
+				{
+					const auto& CB = ConstantBuffers[CB1Index + i];
+					const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+					for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 						const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
-							.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
-							.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+							.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
+							.SizeInBytes = static_cast<UINT>(DynamicOffset)
 						};
 						Device->CreateConstantBufferView(&CBVD, CDH);
 						Handle.emplace_back(GDH);
 						CDH.ptr += IncSize;
 						GDH.ptr += IncSize;
 					}
-					{
-						const auto& CB = ConstantBuffers[CB1Index + i];
-						const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
-						for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
-							const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
-								.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
-								.SizeInBytes = static_cast<UINT>(DynamicOffset)
-							};
-							Device->CreateConstantBufferView(&CBVD, CDH);
-							Handle.emplace_back(GDH);
-							CDH.ptr += IncSize;
-							GDH.ptr += IncSize;
-						}
-					}
 				}
 			}
 		}
-		{
-			const auto DescCount = 1;
+	}
+	void CreateDescriptor_Pass1() {
+		const auto DescCount = 1;
 
-			const auto CBIndex = size(SwapChainBackBuffers) * 2;
+		const auto CBIndex = size(SwapChainBackBuffers) * 2;
 
+		for (auto i = 0; i < 1; ++i) {
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
 			auto& Handle = Desc.second;
 
-			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
-				.NumDescriptors = 1,
+			const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+				.NumDescriptors = DescCount,
 				.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 				.NodeMask = 0
 			};
@@ -372,9 +378,9 @@ public:
 			}
 			{
 				const auto& CB = ConstantBuffers[CBIndex];
-				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
-					.BufferLocation = CB.Resource->GetGPUVirtualAddress(), 
-					.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width) 
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+					.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
+					.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
 				};
 				Device->CreateConstantBufferView(&CBVD, CDH);
 				Handle.emplace_back(GDH);
@@ -382,6 +388,10 @@ public:
 				GDH.ptr += IncSize;
 			}
 		}
+	}
+	virtual void CreateDescriptor() override {
+		CreateDescriptor_Pass0();
+		CreateDescriptor_Pass1();
 	}
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;

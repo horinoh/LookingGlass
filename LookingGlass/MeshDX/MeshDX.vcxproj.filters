@@ -42,6 +42,9 @@
     <ClInclude Include="..\FBX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\GltfSDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MeshDX.cpp">
@@ -92,5 +95,8 @@
     <FxCompile Include="MeshQuiltDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

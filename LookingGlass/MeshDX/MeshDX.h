@@ -2,11 +2,17 @@
 
 #include "resource.h"
 
+//#define USE_GLTF
 #include "../DX.h"
 #include "../Holo.h"
-#include "../FBX.h"
 
+#ifdef USE_GLTF
+#include "../GltfSDK.h"
+class MeshDX : public DX, public Holo, public Gltf::SDK
+#else
+#include "../FBX.h"
 class MeshDX : public DX, public Holo, public Fbx
+#endif
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -25,6 +31,108 @@ public:
 		DX::OnCreate(hWnd, hInstance, Title);
 	}
 
+#ifdef USE_GLTF
+	virtual void Process() override {
+		for (const auto& i : Document.meshes.Elements()) {
+			for (const auto& j : i.primitives) {
+				switch (j.mode)
+				{
+				case Microsoft::glTF::MeshMode::MESH_TRIANGLES:
+					break;
+				default:
+					break;
+				}
+
+				if (empty(Indices)) {
+					if (Document.accessors.Has(j.indicesAccessorId)) {
+						const auto& Accessor = Document.accessors.Get(j.indicesAccessorId);
+						switch (Accessor.componentType)
+						{
+						case Microsoft::glTF::ComponentType::COMPONENT_UNSIGNED_SHORT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_SCALAR:
+							{
+								std::vector<UINT32> Indices16(Accessor.count);
+								std::ranges::copy(ResourceReader->ReadBinaryData<uint16_t>(Document, Accessor), std::begin(Indices16));
+
+								Indices.reserve(Accessor.count);
+								for (auto i : Indices16) {
+									Indices.emplace_back(i);
+								}
+							}
+							break;
+							default: break;
+							}
+							break;
+						case Microsoft::glTF::ComponentType::COMPONENT_UNSIGNED_INT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_SCALAR:
+							{
+								Indices.resize(Accessor.count);
+								std::ranges::copy(ResourceReader->ReadBinaryData<uint32_t>(Document, Accessor), std::begin(Indices));
+							}
+							break;
+							default: break;
+							}
+							break;
+						default: break;
+						}
+					}
+				}
+
+				std::string AccessorId;
+				if (empty(Vertices)) {
+					if (j.TryGetAttributeAccessorId(Microsoft::glTF::ACCESSOR_POSITION, AccessorId))
+					{
+						const auto& Accessor = Document.accessors.Get(AccessorId);
+						Vertices.resize(Accessor.count);
+						switch (Accessor.componentType)
+						{
+						case Microsoft::glTF::ComponentType::COMPONENT_FLOAT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_VEC3:
+							{
+								std::memcpy(data(Vertices), data(ResourceReader->ReadBinaryData<float>(Document, Accessor)), TotalSizeOf(Vertices));
+
+								AdjustScale(Vertices, 5.0f);
+							}
+							break;
+							default: break;
+							}
+							break;
+						default: break;
+						}
+					}
+				}
+				if (empty(Normals)) {
+					if (j.TryGetAttributeAccessorId(Microsoft::glTF::ACCESSOR_NORMAL, AccessorId))
+					{
+						const auto& Accessor = Document.accessors.Get(AccessorId);
+						Normals.resize(Accessor.count);
+						switch (Accessor.componentType)
+						{
+						case Microsoft::glTF::ComponentType::COMPONENT_FLOAT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_VEC3:
+							{
+								std::memcpy(data(Normals), data(ResourceReader->ReadBinaryData<float>(Document, Accessor)), TotalSizeOf(Normals));
+							}
+							break;
+							default: break;
+							}
+							break;
+						default: break;
+						}
+					}
+				}
+			}
+		}
+	}	
+#else
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
 	virtual void Process(FbxMesh* Mesh) override {
 		Fbx::Process(Mesh);
@@ -43,11 +151,12 @@ public:
 			Normals.emplace_back(ToFloat3(Nrms[i]));
 		}
 	}
+#endif
 
 	virtual void CreateCommandList() override {
-		//!< 【パス0】コマンドリスト [Pass0]
+		//!< 【Pass0】コマンドリスト
 		DX::CreateCommandList();
-		//!< 【パス1】バンドルコマンドリスト [Pass1]
+		//!< 【Pass1】バンドルコマンドリスト
 		DX::CreateBundleCommandList(2);
 	}
 
@@ -57,12 +166,20 @@ public:
 		const auto GCQ = COM_PTR_GET(GraphicsCommandQueue);
 		const auto GF = COM_PTR_GET(GraphicsFence);
 
-		//!<【パス0】メッシュ描画用 [Pass0 To draw mesh] 
+		//!<【Pass0】メッシュ描画用 [To draw mesh] 
+#ifdef USE_GLTF
+		Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Sphere.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Box.glb");
+#else
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip_res2.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "Bee.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "ALucy.FBX");
+#endif	
 
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
 		UploadResource UploadPass0Vertex;
@@ -87,7 +204,7 @@ public:
 		UploadResource UploadPass0Indirect;
 		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DIA), &DIA);
 
-		//!<【パス1】フルスクリーン描画用 [Pass1 To draw render texture]
+		//!<【Pass1】フルスクリーン描画用 [To draw render texture]
 		constexpr D3D12_DRAW_ARGUMENTS DA = {
 			.VertexCountPerInstance = 4, 
 			.InstanceCount = 1, 
@@ -100,37 +217,37 @@ public:
 
 		//!< コマンド発行 [Issue copy command]
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
-			//!< 【パス0】
+			//!< 【Pass0】
 			VertexBuffers[0].PopulateCopyCommand(CL, TotalSizeOf(Vertices), COM_PTR_GET(UploadPass0Vertex.Resource));
 			VertexBuffers[1].PopulateCopyCommand(CL, TotalSizeOf(Normals), COM_PTR_GET(UploadPass0Normal.Resource));
 			IndexBuffers[0].PopulateCopyCommand(CL, TotalSizeOf(Indices), COM_PTR_GET(UploadPass0Index.Resource));
 			IndirectBuffers[0].PopulateCopyCommand(CL, sizeof(DIA), COM_PTR_GET(UploadPass0Indirect.Resource));
 
-			//!<【パス1】[Pass0]
+			//!<【Pass1】
 			IndirectBuffers[1].PopulateCopyCommand(CL, sizeof(DA), COM_PTR_GET(UploadPass1Indirect.Resource));
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(GCQ, CL, COM_PTR_GET(GraphicsFence));
 	}
 	virtual void CreateConstantBuffer() override {
-		//!<【パス0】[Pass0]
+		//!<【Pass0】
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(ViewProjectionBuffer));
 		CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(ViewProjectionBuffer)), &ViewProjectionBuffer);
 
-		//!<【パス1】[Pass1]
+		//!<【Pass1】
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(LenticularBuffer));
 		CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
 	}
 	virtual void CreateTexture() override {
-		//!<【パス0】レンダーターゲット、デプス (キルトサイズ)  [Pass0 Render target and depth (quilt size)]
+		//!<【Pass0】レンダーターゲット、デプス (キルトサイズ)  [Render target and depth (quilt size)]
 		CreateTexture_Render(QuiltX, QuiltY);
 		CreateTexture_Depth(QuiltX, QuiltY);
 	}
 	virtual void CreateStaticSampler() override {
-		//!<【パス1】[Pass1]
+		//!<【Pass1】
 		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 	}
 	virtual void CreateRootSignature() override {
-		//!<【パス0】[Pass0]
+		//!<【Pass0】
 		{
 			COM_PTR<ID3DBlob> Blob;
 			constexpr std::array DRs_Cbv = {
@@ -157,7 +274,7 @@ public:
 				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_GS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 		}
-		//!<【パス1】[Pass1]
+		//!<【Pass1】
 		{
 			COM_PTR<ID3DBlob> Blob;
 			constexpr std::array DRs_Srv = {
@@ -215,7 +332,7 @@ public:
 			.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF
 		};
 
-		//!< 【パス0】[Pass0]
+		//!< 【Pass0】
 		const std::vector IEDs = {
 			D3D12_INPUT_ELEMENT_DESC({ .SemanticName = "POSITION", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0 }),
 			D3D12_INPUT_ELEMENT_DESC({ .SemanticName = "NORMAL", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 1, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0 }),
@@ -248,108 +365,106 @@ public:
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
 	}
-	virtual void CreateDescriptor() override {
-		//!<【パス0】[Pass0]
+	void CreateDescriptor_Pass0() {
+		//!< レンダーターゲット、デプスステンシルビュー [Render target, Depth stencil view]
 		{
-			{
-				const auto DescCount = 1;
+			const auto DescCount = 1;
 
-				for (auto i = 0; i < DescCount; ++i) {
-					//!< レンダーターゲットビュー [Render target view]
-					{
-						auto& Desc = RtvDescs.emplace_back();
-						auto& Heap = Desc.first;
-						auto& Handle = Desc.second;
-
-						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
-							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-							.NumDescriptors = 1,
-							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-							.NodeMask = 0
-						};
-						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-
-						const auto& Tex = RenderTextures[0];
-						Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
-						Handle.emplace_back(CDH);
-						CDH.ptr += IncSize;
-					}
-					//!< デプスステンシルビュー [Depth stencil view]
-					{
-						auto& Desc = DsvDescs.emplace_back();
-						auto& Heap = Desc.first;
-						auto& Handle = Desc.second;
-
-						const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
-							.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-							.NumDescriptors = 1,
-							.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-							.NodeMask = 0
-						};
-						VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-						auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-						const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
-
-						const auto& Tex = DepthTextures[0];
-						Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
-						Handle.emplace_back(CDH);
-						CDH.ptr += IncSize;
-					}
-				}
-			}
-
-			//!< コンスタントバッファービュー [Constant buffer view]
-			{
-				const auto DescCount = 1;
-
-				for (auto i = 0; i < DescCount; ++i) {
-					auto& Desc = CbvSrvUavDescs.emplace_back();
+			for (auto i = 0; i < 1; ++i) {
+				//!< レンダーターゲットビュー [Render target view]
+				{
+					auto& Desc = RtvDescs.emplace_back();
 					auto& Heap = Desc.first;
 					auto& Handle = Desc.second;
 
 					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
-						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-						.NumDescriptors = 1,
-						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+						.NumDescriptors = DescCount,
+						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
 						.NodeMask = 0
 					};
 					VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 					auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-					auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
 					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
-					const auto& CB = ConstantBuffers[0];
-					//!< オフセット毎に使用するサイズ [Offset size]
-					const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
-					//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
-					for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
-						//!< オフセット毎の位置、サイズ [Offset location and size]
-						const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
-							.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
-							.SizeInBytes = static_cast<UINT>(DynamicOffset)
-						};
-						Device->CreateConstantBufferView(&CBVD, CDH);
-						Handle.emplace_back(GDH);
-						CDH.ptr += IncSize;
-						GDH.ptr += IncSize;
-					}
+					const auto& Tex = RenderTextures[0];
+					Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
+					Handle.emplace_back(CDH);
+					CDH.ptr += IncSize;
+				}
+				//!< デプスステンシルビュー [Depth stencil view]
+				{
+					auto& Desc = DsvDescs.emplace_back();
+					auto& Heap = Desc.first;
+					auto& Handle = Desc.second;
+
+					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+						.NumDescriptors = DescCount,
+						.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+						.NodeMask = 0
+					};
+					VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+					auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+					const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+					const auto& Tex = DepthTextures[0];
+					Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+					Handle.emplace_back(CDH);
+					CDH.ptr += IncSize;
 				}
 			}
 		}
 
-		//!<【パス1】[Pass0]
+		//!< コンスタントバッファービュー [Constant buffer view]
 		{
+			const auto DescCount = 1;
+
+			for (auto i = 0; i < 1; ++i) {
+				auto& Desc = CbvSrvUavDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+					.NumDescriptors = DescCount,
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+					.NodeMask = 0
+				};
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				const auto& CB = ConstantBuffers[0];
+				//!< オフセット毎に使用するサイズ [Offset size]
+				const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+				//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
+				for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
+					//!< オフセット毎の位置、サイズ [Offset location and size]
+					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
+						.SizeInBytes = static_cast<UINT>(DynamicOffset)
+					};
+					Device->CreateConstantBufferView(&CBVD, CDH);
+					Handle.emplace_back(GDH);
+					CDH.ptr += IncSize;
+					GDH.ptr += IncSize;
+				}
+			}
+		}
+	}
+	void CreateDescriptor_Pass1() {
+		for (auto i = 0; i < 1; ++i) {
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
 			auto& Handle = Desc.second;
 
-			const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+			const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 				.NumDescriptors = 1,
-				.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 
-				.NodeMask = 0 
+				.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+				.NodeMask = 0
 			};
 			VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
 			auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
@@ -367,7 +482,7 @@ public:
 			//!< コンスタントバッファービュー [Constant buffer view]
 			{
 				const auto& CB = ConstantBuffers[1];
-				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = { 
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
 					.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
 					.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
 				};
@@ -378,12 +493,16 @@ public:
 			}
 		}
 	}
+	virtual void CreateDescriptor() override {
+		CreateDescriptor_Pass0();
+		CreateDescriptor_Pass1();
+	}
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
 		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
 		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
 
-		//!<【パス0】キルトレンダーターゲットを分割 [Pass0 Split quilt render target]
+		//!<【Pass0】キルトレンダーターゲットを分割 [Split quilt render target]
 		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
 		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
 			const auto Y = QuiltY - H * (i + 1);
@@ -394,14 +513,14 @@ public:
 			}
 		}
 
-		//!<【パス1】スクリーンを使用 [Pass1 Using screen]
+		//!<【Pass1】スクリーンを使用 [Using screen]
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateBundleCommandList(const size_t i) override {
 		if (0 == i) {
 			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 
-			//!<【パス0】[Pass0]
+			//!<【Pass0】
 			{
 				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 				const auto PS = COM_PTR_GET(PipelineStates[0]);
@@ -419,7 +538,7 @@ public:
 				VERIFY_SUCCEEDED(BCL->Close());
 			}
 
-			//!<【パス1】[Pass1]
+			//!<【Pass1】
 			{
 				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
 				const auto PS = COM_PTR_GET(PipelineStates[1]);
@@ -437,7 +556,7 @@ public:
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(DCL->Reset(DCA, nullptr));
 		{
-			//!<【パス0】[Pass0]
+			//!<【Pass0】
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[0]);
 				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
@@ -490,7 +609,7 @@ public:
 				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
 				RT, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-			//!<【パス1】[Pass1]
+			//!<【Pass1】
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[1]);
 				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);

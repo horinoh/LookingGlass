@@ -1,6 +1,7 @@
 // Mesh2VK.cpp : Defines the entry point for the application.
 //
 
+#define NOMINMAX
 #include "framework.h"
 #include "Mesh2VK.h"
 

@@ -1,6 +1,7 @@
 // Mesh2DX.cpp : Defines the entry point for the application.
 //
 
+#define NOMINMAX
 #include "framework.h"
 #include "Mesh2DX.h"
 

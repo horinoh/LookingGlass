@@ -176,7 +176,7 @@ public:
 		};
 		VERIFY_SUCCEEDED(vkCreatePipelineLayout(Device, &PLCI, GetAllocationCallbacks(), &PL));
 	}
-	virtual void CreatePipelineLayout() {}
+	virtual void CreatePipelineLayout() { PipelineLayouts.emplace_back(); CreatePipelineLayout(PipelineLayouts.back(), {}, {}); }
 
 	virtual void CreateRenderPass(VkRenderPass& RP, const std::vector<VkAttachmentDescription>& ADs, const std::vector<VkSubpassDescription>& SDs, const std::vector<VkSubpassDependency>& Deps);
 	virtual void CreateRenderPass() { CreateRenderPass_Clear(); }

@@ -5,8 +5,9 @@
 #include "../VK.h"
 #include "../Holo.h"
 #include "../FBX.h"
+#include "../GltfSDK.h"
 
-class Mesh2VK : public VK, public Holo, public Fbx
+class Mesh2VK : public VK, public Holo, public Fbx//, public Gltf::SDK
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -61,6 +62,11 @@ public:
 
 		//Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
+
+		//Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
 
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
 		VK::Scoped<StagingBuffer> StagingPass0Vertex(Device);
@@ -211,110 +217,113 @@ public:
 		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
+	void CreateDescriptor_Pass0() {
+		const auto BackBufferCount = static_cast<uint32_t>(size(SwapchainBackBuffers));
+		const auto DescCount = BackBufferCount;
+
+		const auto UB0Index = 0;
+		const auto UB1Index = BackBufferCount;
+		const auto DSIndex = 0;
+
+		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = DescCount }),
+		});
+
+		auto DSL = DescriptorSetLayouts[0];
+		auto DP = DescriptorPools[0];
+		const std::array DSLs = { DSL };
+		for (uint32_t i = 0; i < BackBufferCount; ++i) {
+			const VkDescriptorSetAllocateInfo DSAI = {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.pNext = nullptr,
+				.descriptorPool = DP,
+				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+			};
+			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		}
+
+		struct DescriptorUpdateInfo
+		{
+			VkDescriptorBufferInfo DBI0[1];
+			VkDescriptorBufferInfo DBI1[1];
+		};
+		VkDescriptorUpdateTemplate DUT;
+		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 0, .dstArrayElement = 0,
+				.descriptorCount = _countof(DescriptorUpdateInfo::DBI0), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DescriptorUpdateInfo, DBI0), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 1, .dstArrayElement = 0,
+				.descriptorCount = _countof(DescriptorUpdateInfo::DBI1), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+		}, DSL);
+		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		for (uint32_t i = 0; i < BackBufferCount; ++i) {
+			const DescriptorUpdateInfo DUI = {
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB1Index + i].Buffer, .offset = 0, .range = DynamicOffset }),
+			};
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
+		}
+		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
+	}
+	void CreateDescriptor_Pass1() {
+		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
+		});
+
+		auto DSL = DescriptorSetLayouts[1];
+		auto DP = DescriptorPools[1];
+		const std::array DSLs = { DSL };
+		for (uint32_t i = 0; i < 1; ++i) {
+			const VkDescriptorSetAllocateInfo DSAI = {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.pNext = nullptr,
+				.descriptorPool = DP,
+				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+			};
+			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		}
+
+		struct DescriptorUpdateInfo
+		{
+			VkDescriptorImageInfo DII[1];
+			VkDescriptorBufferInfo DBI[1];
+		};
+		VkDescriptorUpdateTemplate DUT;
+		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 0, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII), .stride = sizeof(VkDescriptorImageInfo)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 1, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+		}, DSL);
+
+		const auto UBIndex = static_cast<uint32_t>(size(SwapchainBackBuffers)) * 2;
+		const auto DSIndex = static_cast<uint32_t>(size(SwapchainBackBuffers));
+
+		for (uint32_t i = 0; i < 1; ++i) {
+			const DescriptorUpdateInfo DUI = {
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+			};
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
+		}
+		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
+	}
 	virtual void CreateDescriptor() override {
-		{
-			const auto DescCount = static_cast<uint32_t>(size(SwapchainBackBuffers));
-
-			const auto UB0Index = 0;
-			const auto UB1Index = static_cast<uint32_t>(size(SwapchainBackBuffers));
-			const auto DSIndex = 0;
-
-			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = DescCount }),
-			});
-			auto DSL = DescriptorSetLayouts[0];
-			auto DP = DescriptorPools[0];
-			const std::array DSLs = { DSL };
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const VkDescriptorSetAllocateInfo DSAI = {
-					.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-					.pNext = nullptr,
-					.descriptorPool = DP,
-					.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
-				};
-				VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
-			}
-
-			struct DescriptorUpdateInfo
-			{
-				VkDescriptorBufferInfo DBI0[1];
-				VkDescriptorBufferInfo DBI1[1];
-			};
-			VkDescriptorUpdateTemplate DUT;
-			VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 0, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-					.offset = offsetof(DescriptorUpdateInfo, DBI0), .stride = sizeof(DescriptorUpdateInfo)
-				}),
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 1, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-					.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DescriptorUpdateInfo)
-				}),
-			}, DSL);
-			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const DescriptorUpdateInfo DUI = {
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[UB1Index + i].Buffer, .offset = 0, .range = DynamicOffset }),
-				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
-			}
-			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
-		}
-		{
-			const auto DescCount = 1;
-
-			const auto UBIndex = static_cast<uint32_t>(size(SwapchainBackBuffers)) * 2;
-			const auto DSIndex = static_cast<uint32_t>(size(SwapchainBackBuffers));
-
-			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
-			});
-
-			auto DSL = DescriptorSetLayouts[1];
-			auto DP = DescriptorPools[1];
-			const std::array DSLs = { DSL };
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const VkDescriptorSetAllocateInfo DSAI = {
-					.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-					.pNext = nullptr,
-					.descriptorPool = DP,
-					.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
-				};
-				VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
-			}
-
-			struct DescriptorUpdateInfo
-			{
-				VkDescriptorImageInfo DII[1];
-				VkDescriptorBufferInfo DBI[1];
-			};
-			VkDescriptorUpdateTemplate DUT;
-			VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 0, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-					.offset = offsetof(DescriptorUpdateInfo, DII), .stride = sizeof(VkDescriptorImageInfo)
-				}),
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 1, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-					.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
-				}),
-			}, DSL);
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const DescriptorUpdateInfo DUI = {
-					VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
-				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
-			}
-			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
-		}
+		CreateDescriptor_Pass0();
+		CreateDescriptor_Pass1();
 	}
 	virtual void CreateFramebuffer() override {
 		VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], QuiltX, QuiltY, 1, { RenderTextures[0].View, DepthTextures[0].View });

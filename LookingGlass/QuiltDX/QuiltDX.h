@@ -122,40 +122,44 @@ public:
 		Threads.clear();
 	}
 	virtual void CreateDescriptor() override {
-		auto& Desc = CbvSrvUavDescs.emplace_back();
-		auto& Heap = Desc.first;
-		auto& Handle = Desc.second;
+		const auto DescCount = 1;
 
-		const D3D12_DESCRIPTOR_HEAP_DESC DHD = { 
-			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
-			.NumDescriptors = 1, 
-			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0
-		}; 
-		VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
-		auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
-		auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
-		const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+		for (auto i = 0; i < 1; ++i) {
+			auto& Desc = CbvSrvUavDescs.emplace_back();
+			auto& Heap = Desc.first;
+			auto& Handle = Desc.second;
 
-		//!< SRV
-		{
-			const auto& Tex = XTKTextures[0];
-			Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
-			Handle.emplace_back(GDH);
-			CDH.ptr += IncSize;
-			GDH.ptr += IncSize;
-		}
-
-		//!< CBV
-		{
-			const auto& CB = ConstantBuffers[0];
-			const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
-				.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
-				.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+			const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+				.NumDescriptors = DescCount,
+				.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, .NodeMask = 0
 			};
-			Device->CreateConstantBufferView(&CBVD, CDH);
-			Handle.emplace_back(GDH);
-			CDH.ptr += IncSize;
-			GDH.ptr += IncSize;
+			VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+			auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+			auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+			const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+			//!< SRV
+			{
+				const auto& Tex = XTKTextures[0];
+				Device->CreateShaderResourceView(COM_PTR_GET(Tex.Resource), &Tex.SRV, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+			}
+
+			//!< CBV
+			{
+				const auto& CB = ConstantBuffers[0];
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+					.BufferLocation = CB.Resource->GetGPUVirtualAddress(),
+					.SizeInBytes = static_cast<UINT>(CB.Resource->GetDesc().Width)
+				};
+				Device->CreateConstantBufferView(&CBVD, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+			}
 		}
 	}
 	virtual	void PopulateBundleCommandList(const size_t i) override {

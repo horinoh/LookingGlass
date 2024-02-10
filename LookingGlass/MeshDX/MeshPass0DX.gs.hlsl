@@ -27,7 +27,6 @@ void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instan
 	[unroll]
 	for (int i = 0; i < 3; ++i) {
 		Out.Position = mul(VPB.ViewProjection[instanceID], float4(In[i].Position, 1.0f));
-		//Out.Position = mul(mul(VPB.ViewProjection[instanceID], World), float4(In[i].Position, 1.0f));
 
 		Out.Normal = normalize(In[i].Normal);
 

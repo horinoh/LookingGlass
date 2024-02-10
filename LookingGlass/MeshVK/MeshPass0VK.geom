@@ -17,7 +17,6 @@ void main()
 {	
 	for(int i=0;i<gl_in.length();++i) {
 		gl_Position = VPB.ViewProjection[gl_InvocationID] * gl_in[i].gl_Position;
-		//gl_Position = VPB.ViewProjection[gl_InvocationID] * World * gl_in[i].gl_Position;
 
 		OutNormal = normalize(InNormal[i]);
 	

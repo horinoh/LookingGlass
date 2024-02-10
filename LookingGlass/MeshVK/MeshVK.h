@@ -2,11 +2,17 @@
 
 #include "resource.h"
 
+#define USE_GLTF
 #include "../VK.h"
 #include "../Holo.h"
-#include "../FBX.h"
 
+#ifdef USE_GLTF
+#include "../GltfSDK.h"
+class MeshVK : public VK, public Holo, public Gltf::SDK
+#else
+#include "../FBX.h"
 class MeshVK : public VK, public Holo, public Fbx
+#endif
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -25,6 +31,108 @@ public:
 		VK::OnCreate(hWnd, hInstance, Title);
 	}
 
+#ifdef USE_GLTF
+	virtual void Process() override {
+		for (const auto& i : Document.meshes.Elements()) {
+			for (const auto& j : i.primitives) {
+				switch (j.mode)
+				{
+				case Microsoft::glTF::MeshMode::MESH_TRIANGLES:
+					break;
+				default: 
+					break;
+				}
+
+				if (empty(Indices)) {
+					if (Document.accessors.Has(j.indicesAccessorId)) {
+						const auto& Accessor = Document.accessors.Get(j.indicesAccessorId);
+						switch (Accessor.componentType)
+						{
+						case Microsoft::glTF::ComponentType::COMPONENT_UNSIGNED_SHORT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_SCALAR:
+							{
+								std::vector<uint16_t> Indices16(Accessor.count);
+								std::ranges::copy(ResourceReader->ReadBinaryData<uint16_t>(Document, Accessor), std::begin(Indices16));
+
+								Indices.reserve(Accessor.count);
+								for (auto i : Indices16) {
+									Indices.emplace_back(i);
+								}
+							}
+							break;
+							default: break;
+							}
+							break;
+						case Microsoft::glTF::ComponentType::COMPONENT_UNSIGNED_INT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_SCALAR:
+							{
+								Indices.resize(Accessor.count);
+								std::ranges::copy(ResourceReader->ReadBinaryData<uint32_t>(Document, Accessor), std::begin(Indices));
+							}
+							break;
+							default: break;
+							}
+							break;
+						default: break;
+						}
+					}
+				}
+
+				std::string AccessorId;
+				if (empty(Vertices)) {
+					if (j.TryGetAttributeAccessorId(Microsoft::glTF::ACCESSOR_POSITION, AccessorId))
+					{
+						const auto& Accessor = Document.accessors.Get(AccessorId);
+						Vertices.resize(Accessor.count);
+						switch (Accessor.componentType)
+						{
+						case Microsoft::glTF::ComponentType::COMPONENT_FLOAT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_VEC3:
+							{
+								std::memcpy(data(Vertices), data(ResourceReader->ReadBinaryData<float>(Document, Accessor)), TotalSizeOf(Vertices));
+
+								AdjustScale(Vertices, 5.0f);
+							}
+							break;
+							default: break;
+							}
+							break;
+						default: break;
+						}
+					}
+				}
+				if (empty(Normals)) {
+					if (j.TryGetAttributeAccessorId(Microsoft::glTF::ACCESSOR_NORMAL, AccessorId))
+					{
+						const auto& Accessor = Document.accessors.Get(AccessorId);
+						Normals.resize(Accessor.count);
+						switch (Accessor.componentType)
+						{
+						case Microsoft::glTF::ComponentType::COMPONENT_FLOAT:
+							switch (Accessor.type)
+							{
+							case Microsoft::glTF::AccessorType::TYPE_VEC3:
+							{
+								std::memcpy(data(Normals), data(ResourceReader->ReadBinaryData<float>(Document, Accessor)), TotalSizeOf(Normals));
+							}
+							break;
+							default: break;
+							}
+							break;
+						default: break;
+						}
+					}
+				}
+			}
+		}
+	}
+#else
 	glm::vec3 ToVec3(const FbxVector4& rhs) { return glm::vec3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
 	virtual void Process(FbxMesh* Mesh) override {
 		Fbx::Process(Mesh);
@@ -43,11 +151,12 @@ public:
 			Normals.emplace_back(ToVec3(Nrms[i]));
 		}
 	}
+#endif
 
 	virtual void AllocateCommandBuffer() override {
-		//!<【パス0】コマンドバッファ [Pass0]
+		//!<【Pass0】コマンドバッファ
 		VK::AllocateCommandBuffer();
-		//!<【パス1】セカンダリコマンドバッファ [Pass1]
+		//!<【Pass1】セカンダリコマンドバッファ
 		VK::AllocateSecondaryCommandBuffer(2);
 	}
 
@@ -55,13 +164,21 @@ public:
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
 
-		//!<【パス0】メッシュ描画用 [Pass0 To draw mesh] 
+		//!<【Pass0】メッシュ描画用 [To draw mesh] 
+#ifdef USE_GLTF
+		Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Sphere.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Box.glb");
+#else
 		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip_res2.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "Bee.FBX");
 		//Load(std::filesystem::path("..") / "Asset" / "ALucy.FBX");
-
+#endif
+		
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
 		VK::Scoped<StagingBuffer> StagingPass0Vertex(Device);
 		StagingPass0Vertex.Create(Device, PDMP, TotalSizeOf(Vertices), data(Vertices));
@@ -85,7 +202,7 @@ public:
 		VK::Scoped<StagingBuffer> StagingPass0Indirect(Device);
 		StagingPass0Indirect.Create(Device, PDMP, sizeof(DIIC), &DIIC);
 
-		//!<【パス0】レンダーテクスチャ描画用 [Pass1 To draw render texture]
+		//!<【Pass0】レンダーテクスチャ描画用 [To draw render texture]
 		constexpr VkDrawIndirectCommand DIC = { 
 			.vertexCount = 4, 
 			.instanceCount = 1, 
@@ -104,13 +221,13 @@ public:
 			.pInheritanceInfo = nullptr 
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			//!< 【パス0】[Pass0]
+			//!< 【Pass0】
 			VertexBuffers[0].PopulateCopyCommand(CB, TotalSizeOf(Vertices), StagingPass0Vertex.Buffer);
 			VertexBuffers[1].PopulateCopyCommand(CB, TotalSizeOf(Normals), StagingPass0Normal.Buffer);
 			IndexBuffers[0].PopulateCopyCommand(CB, TotalSizeOf(Indices), StagingPass0Index.Buffer);
 			IndirectBuffers[0].PopulateCopyCommand(CB, sizeof(DIIC), StagingPass0Indirect.Buffer);
 
-			//!< 【パス1】[Pass1]
+			//!< 【Pass1】
 			IndirectBuffers[1].PopulateCopyCommand(CB, sizeof(DIC), StagingPass1Indirect.Buffer);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
@@ -119,25 +236,25 @@ public:
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 
-		//!<【パス0】[Pass0]
+		//!<【Pass0】
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(ViewProjectionBuffer));
 		CopyToHostVisibleDeviceMemory(Device, UniformBuffers.back().DeviceMemory, 0, sizeof(ViewProjectionBuffer), &ViewProjectionBuffer);
 
-		//!<【パス1】[Pass1]
+		//!<【Pass1】
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(LenticularBuffer));
 		CopyToHostVisibleDeviceMemory(Device, UniformBuffers.back().DeviceMemory, 0, sizeof(LenticularBuffer), &LenticularBuffer);
 	}
 	virtual void CreateTexture() override {
-		//!<【パス0】レンダーターゲット、デプス (キルトサイズ) [Pass0 Render target and depth (quilt size)]
+		//!<【Pass0】レンダーターゲット、デプス (キルトサイズ) [Render target and depth (quilt size)]
 		CreateTexture_Render(QuiltX, QuiltY);
 		CreateTexture_Depth(QuiltX, QuiltY);
 	}
 	virtual void CreateImmutableSampler() override {
-		//!< 【パス1】[Pass1]
+		//!< 【Pass1】
 		CreateImmutableSampler_LinearRepeat();
 	}
 	virtual void CreatePipelineLayout() override {
-		//!<【パス0】[Pass0 Using dynamic offset UNIFORM_BUFFER_DYNAMIC]
+		//!<【Pass0】[Using dynamic offset UNIFORM_BUFFER_DYNAMIC]
 		//!< ダイナミックオフセットを使用する為、UNIFORM_BUFFER_DYNAMIC
 		{
 			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
@@ -146,7 +263,7 @@ public:
 			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
 		}
 
-		//!<【パス1】[Pass1]
+		//!<【Pass1】
 		{
 			const std::array ISs = { Samplers[0] };
 			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
@@ -157,9 +274,9 @@ public:
 		}
 	}
 	virtual void CreateRenderPass() override { 
-		//!< 【パス0】[Pass0]
+		//!< 【Pass0】
 		CreateRenderPass_Depth();
-		//!< 【パス1】[Pass1]
+		//!< 【Pass1】
 		CreateRenderPass_None();
 	}
 	virtual void CreatePipeline() override {
@@ -221,123 +338,120 @@ public:
 		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
+	void CreateDescriptor_Pass0() {
+		//!<【Pass0】ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用 [Using dynamic offset UNIFORM_BUFFER_DYNAMIC]
+		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1 }),
+		});
+		auto DSL = DescriptorSetLayouts[0];
+		auto DP = DescriptorPools[0];
+		const std::array DSLs = { DSL };
+		for (uint32_t i = 0; i < 1; ++i) {
+			const VkDescriptorSetAllocateInfo DSAI = {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.pNext = nullptr,
+				.descriptorPool = DP,
+				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+			};
+			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		}
+
+		struct DescriptorUpdateInfo
+		{
+			VkDescriptorBufferInfo DBI[1];
+		};
+		VkDescriptorUpdateTemplate DUT;
+		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 0, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+			}, DSL);
+
+		const auto UBIndex = 0;
+		const auto DSIndex = 0;
+
+		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
+		//!< [When using dynamic offset, .range value is data size used in each offset]
+		//!<	100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
+		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		for (uint32_t i = 0; i < 1; ++i) {
+			const DescriptorUpdateInfo DUI = {
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = DynamicOffset }),
+			};
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
+		}
+		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
+	}
+	void CreateDescriptor_Pass1() {
+		const auto DescCount = 1;
+		
+		const auto UBIndex = 1;
+		const auto DSIndex = 1;
+
+		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = DescCount }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
+		});
+
+		auto DSL = DescriptorSetLayouts[1];
+		auto DP = DescriptorPools[1];
+		const std::array DSLs = { DSL };
+		for (uint32_t i = 0; i < 1; ++i) {
+			const VkDescriptorSetAllocateInfo DSAI = {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.pNext = nullptr,
+				.descriptorPool = DP,
+				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+			};
+			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		}
+
+		struct DescriptorUpdateInfo
+		{
+			VkDescriptorImageInfo DII[1];
+			VkDescriptorBufferInfo DBI[1];
+		};
+		VkDescriptorUpdateTemplate DUT;
+		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 0, .dstArrayElement = 0,
+				.descriptorCount = _countof(DescriptorUpdateInfo::DII), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII), .stride = sizeof(VkDescriptorImageInfo)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 1, .dstArrayElement = 0,
+				.descriptorCount = _countof(DescriptorUpdateInfo::DBI), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+		}, DSL);
+		for (uint32_t i = 0; i < 1; ++i) {
+			const DescriptorUpdateInfo DUI = {
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+			};
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
+		}
+		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
+	}
 	virtual void CreateDescriptor() override {
-		//!<【パス0】[Pass0 Using dynamic offset UNIFORM_BUFFER_DYNAMIC]
-		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用
-		{
-			const auto DescCount = 1;
-
-			const auto UBIndex = 0;
-			const auto DSIndex = 0;
-
-			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = DescCount }),
-			});
-			auto DSL = DescriptorSetLayouts[0];
-			auto DP = DescriptorPools[0];
-			const std::array DSLs = { DSL };
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const VkDescriptorSetAllocateInfo DSAI = {
-					.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-					.pNext = nullptr,
-					.descriptorPool = DP,
-					.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
-				};
-				VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
-			}
-
-			struct DescriptorUpdateInfo
-			{
-				VkDescriptorBufferInfo DBI[1];
-			};
-			VkDescriptorUpdateTemplate DUT;
-			VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 0, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-					.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
-				}),
-			}, DSL);
-
-			//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
-			//!< [When using dynamic offset, .range value is data size used in each offset]
-			//!<	100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
-			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const DescriptorUpdateInfo DUI = {
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = DynamicOffset }),
-				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
-			}
-			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
-		}
-
-		//!< 【パス1】[Pass1]
-		{
-			const auto DescCount = 1;
-
-			const auto UBIndex = 1;
-			const auto DSIndex = 1;
-
-			VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1 }),
-				VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
-			});
-
-			auto DSL = DescriptorSetLayouts[1];
-			auto DP = DescriptorPools[1];
-			const std::array DSLs = { DSL };
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const VkDescriptorSetAllocateInfo DSAI = {
-					.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-					.pNext = nullptr,
-					.descriptorPool = DP,
-					.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
-				};
-				VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
-			}
-
-			struct DescriptorUpdateInfo
-			{
-				VkDescriptorImageInfo DII[1];
-				VkDescriptorBufferInfo DBI[1];
-			};
-			VkDescriptorUpdateTemplate DUT;
-			VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 0, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-					.offset = offsetof(DescriptorUpdateInfo, DII), .stride = sizeof(VkDescriptorImageInfo)
-				}),
-				VkDescriptorUpdateTemplateEntry({
-					.dstBinding = 1, .dstArrayElement = 0,
-					.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-					.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
-				}),
-			}, DSL);
-			for (uint32_t i = 0; i < DescCount; ++i) {
-				const DescriptorUpdateInfo DUI = {
-					VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-					VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
-				};
-				vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
-			}
-			vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
-		}
+		CreateDescriptor_Pass0();
+		CreateDescriptor_Pass1();
 	}
 	virtual void CreateFramebuffer() override {
-		//!< 【パス0】[Pass0 Render target (quilt size)]
+		//!< 【Pass0】[Render target (quilt size)]
 		//!< レンダーターゲット (キルトサイズ)
 		VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[0], QuiltX, QuiltY, 1, { RenderTextures[0].View, DepthTextures[0].View });
 
-		//!<【パス1】[Pass1 Swapchain (screen size)]
+		//!<【Pass1】[Swapchain (screen size)]
 		//!< スワップチェイン (スクリーンサイズ)
 		for (const auto& i : SwapchainBackBuffers) {
 			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[1], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i.ImageView });
 		}
 	}
 	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
-		//!<【パス0】キルトレンダーターゲットを分割 [Pass0 Split quilt render target]
+		//!<【Pass0】キルトレンダーターゲットを分割 [Split quilt render target]
 		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
 		const auto Ext2D = VkExtent2D({ .width = static_cast<uint32_t>(W), .height = static_cast<uint32_t>(H) });
 		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
@@ -349,12 +463,12 @@ public:
 			}
 		}
 
-		//!<【パス1】スクリーンを使用 [Pass1 Using screen]
+		//!<【Pass1】スクリーンを使用 [Using screen]
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
 		if (0 == i) {
-			//!<【パス0】[Pass0]
+			//!<【Pass0】
 			{
 				const auto RP = RenderPasses[0];
 				const auto PL = Pipelines[0];
@@ -409,7 +523,7 @@ public:
 					}
 				} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
 			}
-			//!<【パス1】[Pass1]
+			//!<【Pass1】
 			{
 				const auto RP = RenderPasses[1];
 				const auto PL = Pipelines[1];
@@ -457,7 +571,7 @@ public:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			//!<【パス0】[Pass0]
+			//!<【Pass0】
 			{
 				const auto RP = RenderPasses[0];
 				const auto FB = Framebuffers[0];
@@ -486,7 +600,7 @@ public:
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				RenderTextures[0].Image);
 
-			//!<【パス1】[Pass1]
+			//!<【Pass1】
 			{
 				const auto RP = RenderPasses[1];
 				const auto FB = Framebuffers[1 + i];
