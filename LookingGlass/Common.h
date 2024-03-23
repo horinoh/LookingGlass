@@ -2,12 +2,15 @@
 
 #include <fstream>
 #include <filesystem>
+#include <array>
 
 #ifdef _DEBUG
 #define LOG(x) OutputDebugStringA((x))
 #else
 #define LOG(x)
 #endif
+
+#define TO_RADIAN(x) ((x) * std::numbers::pi_v<float> / 180.0f)
 
 static constexpr size_t RoundUpMask(const size_t Size, const size_t Mask) { return (Size + Mask) & ~Mask; }
 static constexpr size_t RoundUp(const size_t Size, const size_t Align) { return RoundUpMask(Size, Align - 1); }

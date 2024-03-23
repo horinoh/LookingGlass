@@ -19,9 +19,10 @@ struct LENTICULAR_BUFFER
 	int Ri;
 	int Bi;
 
-	int TileX, TileY;
-
+	int TileX;
+	int TileY;
 	float QuiltAspect;
+	float Padding;
 };
 ConstantBuffer<LENTICULAR_BUFFER> LB : register(b0, space0);
 

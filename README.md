@@ -31,6 +31,15 @@
 #### [FBX](https://aps.autodesk.com/developer/overview/fbx-sdk)
 - SDK をインストールして、環境変数 FBX_SDK_PATH をインストール先に設定しておく (Install SDK, and create environment varibale FBX_SDK_PATH)
 
+#### [GLTF](https://www.nuget.org/packages/Microsoft.glTF.CPP)
+- NuGetPackage で Microsoft.glTF.CPP をインストール
+- min, max 関連でコンパイルエラーになる場合、windows.h より前に NOMINMAX を定義する
+    ~~~
+    #define NOMINMAX 
+    #include <windows.h>
+    ~~~
+- リンカエラー 4099 が出る(#pragma では回避できない)ので以下のようにしている
+    - Configuration Properties - Linker - CommandLine - AdditionalOptions - /ignore:4099
 
 ## アセット (Assets)
 - キルト画像(DDS)やメッシュ(FBX)は LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)

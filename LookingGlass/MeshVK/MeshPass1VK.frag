@@ -22,9 +22,10 @@ layout (set = 0, binding = 1) uniform LenticularBuffer
 	int Ri;
 	int Bi;
 
-	int TileX, TileY;
-
+	int TileX;
+	int TileY;
 	float QuiltAspect;
+	float Padding;
 } LB;
 
 vec2 ToTexcoord(vec3 CoordZ)

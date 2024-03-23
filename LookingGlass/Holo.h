@@ -10,13 +10,7 @@
 #include <HoloPlayCore.h>
 #include <HoloPlayShaders.h>
 
-#ifdef _DEBUG
-#define LOG(x) OutputDebugStringA((x))
-#else
-#define LOG(x)
-#endif
-
-#define TO_RADIAN(x) ((x) * std::numbers::pi_v<float> / 180.0f)
+#include "Common.h"
 
 //#define DISPLAY_QUILT
 
@@ -198,12 +192,14 @@ protected:
 		int InvView = 1;
 		int Ri = 0;
 		int Bi = 2;
+
 #if 1
 		int TileX = 8, TileY = 6;
 #else
 		int TileX = 2, TileY = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
 #endif
 		float QuiltAspect = static_cast<float>(TileX) / TileY;
+		float Padding;
 	};
 	LENTICULAR_BUFFER LenticularBuffer;
 };

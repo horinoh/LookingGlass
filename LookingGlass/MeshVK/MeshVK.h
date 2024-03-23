@@ -40,6 +40,7 @@ public:
 				case Microsoft::glTF::MeshMode::MESH_TRIANGLES:
 					break;
 				default: 
+					__debugbreak();
 					break;
 				}
 
@@ -55,7 +56,7 @@ public:
 							{
 								std::vector<uint16_t> Indices16(Accessor.count);
 								std::ranges::copy(ResourceReader->ReadBinaryData<uint16_t>(Document, Accessor), std::begin(Indices16));
-
+								//!< uint32_t フォーマットで扱う
 								Indices.reserve(Accessor.count);
 								for (auto i : Indices16) {
 									Indices.emplace_back(i);
