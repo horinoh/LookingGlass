@@ -45,14 +45,14 @@ float4 main(IN In) : SV_TARGET
 		//!<	0 (デフォルト)	: 余白は黒で埋めてスケーリング
 		//!<	1				: 余白を埋めるようにスケーリング
 		const int OverScan = 0;
-		UV -= 0.5;
+		UV -= 0.5f;
 		const float modx = clamp(step(LB.QuiltAspect, LB.DisplayAspect) * step(float(OverScan), 0.5f) + step(LB.DisplayAspect, LB.QuiltAspect) * step(0.5f, float(OverScan)), 0.0f, 1.0f);
 		UV *= float2(LB.DisplayAspect / LB.QuiltAspect * modx + (1.0f - modx), LB.QuiltAspect / LB.DisplayAspect * (1.0f - modx) + modx);
-		UV += 0.5;
+		UV += 0.5f;
 	}
 
 	clip(UV);
-	clip(1 - UV);
+	clip(1.0f - UV);
 
 	//!< RGB サブピクセルは正弦波パターンに並んでいて、全体的に斜めになっている
 	float3 RGB[3];

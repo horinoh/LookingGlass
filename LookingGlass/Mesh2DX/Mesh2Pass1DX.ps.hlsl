@@ -36,7 +36,7 @@ float4 main(IN In) : SV_TARGET
 	float2 UV = In.Texcoord;
 
 	clip(UV);
-	clip(1 - UV);
+	clip(1.0f - UV);
 
 	float3 RGB[3];
 	const float XY = LB.TileX * LB.TileY;

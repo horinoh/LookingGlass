@@ -38,7 +38,7 @@ float4 main(IN In) : SV_TARGET
 	//!< 自前で描画しているので、キルトとディスプレイのアスペクト比調整は不要
 
 	clip(UV);
-	clip(1 - UV);
+	clip(1.0f - UV);
 
 	float3 RGB[3];
 	const float XY = LB.TileX * LB.TileY;

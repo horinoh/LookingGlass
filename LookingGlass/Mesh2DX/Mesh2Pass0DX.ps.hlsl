@@ -33,8 +33,8 @@ float4 main(IN In) : SV_TARGET
 	const float3 Ambient = float3(0.1f, 0.1f, 0.1f);
 	const float3 MaterialColor = float3(0.5f, 1.0f, 0.5f);
 	const float4 LightColor = float4(1.0f, 1.0f, 1.0f, 8.0f);
-	const float Attenuate = 1.0;
-	const float Spot = 1.0;
+	const float Attenuate = 1.0f;
+	const float Spot = 1.0f;
 	const float3 Color = (Ambient + (Diffuse(MaterialColor, LightColor.rgb, LN) + Specular(MaterialColor, LightColor, LN, L, N, V)) * Attenuate) * Spot;
 
 	return float4(Color, 1.0f);

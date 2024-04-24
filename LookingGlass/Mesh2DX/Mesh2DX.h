@@ -28,8 +28,7 @@ public:
 	}
 	virtual void DrawFrame(const UINT i) override {
 		UpdateWorldBuffer();
-		//CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
-		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer.World[0]) * GetInstanceCount()), &WorldBuffer);
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
 	}
 
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -410,33 +409,39 @@ public:
 
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
-	virtual void PopulateBundleCommandList(const size_t i) override {
+	void PopulateBundleCommandList_Pass0(const size_t i) {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
+		const auto PS = COM_PTR_GET(PipelineStates[0]);
+		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
-			const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
-			const auto PS = COM_PTR_GET(PipelineStates[0]);
-			VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
-			{
-				BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-				const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-				BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
-				BCL->IASetIndexBuffer(&IndexBuffers[0].View);
+			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
+			BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+			BCL->IASetIndexBuffer(&IndexBuffers[0].View);
 
-				const auto IB = IndirectBuffers[0];
-				BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
-			}
-			VERIFY_SUCCEEDED(BCL->Close());
+			const auto IB = IndirectBuffers[0];
+			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
 		}
+		VERIFY_SUCCEEDED(BCL->Close());
+	}
+	void PopulateBundleCommandList_Pass1() {
+		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+		const auto BCL = COM_PTR_GET(BundleCommandLists[size(SwapChainBackBuffers)]);
+		const auto PS = COM_PTR_GET(PipelineStates[1]);
+		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+		{
+			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+			BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
+		}
+		VERIFY_SUCCEEDED(BCL->Close());
+	}
+	virtual void PopulateBundleCommandList(const size_t i) override {
+		PopulateBundleCommandList_Pass0(i);
+
 		if (0 == i) {
-			const auto BCL = COM_PTR_GET(BundleCommandLists[size(SwapChainBackBuffers)]);
-			const auto PS = COM_PTR_GET(PipelineStates[1]);
-			VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
-			{
-				BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-				BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
-			}
-			VERIFY_SUCCEEDED(BCL->Close());
+			PopulateBundleCommandList_Pass1();
 		}
 	}
 	virtual void PopulateCommandList(const size_t i) override {

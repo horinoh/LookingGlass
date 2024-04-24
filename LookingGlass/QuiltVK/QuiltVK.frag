@@ -47,14 +47,14 @@ void main()
 		//!<	0 (デフォルト)	: 余白は黒で埋めてスケーリング
 		//!<	1				: 余白を埋めるようにスケーリング
 		const int OverScan = 0;
-		UV -= 0.5;
+		UV -= 0.5f;
 		const float modx = clamp(step(LB.QuiltAspect, LB.DisplayAspect) * step(float(OverScan), 0.5f) + step(LB.DisplayAspect, LB.QuiltAspect) * step(0.5f, float(OverScan)), 0.0f, 1.0f);
 		UV *= vec2(LB.DisplayAspect / LB.QuiltAspect * modx + (1.0f - modx), LB.QuiltAspect / LB.DisplayAspect * (1.0f - modx) + modx);
-		UV += 0.5;
+		UV += 0.5f;
 	}
 
-	if(any(lessThan(UV, vec2(0)))) discard;
-	if(any(lessThan(1 - UV, vec2(0)))) discard;
+	if(any(lessThan(UV, vec2(0.0f)))) discard;
+	if(any(lessThan(1.0f - UV, vec2(0.0f)))) discard;
 
 	//!< RGB サブピクセルは正弦波パターンに並んでいて、全体的に斜めになっている
 	vec3 RGB[3];

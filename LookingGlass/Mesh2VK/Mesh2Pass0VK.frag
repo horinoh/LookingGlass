@@ -37,8 +37,8 @@ void main()
 	const vec3 Ambient = vec3(0.1f, 0.1f, 0.1f);
 	const vec3 MaterialColor = vec3(0.5f, 1.0f, 0.5f);
 	const vec4 LightColor = vec4(1.0f, 1.0f, 1.0f, 8.0f);
-	const float Attenuate = 1.0;
-	const float Spot = 1.0;
+	const float Attenuate = 1.0f;
+	const float Spot = 1.0f;
 	const vec3 Color = (Ambient + (Diffuse(MaterialColor, LightColor.rgb, LN) + Specular(MaterialColor, LightColor, LN, L, N, V)) * Attenuate) * Spot;
 
 	OutColor = vec4(Color, 1.0f);

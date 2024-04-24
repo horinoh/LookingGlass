@@ -28,8 +28,7 @@ public:
 	}
 	virtual void DrawFrame(const UINT i) override {
 		UpdateWorldBuffer();
-		//CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
-		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer.World[0]) * GetInstanceCount(), &WorldBuffer);
+		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
 	}
 
 	glm::vec3 ToVec3(const FbxVector4& rhs) { return glm::vec3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -346,95 +345,100 @@ public:
 
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
-	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
-		{
-			const auto RP = RenderPasses[0];
-			const auto PL = Pipelines[0];
-			const auto PLL = PipelineLayouts[0];
-			const auto SCB = SecondaryCommandBuffers[i];
-			const auto DS = DescriptorSets[i];
+	void PopulateSecondaryCommandBuffer_Pass0(const size_t i) {
+		const auto RP = RenderPasses[0];
+		const auto PL = Pipelines[0];
+		const auto PLL = PipelineLayouts[0];
+		const auto SCB = SecondaryCommandBuffers[i];
+		const auto DS = DescriptorSets[i];
 
-			VkMemoryRequirements MR;
-			vkGetBufferMemoryRequirements(Device, UniformBuffers[size(SwapchainBackBuffers)].Buffer, &MR);
+		VkMemoryRequirements MR;
+		vkGetBufferMemoryRequirements(Device, UniformBuffers[size(SwapchainBackBuffers)].Buffer, &MR);
 
-			const VkCommandBufferInheritanceInfo CBII = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-				.pNext = nullptr,
-				.renderPass = RP,
-				.subpass = 0,
-				.framebuffer = VK_NULL_HANDLE,
-				.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
-				.pipelineStatistics = 0,
-			};
-			const VkCommandBufferBeginInfo SCBBI = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-				.pNext = nullptr,
-				.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-				.pInheritanceInfo = &CBII
-			};
-			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
-				vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
+		const VkCommandBufferInheritanceInfo CBII = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+			.pNext = nullptr,
+			.renderPass = RP,
+			.subpass = 0,
+			.framebuffer = VK_NULL_HANDLE,
+			.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
+			.pipelineStatistics = 0,
+		};
+		const VkCommandBufferBeginInfo SCBBI = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			.pNext = nullptr,
+			.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+			.pInheritanceInfo = &CBII
+		};
+		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
+			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-				const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
-				for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
-					const auto Offset = GetViewportSetOffset(j);
-					const auto Count = GetViewportSetCount(j);
+			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+			for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+				const auto Offset = GetViewportSetOffset(j);
+				const auto Count = GetViewportSetCount(j);
 
-					vkCmdSetViewport(SCB, 0, Count, &QuiltViewports[Offset]);
-					vkCmdSetScissor(SCB, 0, Count, &QuiltScissorRects[Offset]);
-
-					const std::array DSs = { DS };
-					const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
-					vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
-
-					const std::array VBs = { VertexBuffers[0].Buffer };
-					const std::array NBs = { VertexBuffers[1].Buffer };
-					const std::array Offsets = { VkDeviceSize(0) };
-					vkCmdBindVertexBuffers(SCB, 0, static_cast<uint32_t>(size(VBs)), data(VBs), data(Offsets));
-					vkCmdBindVertexBuffers(SCB, 1, static_cast<uint32_t>(size(NBs)), data(NBs), data(Offsets));
-					vkCmdBindIndexBuffer(SCB, IndexBuffers[0].Buffer, 0, VK_INDEX_TYPE_UINT32);
-
-					vkCmdDrawIndexedIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
-				}
-			} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
-		}
-		if (0 == i) {
-			const auto Index = size(SwapchainBackBuffers);
-
-			const auto RP = RenderPasses[1];
-			const auto PL = Pipelines[1];
-			const auto PLL = PipelineLayouts[1];
-
-			const auto SCB = SecondaryCommandBuffers[Index];
-			const auto DS = DescriptorSets[Index];
-
-			const VkCommandBufferInheritanceInfo CBII = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-				.pNext = nullptr,
-				.renderPass = RP,
-				.subpass = 0,
-				.framebuffer = VK_NULL_HANDLE,
-				.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
-				.pipelineStatistics = 0,
-			};
-			const VkCommandBufferBeginInfo SCBBI = {
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-				.pNext = nullptr,
-				.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-				.pInheritanceInfo = &CBII
-			};
-			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
-				vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
-
-				vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-				vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+				vkCmdSetViewport(SCB, 0, Count, &QuiltViewports[Offset]);
+				vkCmdSetScissor(SCB, 0, Count, &QuiltScissorRects[Offset]);
 
 				const std::array DSs = { DS };
-				constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+				const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
 				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
 
-				vkCmdDrawIndirect(SCB, IndirectBuffers[1].Buffer, 0, 1, 0);
-			} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+				const std::array VBs = { VertexBuffers[0].Buffer };
+				const std::array NBs = { VertexBuffers[1].Buffer };
+				const std::array Offsets = { VkDeviceSize(0) };
+				vkCmdBindVertexBuffers(SCB, 0, static_cast<uint32_t>(size(VBs)), data(VBs), data(Offsets));
+				vkCmdBindVertexBuffers(SCB, 1, static_cast<uint32_t>(size(NBs)), data(NBs), data(Offsets));
+				vkCmdBindIndexBuffer(SCB, IndexBuffers[0].Buffer, 0, VK_INDEX_TYPE_UINT32);
+
+				vkCmdDrawIndexedIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
+			}
+		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+	}
+	void PopulateSecondaryCommandBuffer_Pass1() {
+		const auto Index = size(SwapchainBackBuffers);
+
+		const auto RP = RenderPasses[1];
+		const auto PL = Pipelines[1];
+		const auto PLL = PipelineLayouts[1];
+
+		const auto SCB = SecondaryCommandBuffers[Index];
+		const auto DS = DescriptorSets[Index];
+
+		const VkCommandBufferInheritanceInfo CBII = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+			.pNext = nullptr,
+			.renderPass = RP,
+			.subpass = 0,
+			.framebuffer = VK_NULL_HANDLE,
+			.occlusionQueryEnable = VK_FALSE, .queryFlags = 0,
+			.pipelineStatistics = 0,
+		};
+		const VkCommandBufferBeginInfo SCBBI = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			.pNext = nullptr,
+			.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+			.pInheritanceInfo = &CBII
+		};
+		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
+			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
+
+			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
+			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+
+			const std::array DSs = { DS };
+			constexpr std::array<uint32_t, 0> DynamicOffsets = {};
+			vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+
+			vkCmdDrawIndirect(SCB, IndirectBuffers[1].Buffer, 0, 1, 0);
+		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
+	}
+	virtual void PopulateSecondaryCommandBuffer(const size_t i) override {
+		PopulateSecondaryCommandBuffer_Pass0(i);
+
+		if (0 == i) {
+			PopulateSecondaryCommandBuffer_Pass1();
 		}
 	}
 	virtual void PopulateCommandBuffer(const size_t i) override {

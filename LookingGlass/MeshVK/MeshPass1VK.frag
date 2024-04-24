@@ -39,8 +39,8 @@ void main()
 
 	//!< 自前で描画しているので、キルトとディスプレイのアスペクト比調整は不要
 
-	if(any(lessThan(UV, vec2(0)))) discard;
-	if(any(lessThan(1 - UV, vec2(0)))) discard;
+	if(any(lessThan(UV, vec2(0.0f)))) discard;
+	if(any(lessThan(1.0f - UV, vec2(0.0f)))) discard;
 
 	vec3 RGB[3];
 	const float XY = LB.TileX * LB.TileY;
