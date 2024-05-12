@@ -2,16 +2,16 @@
 
 #include "resource.h"
 
-#include "../VKImage.h"
-#include "../Holo.h"
+#define USE_TEXTURE
+#include "../HoloVK.h"
 
-class QuiltVK : public VKImage, public Holo
+class QuiltVK : public HoloImageVK
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//!< Looking Glass ウインドウのサイズを取得してから
+		//!< Looking Glass ウインドウのサイズを取得してから [Get window size]
 		Holo::SetHoloWindow(hWnd, hInstance);
-		//!< VK の準備を行う
+		//!< VK の準備を行う [Prepare VK]
 		VK::OnCreate(hWnd, hInstance, Title);
 	}
 
@@ -29,7 +29,7 @@ public:
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(LenticularBuffer));
-		//!< CopyToHostVisibleDeviceMemory() は CreateTexture() 内でやっている
+		//!< CopyToHostVisibleDeviceMemory() はテクスチャ情報確定後 CreateTexture() 内でやっている
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく [Convert quilt image to dds format, and put in Asset folder]
 	virtual void CreateTexture() override {
@@ -48,7 +48,6 @@ public:
 		const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
 		//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること [Specify Column Row to suit quilt image]
 		Holo::UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
-
 		auto& UB = UniformBuffers[0];
 		CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(LenticularBuffer), &LenticularBuffer);
 	}
@@ -58,7 +57,7 @@ public:
 	virtual void CreatePipelineLayout() override {
 		const std::array ISs = { Samplers[0] };
 		CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
-			VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = data(ISs) }),
+			VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
 			VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr }),
 		});
 		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
@@ -105,12 +104,12 @@ public:
 		auto DSL = DescriptorSetLayouts[0];
 		auto DP = DescriptorPools[0];
 		const std::array DSLs = { DSL };
-		for (uint32_t i = 0; i < 1; ++i) {
+		{
 			const VkDescriptorSetAllocateInfo DSAI = {
 				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 				.pNext = nullptr,
 				.descriptorPool = DP,
-				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+				.descriptorSetCount = static_cast<uint32_t>(std::size(DSLs)), .pSetLayouts = std::data(DSLs)
 			};
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
@@ -133,7 +132,7 @@ public:
 				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
 			}),
 		}, DSL);
-		for (uint32_t i = 0; i < 1; ++i) {
+		{
 			const DescriptorUpdateInfo DUI = {
 				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
 				VkDescriptorBufferInfo({.buffer = UniformBuffers[0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
@@ -165,14 +164,15 @@ public:
 				.pInheritanceInfo = &CBII
 			};
 			VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
-				vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-				vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+				vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(std::size(Viewports)), std::data(Viewports));
+				vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(std::size(ScissorRects)), std::data(ScissorRects));
 
 				vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
+				//!< デスクリプタ [Descriptor]
 				const std::array DSs = { DescriptorSets[0] };
 				constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(std::size(DSs)), std::data(DSs), static_cast<uint32_t>(std::size(DynamicOffsets)), std::data(DynamicOffsets));
 
 				vkCmdDrawIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
 			} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
@@ -198,18 +198,12 @@ public:
 				.renderPass = RP,
 				.framebuffer = FB,
 				.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = SurfaceExtent2D }),
-				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
+				.clearValueCount = static_cast<uint32_t>(std::size(CVs)), .pClearValues = std::data(CVs)
 			};
 			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
 				const std::array SCBs = { SCB };
-				vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
+				vkCmdExecuteCommands(CB, static_cast<uint32_t>(std::size(SCBs)), std::data(SCBs));
 			} vkCmdEndRenderPass(CB);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
-	}
-	
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
 	}
 };

@@ -90,11 +90,11 @@ public:
 			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 			gli::is_target_cube(GLI.target()) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0,
 			&IFP));
-		LOG(data(std::format("maxExtent = {} x {} x {}\n", IFP.maxExtent.width, IFP.maxExtent.height, IFP.maxExtent.depth)));
-		LOG(data(std::format("maxMipLevels = {}\n", IFP.maxMipLevels)));
-		LOG(data(std::format("maxArrayLayers = {}\n", IFP.maxArrayLayers)));
-		LOG(data(std::format("sampleCounts = {}\n", IFP.sampleCounts)));
-		LOG(data(std::format("maxResourceSize = {}\n", IFP.maxResourceSize)));
+		LOG(std::data(std::format("maxExtent = {} x {} x {}\n", IFP.maxExtent.width, IFP.maxExtent.height, IFP.maxExtent.depth)));
+		LOG(std::data(std::format("maxMipLevels = {}\n", IFP.maxMipLevels)));
+		LOG(std::data(std::format("maxArrayLayers = {}\n", IFP.maxArrayLayers)));
+		LOG(std::data(std::format("sampleCounts = {}\n", IFP.sampleCounts)));
+		LOG(std::data(std::format("maxResourceSize = {}\n", IFP.maxResourceSize)));
 	}
 
 public:
@@ -118,7 +118,7 @@ public:
 		GLITexture& Create(const VkDevice Dev, const VkPhysicalDeviceMemoryProperties PDMP, const std::filesystem::path& Path) {
 			assert(std::filesystem::exists(Path) && "");
 			if (IsDDS(Path) || IsKTX(Path)) {
-				GliTexture = gli::load(data(Path.string()));
+				GliTexture = gli::load(std::data(Path.string()));
 			}
 			assert(!GliTexture.empty() && "Load image failed");
 			const auto Format = ToVkFormat(GliTexture.format());

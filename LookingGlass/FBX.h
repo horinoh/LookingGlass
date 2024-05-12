@@ -372,7 +372,7 @@ public:
 		if (nullptr != Manager) {
 			const auto Importer = FbxImporter::Create(Manager, "");
 			if (nullptr != Importer) {
-				if (Importer->Initialize(data(Path.string()), -1, Manager->GetIOSettings())) {
+				if (Importer->Initialize(std::data(Path.string()), -1, Manager->GetIOSettings())) {
 					Scene = FbxScene::Create(Manager, "");
 					if (Importer->Import(Scene)) {
 						Convert(Scene);

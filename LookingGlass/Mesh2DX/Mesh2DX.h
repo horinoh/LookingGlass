@@ -2,12 +2,15 @@
 
 #include "resource.h"
 
-#include "../DX.h"
-#include "../Holo.h"
-#include "../FBX.h"
-#include "../GltfSDK.h"
+//#define USE_GLTF
+#define USE_FBX
+#include "../HoloDX.h"
 
-class Mesh2DX : public DX, public Holo, public Fbx//, public Gltf::SDK
+#ifdef USE_GLTF
+class Mesh2DX : public HoloGLTFDX
+#else
+class Mesh2DX : public HoloFBXDX
+#endif
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -31,28 +34,9 @@ public:
 		CopyToUploadResource(COM_PTR_GET(ConstantBuffers[i].Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
 	}
 
-	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
-	virtual void Process(FbxMesh* Mesh) override {
-		Fbx::Process(Mesh);
-
-		for (auto i = 0; i < Mesh->GetPolygonCount(); ++i) {
-			for (auto j = 0; j < Mesh->GetPolygonSize(i); ++j) {
-				Indices.emplace_back(i * Mesh->GetPolygonSize(i) + j); //!< RH
-				Vertices.emplace_back(ToFloat3(Mesh->GetControlPoints()[Mesh->GetPolygonVertex(i, j)]));
-			}
-		}
-		AdjustScale(Vertices, 3.0f);
-
-		FbxArray<FbxVector4> Nrms;
-		Mesh->GetPolygonVertexNormals(Nrms);
-		for (auto i = 0; i < Nrms.Size(); ++i) {
-			Normals.emplace_back(ToFloat3(Nrms[i]));
-		}
-	}
-
 	virtual void CreateCommandList() override {
 		DX::CreateCommandList();
-		DX::CreateBundleCommandList(size(SwapChainBackBuffers) + 1);
+		DX::CreateBundleCommandList(std::size(SwapChainBackBuffers) + 1);
 	}
 
 	virtual void CreateGeometry() override {
@@ -71,18 +55,18 @@ public:
 
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
 		UploadResource UploadPass0Vertex;
-		UploadPass0Vertex.Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), data(Vertices));
+		UploadPass0Vertex.Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), std::data(Vertices));
 
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Normals), sizeof(Normals[0]));
 		UploadResource UploadPass0Normal;
-		UploadPass0Normal.Create(COM_PTR_GET(Device), TotalSizeOf(Normals), data(Normals));
+		UploadPass0Normal.Create(COM_PTR_GET(Device), TotalSizeOf(Normals), std::data(Normals));
 
 		IndexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Indices), DXGI_FORMAT_R32_UINT);
 		UploadResource UploadPass0Index;
-		UploadPass0Index.Create(COM_PTR_GET(Device), TotalSizeOf(Indices), data(Indices));
+		UploadPass0Index.Create(COM_PTR_GET(Device), TotalSizeOf(Indices), std::data(Indices));
 
 		const D3D12_DRAW_INDEXED_ARGUMENTS DIA = {
-			.IndexCountPerInstance = static_cast<UINT32>(size(Indices)),
+			.IndexCountPerInstance = static_cast<UINT32>(std::size(Indices)),
 			.InstanceCount = GetInstanceCount(),
 			.StartIndexLocation = 0,
 			.BaseVertexLocation = 0,
@@ -135,12 +119,10 @@ public:
 	virtual void CreateRootSignature() override {
 		{
 			COM_PTR<ID3DBlob> Blob;
-			constexpr std::array DRs_Cbv = {
+			constexpr std::array DRs_CBV = {
 				D3D12_DESCRIPTOR_RANGE1({
 					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 
-					.NumDescriptors = 1, 
-					.BaseShaderRegister = 0, 
-					.RegisterSpace = 0, 
+					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, 
 					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
 					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND 
 				})
@@ -149,12 +131,12 @@ public:
 				{
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX
 					}),
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
 					}),
 				},
@@ -165,22 +147,18 @@ public:
 		}
 		{
 			COM_PTR<ID3DBlob> Blob;
-			constexpr std::array DRs_Srv = {
+			constexpr std::array DRs_SRV = {
 				D3D12_DESCRIPTOR_RANGE1({
 					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 
-					.NumDescriptors = 1, 
-					.BaseShaderRegister = 0, 
-					.RegisterSpace = 0, 
+					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, 
 					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
 					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 				})
 			};
-			constexpr std::array DRs_Cbv = {
+			constexpr std::array DRs_CBV = {
 				D3D12_DESCRIPTOR_RANGE1({
 					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 
-					.NumDescriptors = 1, 
-					.BaseShaderRegister = 0, 
-					.RegisterSpace = 0,
+					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
 					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
 					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND 
 				})
@@ -189,12 +167,12 @@ public:
 				{
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<uint32_t>(std::size(DRs_SRV)), .pDescriptorRanges = std::data(DRs_SRV) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 					}),
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 					}),
 				},
@@ -222,27 +200,27 @@ public:
 			D3D12_INPUT_ELEMENT_DESC({.SemanticName = "POSITION", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 0, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0 }),
 			D3D12_INPUT_ELEMENT_DESC({.SemanticName = "NORMAL", .SemanticIndex = 0, .Format = DXGI_FORMAT_R32G32B32_FLOAT, .InputSlot = 1, .AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT, .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, .InstanceDataStepRate = 0 }),
 		};
-		std::vector<COM_PTR<ID3DBlob>> SBsPass0;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2Pass0DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2Pass0DX.ps.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2Pass0DX.gs.cso").wstring()), COM_PTR_PUT(SBsPass0.emplace_back())));
+		std::vector<COM_PTR<ID3DBlob>> SBs_Pass0;
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass0DX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass0DX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass0DX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		const std::array SBCsPass0 = {
-			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[0]->GetBufferPointer(), .BytecodeLength = SBsPass0[0]->GetBufferSize() }),
-			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[1]->GetBufferPointer(), .BytecodeLength = SBsPass0[1]->GetBufferSize() }),
-			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass0[2]->GetBufferPointer(), .BytecodeLength = SBsPass0[2]->GetBufferSize() }),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[0]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[0]->GetBufferSize() }),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[1]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[1]->GetBufferSize() }),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[2]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[2]->GetBufferSize() }),
 		};
 		CreatePipelineState_VsPsGs_Input(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
-		std::vector<COM_PTR<ID3DBlob>> SBsPass1;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2Pass1DX.vs.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
+		std::vector<COM_PTR<ID3DBlob>> SBs_Pass1;
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass1DX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #ifdef DISPLAY_QUILT
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2QuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2QuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #else
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "Mesh2Pass1DX.ps.cso").wstring()), COM_PTR_PUT(SBsPass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass1DX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #endif
 		const std::array SBCsPass1 = {
-			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass1[0]->GetBufferPointer(), .BytecodeLength = SBsPass1[0]->GetBufferSize() }),
-			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBsPass1[1]->GetBufferPointer(), .BytecodeLength = SBsPass1[1]->GetBufferSize() }),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass1[0]->GetBufferPointer(), .BytecodeLength = SBs_Pass1[0]->GetBufferSize() }),
+			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass1[1]->GetBufferPointer(), .BytecodeLength = SBs_Pass1[1]->GetBufferSize() }),
 		};
 		CreatePipelineState_VsPs(PipelineStates[1], COM_PTR_GET(RootSignatures[1]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, FALSE, SBCsPass1);
 
@@ -253,12 +231,11 @@ public:
 		{
 			const auto DescCount = 1;
 
-			for (auto i = 0; i < 1; ++i) {
+			{
 				{
 					auto& Desc = RtvDescs.emplace_back();
 					auto& Heap = Desc.first;
 					auto& Handle = Desc.second;
-
 					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
 						.NumDescriptors = DescCount,
@@ -278,7 +255,6 @@ public:
 					auto& Desc = DsvDescs.emplace_back();
 					auto& Heap = Desc.first;
 					auto& Handle = Desc.second;
-
 					const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 						.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
 						.NumDescriptors = 1,
@@ -297,7 +273,7 @@ public:
 			}
 		}
 		{
-			const auto BackBufferCount = size(SwapChainBackBuffers);
+			const auto BackBufferCount = std::size(SwapChainBackBuffers);
 			const auto DescCount = 2;
 
 			const auto CB0Index = 0;
@@ -307,7 +283,6 @@ public:
 				auto& Desc = CbvSrvUavDescs.emplace_back();
 				auto& Heap = Desc.first;
 				auto& Handle = Desc.second;
-
 				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 					.NumDescriptors = DescCount,
@@ -350,13 +325,12 @@ public:
 	void CreateDescriptor_Pass1() {
 		const auto DescCount = 1;
 
-		const auto CBIndex = size(SwapChainBackBuffers) * 2;
+		const auto CBIndex = std::size(SwapChainBackBuffers) * 2;
 
-		for (auto i = 0; i < 1; ++i) {
+		{
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
 			auto& Handle = Desc.second;
-
 			const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 				.NumDescriptors = DescCount,
@@ -392,23 +366,6 @@ public:
 		CreateDescriptor_Pass0();
 		CreateDescriptor_Pass1();
 	}
-	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
-		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
-		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
-		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
-
-		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
-		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
-			const auto Y = QuiltY - H * (i + 1);
-			for (auto j = 0; j < LenticularBuffer.TileX; ++j) {
-				const auto X = j * W;
-				QuiltViewports.emplace_back(D3D12_VIEWPORT({ .TopLeftX = static_cast<FLOAT>(X), .TopLeftY = static_cast<FLOAT>(Y), .Width = static_cast<FLOAT>(W), .Height = static_cast<FLOAT>(H), .MinDepth = MinDepth, .MaxDepth = MaxDepth }));
-				QuiltScissorRects.emplace_back(D3D12_RECT({ .left = static_cast<LONG>(X), .top = static_cast<LONG>(Y), .right = static_cast<LONG>(X + W), .bottom = static_cast<LONG>(Y + H) }));
-			}
-		}
-
-		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
-	}
 	void PopulateBundleCommandList_Pass0(const size_t i) {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
@@ -418,7 +375,7 @@ public:
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-			BCL->IASetVertexBuffers(0, static_cast<UINT>(size(VBVs)), data(VBVs));
+			BCL->IASetVertexBuffers(0, static_cast<UINT>(std::size(VBVs)), std::data(VBVs));
 			BCL->IASetIndexBuffer(&IndexBuffers[0].View);
 
 			const auto IB = IndirectBuffers[0];
@@ -428,12 +385,13 @@ public:
 	}
 	void PopulateBundleCommandList_Pass1() {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-		const auto BCL = COM_PTR_GET(BundleCommandLists[size(SwapChainBackBuffers)]);
+		const auto BCL = COM_PTR_GET(BundleCommandLists[std::size(SwapChainBackBuffers)]);
 		const auto PS = COM_PTR_GET(PipelineStates[1]);
 		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
+			const auto IB = IndirectBuffers[0];
+			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
 		}
 		VERIFY_SUCCEEDED(BCL->Close());
 	}
@@ -462,18 +420,18 @@ public:
 					const auto& HandleDSV = DescDSV.second;
 
 					constexpr std::array<D3D12_RECT, 0> Rects = {};
-					DCL->ClearRenderTargetView(HandleRTV[0], DirectX::Colors::SkyBlue, static_cast<UINT>(size(Rects)), data(Rects));
-					DCL->ClearDepthStencilView(HandleDSV[0], D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(size(Rects)), data(Rects));
+					DCL->ClearRenderTargetView(HandleRTV[0], DirectX::Colors::SkyBlue, static_cast<UINT>(std::size(Rects)), std::data(Rects));
+					DCL->ClearDepthStencilView(HandleDSV[0], D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(std::size(Rects)), std::data(Rects));
 
 					const std::array CHs = { HandleRTV[0]};
-					DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, &HandleDSV[0]);
+					DCL->OMSetRenderTargets(static_cast<UINT>(std::size(CHs)), std::data(CHs), FALSE, &HandleDSV[0]);
 				}
 				{
 					const auto& Desc = CbvSrvUavDescs[i];
 					const auto& Heap = Desc.first;
 					const auto& Handle = Desc.second;
 					const std::array DHs = { COM_PTR_GET(Heap) };
-					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					DCL->SetDescriptorHeaps(static_cast<UINT>(std::size(DHs)), std::data(DHs));
 
 					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
 
@@ -499,23 +457,23 @@ public:
 
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[1]);
-				const auto BCL = COM_PTR_GET(BundleCommandLists[size(SwapChainBackBuffers)]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[std::size(SwapChainBackBuffers)]);
 
 				DCL->SetGraphicsRootSignature(RS);
 
-				DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
-				DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+				DCL->RSSetViewports(static_cast<UINT>(std::size(Viewports)), std::data(Viewports));
+				DCL->RSSetScissorRects(static_cast<UINT>(std::size(ScissorRects)), std::data(ScissorRects));
 
 				const std::array CHs = { SwapChainBackBuffers[i].Handle };
-				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
+				DCL->OMSetRenderTargets(static_cast<UINT>(std::size(CHs)), std::data(CHs), FALSE, nullptr);
 
 				{
-					const auto& Desc = CbvSrvUavDescs[size(SwapChainBackBuffers)];
+					const auto& Desc = CbvSrvUavDescs[std::size(SwapChainBackBuffers)];
 					const auto& Heap = Desc.first;
 					const auto& Handle = Desc.second;
 
 					const std::array DHs = { COM_PTR_GET(Heap) };
-					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					DCL->SetDescriptorHeaps(static_cast<UINT>(std::size(DHs)), std::data(DHs));
 					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
 					DCL->SetGraphicsRootDescriptorTable(1, Handle[1]);
 				}
@@ -528,31 +486,6 @@ public:
 				RT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		}
 		VERIFY_SUCCEEDED(DCL->Close());
-	}
-
-	virtual uint32_t GetViewportMax() const override {
-		return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
-	}
-	virtual void CreateProjectionMatrix(const int i) override {
-		if (-1 == i) { ProjectionMatrices.clear(); return; }
-
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
-		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
-
-		auto Prj = DirectX::XMMatrixPerspectiveFovRH(Fov, LenticularBuffer.DisplayAspect, 0.1f, 100.0f);
-		Prj.r[2].m128_f32[0] += OffsetX / (CameraSize * LenticularBuffer.DisplayAspect);
-
-		ProjectionMatrices.emplace_back(Prj);
-	}
-	virtual void CreateViewMatrix(const int i) override {
-		if (-1 == i) { ViewMatrices.clear(); return; }
-
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
-		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
-
-		const auto OffsetLocal = DirectX::XMVector4Transform(DirectX::XMVectorSet(OffsetX, 0.0f, CameraDistance, 1.0f), View);
-		ViewMatrices.emplace_back(View * DirectX::XMMatrixTranslationFromVector(OffsetLocal));
-
 	}
 	virtual void UpdateViewProjectionBuffer() {
 		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
@@ -586,18 +519,9 @@ public:
 
 	UINT GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<UINT>(_countof(WorldBuffer.World))); }
 
+	virtual float GetMeshScale() const override { return 3.0f; }
+
 protected:
-	std::vector<UINT32> Indices;
-	std::vector<DirectX::XMFLOAT3> Vertices;
-	std::vector<DirectX::XMFLOAT3> Normals;
-
-	std::vector<D3D12_VIEWPORT> QuiltViewports;
-	std::vector<D3D12_RECT> QuiltScissorRects;
-
-	std::vector<DirectX::XMMATRIX> ProjectionMatrices;
-	DirectX::XMMATRIX View;
-	std::vector<DirectX::XMMATRIX> ViewMatrices;
-
 	struct VIEW_PROJECTION {
 		DirectX::XMFLOAT4X4 View;
 		DirectX::XMFLOAT4X4 Projection;

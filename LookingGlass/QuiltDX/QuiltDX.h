@@ -2,16 +2,16 @@
 
 #include "resource.h"
 
-#include "../DXImage.h"
-#include "../Holo.h"
+#define USE_TEXTURE
+#include "../HoloDX.h"
 
-class QuiltDX : public DXImage, public Holo
+class QuiltDX : public HoloImageDX
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//!< Looking Glass ウインドウのサイズを取得してから
+		//!< Looking Glass ウインドウのサイズを取得してから  [Get window size]
 		Holo::SetHoloWindow(hWnd, hInstance);
-		//!< DX の準備を行う
+		//!< DX の準備を行う [Prepare DX]
 		DX::OnCreate(hWnd, hInstance, Title);
 	}
 
@@ -28,7 +28,7 @@ public:
 	}
 	virtual void CreateConstantBuffer() override {
 		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(LenticularBuffer));
-		//!< CopyToUploadResource() は CreateTexture() 内でやっている
+		//!< CopyToUploadResource() はテクスチャ情報確定後 CreateTexture() 内でやっている
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく [Convert quilt image to dds format, and put in Asset folder]
 	virtual void CreateTexture() override {
@@ -47,7 +47,6 @@ public:
 		const auto RD = XTKTextures.back().Resource->GetDesc();
 		//!< キルト画像の分割に合わせて 引数 Column, Row を指定すること [Specify Column Row to suit quilt image]
 		Holo::UpdateLenticularBuffer(8, 6, static_cast<uint32_t>(RD.Width), RD.Height);
-
 		auto& CB = ConstantBuffers[0];
 		CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
 	}
@@ -56,22 +55,18 @@ public:
 	}
 	virtual void CreateRootSignature() override {
 		COM_PTR<ID3DBlob> Blob;
-		constexpr std::array DRs_Srv = {
+		constexpr std::array DRs_SRV = {
 			D3D12_DESCRIPTOR_RANGE1({
 				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 
-				.NumDescriptors = 1, 
-				.BaseShaderRegister = 0, 
-				.RegisterSpace = 0,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
 				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE, 
 				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND 
 			})
 		};
-		constexpr std::array DRs_Cbv = {
+		constexpr std::array DRs_CBV = {
 			D3D12_DESCRIPTOR_RANGE1({
 				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 
-				.NumDescriptors = 1,
-				.BaseShaderRegister = 0, 
-				.RegisterSpace = 0, 
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, 
 				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE, 
 				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 			})
@@ -81,13 +76,13 @@ public:
 				//!< SRV -> SetGraphicsRootDescriptorTable(0,..)
 				D3D12_ROOT_PARAMETER1({
 					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<uint32_t>(size(DRs_Srv)), .pDescriptorRanges = data(DRs_Srv) }),
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<uint32_t>(std::size(DRs_SRV)), .pDescriptorRanges = std::data(DRs_SRV) }),
 					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 				}),
 				//!< CBV -> SetGraphicsRootDescriptorTable(1,..)
 				D3D12_ROOT_PARAMETER1({
 					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(size(DRs_Cbv)), .pDescriptorRanges = data(DRs_Cbv) }),
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
 					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 				}),
 			}, 
@@ -102,8 +97,8 @@ public:
 		PipelineStates.emplace_back();
 
 		std::vector<COM_PTR<ID3DBlob>> SBs = {};
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "QuiltDX.vs.cso").wstring()), COM_PTR_PUT(SBs.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(data((std::filesystem::path(".") / "QuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBs.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "QuiltDX.vs.cso").wstring()), COM_PTR_PUT(SBs.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "QuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBs.emplace_back())));
 		const std::array SBCs = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs[0]->GetBufferPointer(), .BytecodeLength = SBs[0]->GetBufferSize() }),
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs[1]->GetBufferPointer(), .BytecodeLength = SBs[1]->GetBufferSize() }),
@@ -123,12 +118,10 @@ public:
 	}
 	virtual void CreateDescriptor() override {
 		const auto DescCount = 1;
-
-		for (auto i = 0; i < 1; ++i) {
+		{
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
 			auto& Handle = Desc.second;
-
 			const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 				.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 				.NumDescriptors = DescCount,
@@ -147,7 +140,6 @@ public:
 				CDH.ptr += IncSize;
 				GDH.ptr += IncSize;
 			}
-
 			//!< CBV
 			{
 				const auto& CB = ConstantBuffers[0];
@@ -163,15 +155,17 @@ public:
 		}
 	}
 	virtual	void PopulateBundleCommandList(const size_t i) override {
-		const auto PS = COM_PTR_GET(PipelineStates[0]);
-		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
-		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
-		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
-		{
-			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
+		if (0 == i) {
+			const auto PS = COM_PTR_GET(PipelineStates[0]);
+			const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
+			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+			VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
+			{
+				BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+				BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
+			}
+			VERIFY_SUCCEEDED(BCL->Close());
 		}
-		VERIFY_SUCCEEDED(BCL->Close());
 	}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
@@ -183,22 +177,22 @@ public:
 		{
 			DCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
 
-			DCL->RSSetViewports(static_cast<UINT>(size(Viewports)), data(Viewports));
-			DCL->RSSetScissorRects(static_cast<UINT>(size(ScissorRects)), data(ScissorRects));
+			DCL->RSSetViewports(static_cast<UINT>(std::size(Viewports)), std::data(Viewports));
+			DCL->RSSetScissorRects(static_cast<UINT>(std::size(ScissorRects)), std::data(ScissorRects));
 
 			const auto SCR = COM_PTR_GET(SwapChainBackBuffers[i].Resource);
 			ResourceBarrier(DCL, SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			{
 				const std::array CHs = { SwapChainBackBuffers[i].Handle };
-				DCL->OMSetRenderTargets(static_cast<UINT>(size(CHs)), data(CHs), FALSE, nullptr);
+				DCL->OMSetRenderTargets(static_cast<UINT>(std::size(CHs)), std::data(CHs), FALSE, nullptr);
 
-				//!< デスクリプタ
+				//!< デスクリプタ [Descriptor]
 				{
 					const auto& Desc = CbvSrvUavDescs[0];
 					const auto& Heap = Desc.first;
 					const auto& Handle = Desc.second;
 					const std::array DHs = { COM_PTR_GET(Heap) };
-					DCL->SetDescriptorHeaps(static_cast<UINT>(size(DHs)), data(DHs));
+					DCL->SetDescriptorHeaps(static_cast<UINT>(std::size(DHs)), std::data(DHs));
 					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]); //!< SRV
 					DCL->SetGraphicsRootDescriptorTable(1, Handle[1]); //!< CBV
 				}
@@ -209,6 +203,4 @@ public:
 		}
 		VERIFY_SUCCEEDED(DCL->Close());
 	}
-
-	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
 };

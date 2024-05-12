@@ -45,6 +45,9 @@
     <ClInclude Include="..\GltfSDK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\HoloVK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Mesh2VK.cpp">

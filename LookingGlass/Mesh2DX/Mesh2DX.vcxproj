@@ -142,6 +142,7 @@
     <ClInclude Include="..\FBX.h" />
     <ClInclude Include="..\GltfSDK.h" />
     <ClInclude Include="..\Holo.h" />
+    <ClInclude Include="..\HoloDX.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Mesh2DX.h" />
     <ClInclude Include="Resource.h" />

@@ -18,79 +18,79 @@ class Holo
 {
 public:
 	Holo() {
-		LOG(data(std::format("hpc_LightfieldVertShaderGLSL =\n{}\n", hpc_LightfieldVertShaderGLSL)));
-		LOG(data(std::format("hpc_LightfieldFragShaderGLSL =\n{}\n", hpc_LightfieldFragShaderGLSL)));
+		LOG(std::data(std::format("hpc_LightfieldVertShaderGLSL =\n{}\n", hpc_LightfieldVertShaderGLSL)));
+		LOG(std::data(std::format("hpc_LightfieldFragShaderGLSL =\n{}\n", hpc_LightfieldFragShaderGLSL)));
 
 		if (hpc_CLIERR_NOERROR == hpc_InitializeApp("Holo", hpc_LICENSE_NONCOMMERCIAL)) {
 			{
 				std::vector<char> Buf(hpc_GetStateAsJSON(nullptr, 0));
-				hpc_GetStateAsJSON(data(Buf), size(Buf));
-				LOG(data(std::format("hpc_GetStateAsJSON = {}\n", data(Buf))));
+				hpc_GetStateAsJSON(std::data(Buf), std::size(Buf));
+				LOG(std::data(std::format("hpc_GetStateAsJSON = {}\n", std::data(Buf))));
 			}
 			{
 				std::vector<char> Buf(hpc_GetHoloPlayCoreVersion(nullptr, 0));
-				hpc_GetHoloPlayCoreVersion(data(Buf), size(Buf));
-				LOG(data(std::format("hpc_GetHoloPlayCoreVersion = {}\n", data(Buf))));
+				hpc_GetHoloPlayCoreVersion(std::data(Buf), std::size(Buf));
+				LOG(std::data(std::format("hpc_GetHoloPlayCoreVersion = {}\n", std::data(Buf))));
 			}
 			{
 				std::vector<char> Buf(hpc_GetHoloPlayServiceVersion(nullptr, 0));
-				hpc_GetHoloPlayServiceVersion(data(Buf), size(Buf));
-				LOG(data(std::format("hpc_GetHoloPlayServiceVersion = {}\n", data(Buf))));
+				hpc_GetHoloPlayServiceVersion(std::data(Buf), std::size(Buf));
+				LOG(std::data(std::format("hpc_GetHoloPlayServiceVersion = {}\n", std::data(Buf))));
 			}
 
-			LOG(data(std::format("hpc_GetNumDevices = {}\n", hpc_GetNumDevices())));
+			LOG(std::data(std::format("hpc_GetNumDevices = {}\n", hpc_GetNumDevices())));
 			for (auto i = 0; i < hpc_GetNumDevices(); ++i) {
-				LOG(data(std::format("[{}]\n", i)));
+				LOG(std::data(std::format("[{}]\n", i)));
 				{
 					std::vector<char> Buf(hpc_GetDeviceHDMIName(i, nullptr, 0));
-					hpc_GetDeviceHDMIName(i, data(Buf), size(Buf));
-					LOG(data(std::format("\thpc_GetDeviceHDMIName = {}\n", data(Buf)))); //!< 参考値) LKG-PO3996
+					hpc_GetDeviceHDMIName(i, std::data(Buf), std::size(Buf));
+					LOG(std::data(std::format("\thpc_GetDeviceHDMIName = {}\n", std::data(Buf)))); //!< 参考値) LKG-PO3996
 				}
 				{
 					std::vector<char> Buf(hpc_GetDeviceSerial(i, nullptr, 0));
-					hpc_GetDeviceSerial(i, data(Buf), size(Buf));
-					LOG(data(std::format("\thpc_GetDeviceSerial = {}\n", data(Buf)))); //!< 参考値) LKG-PORT-03996
+					hpc_GetDeviceSerial(i, std::data(Buf), std::size(Buf));
+					LOG(std::data(std::format("\thpc_GetDeviceSerial = {}\n", std::data(Buf)))); //!< 参考値) LKG-PORT-03996
 				}
 				{
 					std::vector<char> Buf(hpc_GetDeviceType(i, nullptr, 0));
-					hpc_GetDeviceType(i, data(Buf), size(Buf));
-					LOG(data(std::format("\thpc_GetDeviceType = {}\n", data(Buf)))); //!< 参考値) portrait
+					hpc_GetDeviceType(i, std::data(Buf), std::size(Buf));
+					LOG(std::data(std::format("\thpc_GetDeviceType = {}\n", std::data(Buf)))); //!< 参考値) portrait
 					//!< "standard"	4x8	2048x2048
 					//!< "8k"		5x9	8192x8192
 					//!< "portrait"	8x6	3360x3360
 					//!<			5x9	4096x4096
 				}
 				//!< Display fringe correction uniform (currently only applicable to 15.6" Developer/Pro units)
-				LOG(data(std::format("\thpc_GetDevicePropertyFringe = {}\n", hpc_GetDevicePropertyFringe(i))));//!< 参考値) 0
+				LOG(std::data(std::format("\thpc_GetDevicePropertyFringe = {}\n", hpc_GetDevicePropertyFringe(i))));//!< 参考値) 0
 			}
 		}
 
 		if (0 < hpc_GetNumDevices()) {
 			//!< ここでは最初のデバイスを選択 (Select 1st device here)
 			DeviceIndex = 0;
-			LOG(data(std::format("Selected DeviceIndex = {}\n", DeviceIndex)));
+			LOG(std::data(std::format("Selected DeviceIndex = {}\n", DeviceIndex)));
 		} else {
 			LOG("Device not found\n");
 		}
 
 		LenticularBuffer = LENTICULAR_BUFFER(DeviceIndex);
-		LOG(data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
-		LOG(data(std::format("Tilt = {}\n", LenticularBuffer.Tilt)));
-		LOG(data(std::format("Center = {}\n", LenticularBuffer.Center)));
-		LOG(data(std::format("Subp = {}\n", LenticularBuffer.Subp)));
-		LOG(data(std::format("DisplayAspect = {}\n", LenticularBuffer.DisplayAspect)));
-		LOG(data(std::format("InvView = {}\n", LenticularBuffer.InvView)));
-		LOG(data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer.Ri, LenticularBuffer.Bi, (LenticularBuffer.Ri == 0 && LenticularBuffer.Bi == 2) ? "RGB" : "BGR")));
-		LOG(data(std::format("TileX, TileY = {}, {}\n", LenticularBuffer.TileX, LenticularBuffer.TileY)));
-		LOG(data(std::format("QuiltAspect = {}\n", LenticularBuffer.QuiltAspect)));
+		LOG(std::data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
+		LOG(std::data(std::format("Tilt = {}\n", LenticularBuffer.Tilt)));
+		LOG(std::data(std::format("Center = {}\n", LenticularBuffer.Center)));
+		LOG(std::data(std::format("Subp = {}\n", LenticularBuffer.Subp)));
+		LOG(std::data(std::format("DisplayAspect = {}\n", LenticularBuffer.DisplayAspect)));
+		LOG(std::data(std::format("InvView = {}\n", LenticularBuffer.InvView)));
+		LOG(std::data(std::format("Ri, Bi = {}, {} ({})\n", LenticularBuffer.Ri, LenticularBuffer.Bi, (LenticularBuffer.Ri == 0 && LenticularBuffer.Bi == 2) ? "RGB" : "BGR")));
+		LOG(std::data(std::format("TileX, TileY = {}, {}\n", LenticularBuffer.TileX, LenticularBuffer.TileY)));
+		LOG(std::data(std::format("QuiltAspect = {}\n", LenticularBuffer.QuiltAspect)));
 
 		if (-1 != DeviceIndex) {
 			QuiltX = hpc_GetDevicePropertyQuiltX(DeviceIndex);
 			QuiltY = hpc_GetDevicePropertyQuiltY(DeviceIndex);
 			ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
 		}
-		LOG(data(std::format("QuiltX, QuiltY = {}, {}\n", QuiltX, QuiltY)));
-		LOG(data(std::format("ViewCone = {}\n", ViewCone)));
+		LOG(std::data(std::format("QuiltX, QuiltY = {}, {}\n", QuiltX, QuiltY)));
+		LOG(std::data(std::format("ViewCone = {}\n", ViewCone)));
 	}
 	virtual ~Holo() {
 		hpc_CloseApp();
@@ -100,7 +100,7 @@ public:
 	{
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する [Get window position, size from Looking Glass and apply]
 		if (-1 != DeviceIndex) {
-			LOG(data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex))));
+			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex))));
 			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);
 		} else {
@@ -117,8 +117,8 @@ public:
 		const auto ViewWidth = static_cast<float>(QuiltX) / LenticularBuffer.TileX;
 		const auto ViewHeight = static_cast<float>(QuiltY) / LenticularBuffer.TileY;
 		LenticularBuffer.QuiltAspect = ViewWidth / ViewHeight;
-		LOG(data(std::format("QuiltAspect = {}\n", ViewWidth / ViewHeight)));
-		LOG(data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer.TileX / static_cast<float>(QuiltX), static_cast<float>(ViewHeight) * LenticularBuffer.TileY / static_cast<float>(QuiltY))));
+		LOG(std::data(std::format("QuiltAspect = {}\n", ViewWidth / ViewHeight)));
+		LOG(std::data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer.TileX / static_cast<float>(QuiltX), static_cast<float>(ViewHeight) * LenticularBuffer.TileY / static_cast<float>(QuiltY))));
 	}
 
 	virtual uint32_t GetViewportMax() const { return 16; }

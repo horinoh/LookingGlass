@@ -138,6 +138,7 @@
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\Common.h" />
     <ClInclude Include="..\Holo.h" />
+    <ClInclude Include="..\HoloVK.h" />
     <ClInclude Include="..\VK.h" />
     <ClInclude Include="..\VKImage.h" />
     <ClInclude Include="framework.h" />

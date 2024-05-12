@@ -46,7 +46,7 @@ namespace Colors
 #include "Common.h"
 
 #ifdef _DEBUG
-#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ LOG(data(std::format("VkResult = {}\n", static_cast<int32_t>(VR)))); __debugbreak(); } }
+#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ LOG(std::data(std::format("VkResult = {}\n", static_cast<int32_t>(VR)))); __debugbreak(); } }
 #define VERIFY(x) if(!(x)){ __debugbreak(); }
 #else
 #define VERIFY_SUCCEEDED(x) (x)
@@ -59,7 +59,7 @@ public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) {
 		GetClientRect(hWnd, &Rect);
 		const auto W = Rect.right - Rect.left, H = Rect.bottom - Rect.top;
-		LOG(data(std::format("Rect = {} x {}\n", W, H)));
+		LOG(std::data(std::format("Rect = {} x {}\n", W, H)));
 
 		LoadVulkanLibrary();
 
@@ -93,7 +93,7 @@ public:
 			const auto W = Rect.right - Rect.left, H = Rect.bottom - Rect.top;
 			CreateViewport(static_cast<const FLOAT>(W), static_cast<const FLOAT>(H));
 
-			for (auto i = 0; i < size(CommandBuffers); ++i) {
+			for (auto i = 0; i < std::size(CommandBuffers); ++i) {
 				PopulateSecondaryCommandBuffer(i);
 				PopulateCommandBuffer(i);
 			}
@@ -144,9 +144,9 @@ public:
 	}
 
 	void AllocatePrimaryCommandBuffer(const size_t Num);
-	virtual void AllocatePrimaryCommandBuffer() { AllocatePrimaryCommandBuffer(size(SwapchainBackBuffers)); }
+	virtual void AllocatePrimaryCommandBuffer() { AllocatePrimaryCommandBuffer(std::size(SwapchainBackBuffers)); }
 	void AllocateSecondaryCommandBuffer(const size_t Num);
-	virtual void AllocateSecondaryCommandBuffer() { AllocateSecondaryCommandBuffer(size(SwapchainBackBuffers)); }
+	virtual void AllocateSecondaryCommandBuffer() { AllocateSecondaryCommandBuffer(std::size(SwapchainBackBuffers)); }
 	virtual void AllocateCommandBuffer() {
 		AllocatePrimaryCommandBuffer();
 		AllocateSecondaryCommandBuffer(1);
@@ -162,7 +162,7 @@ public:
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = Flags,
-			.bindingCount = static_cast<uint32_t>(size(DSLBs)), .pBindings = data(DSLBs)
+			.bindingCount = static_cast<uint32_t>(std::size(DSLBs)), .pBindings = std::data(DSLBs)
 		};
 		VERIFY_SUCCEEDED(vkCreateDescriptorSetLayout(Device, &DSLCI, GetAllocationCallbacks(), &DSL));
 	}
@@ -171,8 +171,8 @@ public:
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.setLayoutCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs),
-			.pushConstantRangeCount = static_cast<uint32_t>(size(PCRs)), .pPushConstantRanges = data(PCRs)
+			.setLayoutCount = static_cast<uint32_t>(std::size(DSLs)), .pSetLayouts = std::data(DSLs),
+			.pushConstantRangeCount = static_cast<uint32_t>(std::size(PCRs)), .pPushConstantRanges = std::data(PCRs)
 		};
 		VERIFY_SUCCEEDED(vkCreatePipelineLayout(Device, &PLCI, GetAllocationCallbacks(), &PL));
 	}
@@ -183,19 +183,19 @@ public:
 	
 	[[nodiscard]] virtual VkShaderModule CreateShaderModule(const std::filesystem::path& Path) const {
 		VkShaderModule SM = VK_NULL_HANDLE;
-		std::ifstream In(data(Path.string()), std::ios::in | std::ios::binary);
+		std::ifstream In(std::data(Path.string()), std::ios::in | std::ios::binary);
 		if (!In.fail()) {
 			In.seekg(0, std::ios_base::end);
 			const auto Size = In.tellg();
 			if (Size) {
 				In.seekg(0, std::ios_base::beg);
 				std::vector<std::byte> Code(Size);
-				In.read(reinterpret_cast<char*>(data(Code)), size(Code));
+				In.read(reinterpret_cast<char*>(std::data(Code)), std::size(Code));
 				const VkShaderModuleCreateInfo SMCI = {
 					.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 					.pNext = nullptr,
 					.flags = 0,
-					.codeSize = static_cast<size_t>(size(Code)), .pCode = reinterpret_cast<uint32_t*>(data(Code))
+					.codeSize = static_cast<size_t>(std::size(Code)), .pCode = reinterpret_cast<uint32_t*>(std::data(Code))
 				};
 				VERIFY_SUCCEEDED(vkCreateShaderModule(Device, &SMCI, GetAllocationCallbacks(), &SM));
 			}
@@ -219,7 +219,7 @@ public:
 			.pNext = nullptr,
 			.flags = 0,
 			.renderPass = RP,
-			.attachmentCount = static_cast<uint32_t>(size(IVs)), .pAttachments = data(IVs),
+			.attachmentCount = static_cast<uint32_t>(std::size(IVs)), .pAttachments = std::data(IVs),
 			.width = Width, .height = Height,
 			.layers = Layers
 		};
@@ -239,7 +239,7 @@ public:
 			.pNext = nullptr,
 			.flags = Flags,
 			.maxSets = MaxSets,
-			.poolSizeCount = static_cast<uint32_t>(size(DPSs)), .pPoolSizes = data(DPSs)
+			.poolSizeCount = static_cast<uint32_t>(std::size(DPSs)), .pPoolSizes = std::data(DPSs)
 		};
 		VERIFY_SUCCEEDED(vkCreateDescriptorPool(Device, &DPCI, GetAllocationCallbacks(), &DP));
 	}
@@ -248,7 +248,7 @@ public:
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.descriptorUpdateEntryCount = static_cast<uint32_t>(size(DUTEs)), .pDescriptorUpdateEntries = data(DUTEs),
+			.descriptorUpdateEntryCount = static_cast<uint32_t>(std::size(DUTEs)), .pDescriptorUpdateEntries = std::data(DUTEs),
 			.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET,
 			.descriptorSetLayout = DSL,
 			.pipelineBindPoint = PBP,
@@ -290,7 +290,7 @@ protected:
 			.size = Size,
 			.usage = BUF,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = static_cast<uint32_t>(size(QFI)), .pQueueFamilyIndices = data(QFI)
+			.queueFamilyIndexCount = static_cast<uint32_t>(std::size(QFI)), .pQueueFamilyIndices = std::data(QFI)
 		};
 		VERIFY_SUCCEEDED(vkCreateBuffer(Device, &BCI, GetAllocationCallbacks(), Buffer));
 
@@ -321,7 +321,7 @@ protected:
 					const std::array MMRs = {
 						VkMappedMemoryRange({.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, .pNext = nullptr, .memory = *DeviceMemory, .offset = 0, .size = MapSize }),
 					};
-					VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Device, static_cast<uint32_t>(size(MMRs)), data(MMRs)));
+					VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Device, static_cast<uint32_t>(std::size(MMRs)), std::data(MMRs)));
 				}
 
 			} vkUnmapMemory(Device, *DeviceMemory);
@@ -342,7 +342,7 @@ protected:
 			.tiling = VK_IMAGE_TILING_OPTIMAL,
 			.usage = IUF,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = static_cast<uint32_t>(size(QueueFamilyIndices)), .pQueueFamilyIndices = data(QueueFamilyIndices),
+			.queueFamilyIndexCount = static_cast<uint32_t>(std::size(QueueFamilyIndices)), .pQueueFamilyIndices = std::data(QueueFamilyIndices),
 			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
 		};
 		VERIFY_SUCCEEDED(vkCreateImage(Device, &ICI, GetAllocationCallbacks(), Image));
@@ -367,12 +367,12 @@ protected:
 			VkSubmitInfo({
 				.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 				.pNext = nullptr,
-				.waitSemaphoreCount = static_cast<uint32_t>(size(WaitSems)), .pWaitSemaphores = data(WaitSems), .pWaitDstStageMask = data(StageFlags),
-				.commandBufferCount = static_cast<uint32_t>(size(CBs)), .pCommandBuffers = data(CBs),
-				.signalSemaphoreCount = static_cast<uint32_t>(size(SignalSems)), .pSignalSemaphores = data(SignalSems)
+				.waitSemaphoreCount = static_cast<uint32_t>(std::size(WaitSems)), .pWaitSemaphores = std::data(WaitSems), .pWaitDstStageMask = std::data(StageFlags),
+				.commandBufferCount = static_cast<uint32_t>(std::size(CBs)), .pCommandBuffers = std::data(CBs),
+				.signalSemaphoreCount = static_cast<uint32_t>(std::size(SignalSems)), .pSignalSemaphores = std::data(SignalSems)
 			})
 		};
-		VERIFY_SUCCEEDED(vkQueueSubmit(Queue, static_cast<uint32_t>(size(SIs)), data(SIs), VK_NULL_HANDLE));
+		VERIFY_SUCCEEDED(vkQueueSubmit(Queue, static_cast<uint32_t>(std::size(SIs)), std::data(SIs), VK_NULL_HANDLE));
 		VERIFY_SUCCEEDED(vkQueueWaitIdle(Queue));
 	}
 	static void CopyToHostVisibleDeviceMemory(const VkDevice Dev, const VkDeviceMemory DM, const VkDeviceSize Offset, const VkDeviceSize Size, const void* Source, const VkDeviceSize MappedRangeOffset = 0, const VkDeviceSize MappedRangeSize = VK_WHOLE_SIZE) {
@@ -389,7 +389,7 @@ protected:
 			void* Data;
 			VERIFY_SUCCEEDED(vkMapMemory(Dev, DM, Offset, /*Size*/MappedRangeSize, static_cast<VkMemoryMapFlags>(0), &Data)); {
 				memcpy(Data, Source, Size);
-				VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Dev, static_cast<uint32_t>(size(MMRs)), data(MMRs)));
+				VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Dev, static_cast<uint32_t>(std::size(MMRs)), std::data(MMRs)));
 			} vkUnmapMemory(Dev, DM);
 		}
 	}
@@ -419,7 +419,7 @@ protected:
 		vkCmdPipelineBarrier(CB, SrcStage, DstStage, VK_DEPENDENCY_BY_REGION_BIT, 
 			0, nullptr,
 			0, nullptr,
-			static_cast<uint32_t>(size(IMBs)), data(IMBs));
+			static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 	}
 
 	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs, const uint32_t Levels, const uint32_t Layers) {
@@ -444,11 +444,11 @@ protected:
 				})
 			};
 			vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-				static_cast<uint32_t>(size(MBs)), data(MBs),
-				static_cast<uint32_t>(size(BMBs)), data(BMBs),
-				static_cast<uint32_t>(size(IMBs)), data(IMBs));
+				static_cast<uint32_t>(std::size(MBs)), std::data(MBs),
+				static_cast<uint32_t>(std::size(BMBs)), std::data(BMBs),
+				static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 		}
-		vkCmdCopyBufferToImage(CB, Src, Dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(size(BICs)), data(BICs));
+		vkCmdCopyBufferToImage(CB, Src, Dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(std::size(BICs)), std::data(BICs));
 		{
 			const std::array IMBs = {
 				VkImageMemoryBarrier({
@@ -462,9 +462,9 @@ protected:
 				})
 			};
 			vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_TRANSFER_BIT, PSF, 0,
-				static_cast<uint32_t>(size(MBs)), data(MBs),
-				static_cast<uint32_t>(size(BMBs)), data(BMBs),
-				static_cast<uint32_t>(size(IMBs)), data(IMBs));
+				static_cast<uint32_t>(std::size(MBs)), std::data(MBs),
+				static_cast<uint32_t>(std::size(BMBs)), std::data(BMBs),
+				static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 		}
 	}
 
@@ -550,7 +550,7 @@ protected:
 		constexpr std::array<VkAttachmentReference, 0> InPreAtts = {};
 		constexpr std::array ColAtts = { VkAttachmentReference({.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }), };
 		constexpr std::array ResAtts = { VkAttachmentReference({.attachment = VK_ATTACHMENT_UNUSED, .layout = VK_IMAGE_LAYOUT_UNDEFINED }), };
-		assert(size(ColAtts) == size(ResAtts) && "");
+		assert(std::size(ColAtts) == std::size(ResAtts) && "");
 		constexpr std::array<uint32_t, 0> PreAtts = {};
 		VK::CreateRenderPass(RenderPasses.emplace_back(), 
 			{
@@ -567,10 +567,10 @@ protected:
 				VkSubpassDescription({
 					.flags = 0,
 					.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-					.inputAttachmentCount = static_cast<uint32_t>(size(InPreAtts)), .pInputAttachments = data(InPreAtts),
-					.colorAttachmentCount = static_cast<uint32_t>(size(ColAtts)), .pColorAttachments = data(ColAtts), .pResolveAttachments = data(ResAtts),
+					.inputAttachmentCount = static_cast<uint32_t>(std::size(InPreAtts)), .pInputAttachments = std::data(InPreAtts),
+					.colorAttachmentCount = static_cast<uint32_t>(std::size(ColAtts)), .pColorAttachments = std::data(ColAtts), .pResolveAttachments = std::data(ResAtts),
 					.pDepthStencilAttachment = nullptr,																							
-					.preserveAttachmentCount = static_cast<uint32_t>(size(PreAtts)), .pPreserveAttachments = data(PreAtts)
+					.preserveAttachmentCount = static_cast<uint32_t>(std::size(PreAtts)), .pPreserveAttachments = std::data(PreAtts)
 				}),
 			}, {});
 	}
@@ -595,10 +595,10 @@ protected:
 				VkSubpassDescription({
 					.flags = 0,
 					.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-					.inputAttachmentCount = static_cast<uint32_t>(size(InpAtts)), .pInputAttachments = data(InpAtts),
-					.colorAttachmentCount = static_cast<uint32_t>(size(ColAtts)), .pColorAttachments = data(ColAtts), .pResolveAttachments = data(ResAtts),
+					.inputAttachmentCount = static_cast<uint32_t>(std::size(InpAtts)), .pInputAttachments = std::data(InpAtts),
+					.colorAttachmentCount = static_cast<uint32_t>(std::size(ColAtts)), .pColorAttachments = std::data(ColAtts), .pResolveAttachments = std::data(ResAtts),
 					.pDepthStencilAttachment = nullptr,
-					.preserveAttachmentCount = static_cast<uint32_t>(size(PreAtts)), .pPreserveAttachments = data(PreAtts)
+					.preserveAttachmentCount = static_cast<uint32_t>(std::size(PreAtts)), .pPreserveAttachments = std::data(PreAtts)
 				}),
 			}, {});
 	}
@@ -632,10 +632,10 @@ protected:
 				VkSubpassDescription({
 					.flags = 0,
 					.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-					.inputAttachmentCount = static_cast<uint32_t>(size(InpAtts)), .pInputAttachments = data(InpAtts),
-					.colorAttachmentCount = static_cast<uint32_t>(size(ColAtts)), .pColorAttachments = data(ColAtts), .pResolveAttachments = data(ResAtts),
+					.inputAttachmentCount = static_cast<uint32_t>(std::size(InpAtts)), .pInputAttachments = std::data(InpAtts),
+					.colorAttachmentCount = static_cast<uint32_t>(std::size(ColAtts)), .pColorAttachments = std::data(ColAtts), .pResolveAttachments = std::data(ResAtts),
 					.pDepthStencilAttachment = &DepAtt, //!< デプスアタッチメントを使用
-					.preserveAttachmentCount = static_cast<uint32_t>(size(PreAtts)), .pPreserveAttachments = data(PreAtts)
+					.preserveAttachmentCount = static_cast<uint32_t>(std::size(PreAtts)), .pPreserveAttachments = std::data(PreAtts)
 				}),
 			}, {});
 	}
@@ -740,8 +740,8 @@ protected:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			vkCmdSetViewport(CB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-			vkCmdSetScissor(CB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+			vkCmdSetViewport(CB, 0, static_cast<uint32_t>(std::size(Viewports)), std::data(Viewports));
+			vkCmdSetScissor(CB, 0, static_cast<uint32_t>(std::size(ScissorRects)), std::data(ScissorRects));
 			const std::array CVs = { VkClearValue({.color = Color }) };
 			const VkRenderPassBeginInfo RPBI = {
 				.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -749,7 +749,7 @@ protected:
 				.renderPass = RenderPasses[0],
 				.framebuffer = Framebuffers[i],
 				.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = SurfaceExtent2D }),
-				.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
+				.clearValueCount = static_cast<uint32_t>(std::size(CVs)), .pClearValues = std::data(CVs)
 			};
 			vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_INLINE); {
 			} vkCmdEndRenderPass(CB);
@@ -810,12 +810,12 @@ protected:
 					}),
 				};
 				vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-					static_cast<uint32_t>(size(MBs)), data(MBs),
-					static_cast<uint32_t>(size(BMBs)), data(BMBs),
-					static_cast<uint32_t>(size(IMBs)), data(IMBs));
+					static_cast<uint32_t>(std::size(MBs)), std::data(MBs),
+					static_cast<uint32_t>(std::size(BMBs)), std::data(BMBs),
+					static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 			}
 			const std::array BCs = { VkBufferCopy({.srcOffset = 0, .dstOffset = 0, .size = Size }), };
-			vkCmdCopyBuffer(CB, Staging, Buffer, static_cast<uint32_t>(size(BCs)), data(BCs));
+			vkCmdCopyBuffer(CB, Staging, Buffer, static_cast<uint32_t>(std::size(BCs)), std::data(BCs));
 			{
 				const std::array BMBs = {
 					VkBufferMemoryBarrier({
@@ -827,9 +827,9 @@ protected:
 					}),
 				};
 				vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_TRANSFER_BIT, PSF, 0,
-					static_cast<uint32_t>(size(MBs)), data(MBs),
-					static_cast<uint32_t>(size(BMBs)), data(BMBs),
-					static_cast<uint32_t>(size(IMBs)), data(IMBs));
+					static_cast<uint32_t>(std::size(MBs)), std::data(MBs),
+					static_cast<uint32_t>(std::size(BMBs)), std::data(BMBs),
+					static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 			}
 		}
 		void SubmitCopyCommand(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkCommandBuffer CB, const VkQueue Queue, const size_t Size, const void* Source, const VkAccessFlags AF, const VkPipelineStageFlagBits PSF) {
@@ -964,7 +964,7 @@ protected:
 					.subresourceRange = VkImageSubresourceRange({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1 })
 				}),
 			};
-			vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(size(IMBs)), data(IMBs));
+			vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 		}
 		void SubmitSetLayoutCommand(const VkCommandBuffer CB, const VkQueue Queue, const VkImageLayout Layout = VK_IMAGE_LAYOUT_GENERAL) {
 			constexpr VkCommandBufferBeginInfo CBBI = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, .pInheritanceInfo = nullptr };

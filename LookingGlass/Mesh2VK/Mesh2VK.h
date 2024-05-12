@@ -2,12 +2,15 @@
 
 #include "resource.h"
 
-#include "../VK.h"
-#include "../Holo.h"
-#include "../FBX.h"
-#include "../GltfSDK.h"
+//#define USE_GLTF
+#define USE_FBX
+#include "../HoloVK.h"
 
-class Mesh2VK : public VK, public Holo, public Fbx//, public Gltf::SDK
+#ifdef USE_GLTF
+class Mesh2VK : public HoloGLTFVK
+#else
+class Mesh2VK : public HoloFBXVK
+#endif
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -31,28 +34,9 @@ public:
 		CopyToHostVisibleDeviceMemory(Device, UniformBuffers[i].DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
 	}
 
-	glm::vec3 ToVec3(const FbxVector4& rhs) { return glm::vec3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
-	virtual void Process(FbxMesh* Mesh) override {
-		Fbx::Process(Mesh);
-
-		for (auto i = 0; i < Mesh->GetPolygonCount(); ++i) {
-			for (auto j = 0; j < Mesh->GetPolygonSize(i); ++j) {
-				Indices.emplace_back(i * Mesh->GetPolygonSize(i) + j); //!< RH
-				Vertices.emplace_back(ToVec3(Mesh->GetControlPoints()[Mesh->GetPolygonVertex(i, j)]));
-			}
-		}
-		AdjustScale(Vertices, 3.0f);
-
-		FbxArray<FbxVector4> Nrms;
-		Mesh->GetPolygonVertexNormals(Nrms);
-		for (auto i = 0; i < Nrms.Size(); ++i) {
-			Normals.emplace_back(ToVec3(Nrms[i]));
-		}
-	}
-
 	virtual void AllocateCommandBuffer() override {
 		VK::AllocateCommandBuffer();
-		VK::AllocateSecondaryCommandBuffer(size(SwapchainBackBuffers) + 1);
+		VK::AllocateSecondaryCommandBuffer(std::size(SwapchainBackBuffers) + 1);
 	}
 
 	virtual void CreateGeometry() override {
@@ -69,18 +53,18 @@ public:
 
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
 		VK::Scoped<StagingBuffer> StagingPass0Vertex(Device);
-		StagingPass0Vertex.Create(Device, PDMP, TotalSizeOf(Vertices), data(Vertices));
+		StagingPass0Vertex.Create(Device, PDMP, TotalSizeOf(Vertices), std::data(Vertices));
 
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Normals));
 		VK::Scoped<StagingBuffer> StagingPass0Normal(Device);
-		StagingPass0Normal.Create(Device, PDMP, TotalSizeOf(Normals), data(Normals));
+		StagingPass0Normal.Create(Device, PDMP, TotalSizeOf(Normals), std::data(Normals));
 
 		IndexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Indices));
 		VK::Scoped<StagingBuffer> StagingPass0Index(Device);
-		StagingPass0Index.Create(Device, PDMP, TotalSizeOf(Indices), data(Indices));
+		StagingPass0Index.Create(Device, PDMP, TotalSizeOf(Indices), std::data(Indices));
 
 		const VkDrawIndexedIndirectCommand DIIC = {
-			.indexCount = static_cast<uint32_t>(size(Indices)),
+			.indexCount = static_cast<uint32_t>(std::size(Indices)),
 			.instanceCount = GetInstanceCount(),
 			.firstIndex = 0,
 			.vertexOffset = 0,
@@ -149,7 +133,7 @@ public:
 		{
 			const std::array ISs = { Samplers[0] };
 			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
-				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = data(ISs) }),
+				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
 				VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr }),
 			});
 			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[1] }, {});
@@ -184,19 +168,19 @@ public:
 			VkVertexInputAttributeDescription({.location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 }),
 			VkVertexInputAttributeDescription({.location = 1, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 }),
 		};
-		const std::array SMsPass0 = {
+		const std::array SMs_Pass0 = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass0VK.vert.spv"),
 			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass0VK.frag.spv"),
 			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass0VK.geom.spv"),
 		};
-		const std::array PSSCIsPass0 = {
-			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMsPass0[0], .pName = "main", .pSpecializationInfo = nullptr }),
-			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMsPass0[1], .pName = "main", .pSpecializationInfo = nullptr }),
-			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = SMsPass0[2], .pName = "main", .pSpecializationInfo = nullptr }),
+		const std::array PSSCIs_Pass0 = {
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMs_Pass0[0], .pName = "main", .pSpecializationInfo = nullptr }),
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMs_Pass0[1], .pName = "main", .pSpecializationInfo = nullptr }),
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_GEOMETRY_BIT, .module = SMs_Pass0[2], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
-		CreatePipelineState_VsFsGs_Input(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIsPass0);
+		CreatePipelineState_VsFsGs_Input(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIs_Pass0);
 
-		const std::array SMsPass1 = {
+		const std::array SMs_Pass1 = {
 			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass1VK.vert.spv"),
 #ifdef DISPLAY_QUILT
 			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2QuiltVK.frag.spv"),
@@ -204,20 +188,20 @@ public:
 			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass1VK.frag.spv"),
 #endif
 		};
-		const std::array PSSCIsPass1 = {
-			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMsPass1[0], .pName = "main", .pSpecializationInfo = nullptr }),
-			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMsPass1[1], .pName = "main", .pSpecializationInfo = nullptr }),
+		const std::array PSSCIs_Pass1 = {
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = SMs_Pass1[0], .pName = "main", .pSpecializationInfo = nullptr }),
+			VkPipelineShaderStageCreateInfo({.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = SMs_Pass1[1], .pName = "main", .pSpecializationInfo = nullptr }),
 		};
-		CreatePipeline_VsFs(Pipelines[1], PipelineLayouts[1], RenderPasses[1], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIsPass1);
+		CreatePipeline_VsFs(Pipelines[1], PipelineLayouts[1], RenderPasses[1], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 0, PRSCI, VK_FALSE, PSSCIs_Pass1);
 
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
 
-		for (auto i : SMsPass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
-		for (auto i : SMsPass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
+		for (auto i : SMs_Pass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
+		for (auto i : SMs_Pass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
 	void CreateDescriptor_Pass0() {
-		const auto BackBufferCount = static_cast<uint32_t>(size(SwapchainBackBuffers));
+		const auto BackBufferCount = static_cast<uint32_t>(std::size(SwapchainBackBuffers));
 		const auto DescCount = BackBufferCount;
 
 		const auto UB0Index = 0;
@@ -237,7 +221,7 @@ public:
 				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 				.pNext = nullptr,
 				.descriptorPool = DP,
-				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+				.descriptorSetCount = static_cast<uint32_t>(std::size(DSLs)), .pSetLayouts = std::data(DSLs)
 			};
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
@@ -279,12 +263,12 @@ public:
 		auto DSL = DescriptorSetLayouts[1];
 		auto DP = DescriptorPools[1];
 		const std::array DSLs = { DSL };
-		for (uint32_t i = 0; i < 1; ++i) {
+		{
 			const VkDescriptorSetAllocateInfo DSAI = {
 				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 				.pNext = nullptr,
 				.descriptorPool = DP,
-				.descriptorSetCount = static_cast<uint32_t>(size(DSLs)), .pSetLayouts = data(DSLs)
+				.descriptorSetCount = static_cast<uint32_t>(std::size(DSLs)), .pSetLayouts = std::data(DSLs)
 			};
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
@@ -308,15 +292,15 @@ public:
 			}),
 		}, DSL);
 
-		const auto UBIndex = static_cast<uint32_t>(size(SwapchainBackBuffers)) * 2;
-		const auto DSIndex = static_cast<uint32_t>(size(SwapchainBackBuffers));
+		const auto UBIndex = static_cast<uint32_t>(std::size(SwapchainBackBuffers)) * 2;
+		const auto DSIndex = static_cast<uint32_t>(std::size(SwapchainBackBuffers));
 
-		for (uint32_t i = 0; i < 1; ++i) {
+		{
 			const DescriptorUpdateInfo DUI = {
 				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + 0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
 			};
-			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + i], DUT, &DUI);
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + 0], DUT, &DUI);
 		}
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
@@ -331,20 +315,6 @@ public:
 			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[1], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i.ImageView });
 		}
 	}
-	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
-		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
-		const auto Ext2D = VkExtent2D({ .width = static_cast<uint32_t>(W), .height = static_cast<uint32_t>(H) });
-		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
-			const auto Y = QuiltY - H * i;
-			for (auto j = 0; j < LenticularBuffer.TileX; ++j) {
-				const auto X = j * W;
-				QuiltViewports.emplace_back(VkViewport({ .x = static_cast<float>(X), .y = static_cast<float>(Y), .width = static_cast<float>(W), .height = -static_cast<float>(H), .minDepth = MinDepth, .maxDepth = MaxDepth }));
-				QuiltScissorRects.emplace_back(VkRect2D({ VkOffset2D({.x = static_cast<int32_t>(X), .y = static_cast<int32_t>(Y - H) }), Ext2D }));
-			}
-		}
-
-		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
-	}
 	void PopulateSecondaryCommandBuffer_Pass0(const size_t i) {
 		const auto RP = RenderPasses[0];
 		const auto PL = Pipelines[0];
@@ -353,7 +323,7 @@ public:
 		const auto DS = DescriptorSets[i];
 
 		VkMemoryRequirements MR;
-		vkGetBufferMemoryRequirements(Device, UniformBuffers[size(SwapchainBackBuffers)].Buffer, &MR);
+		vkGetBufferMemoryRequirements(Device, UniformBuffers[std::size(SwapchainBackBuffers)].Buffer, &MR);
 
 		const VkCommandBufferInheritanceInfo CBII = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
@@ -383,13 +353,13 @@ public:
 
 				const std::array DSs = { DS };
 				const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
-				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(std::size(DSs)), std::data(DSs), static_cast<uint32_t>(std::size(DynamicOffsets)), std::data(DynamicOffsets));
 
 				const std::array VBs = { VertexBuffers[0].Buffer };
 				const std::array NBs = { VertexBuffers[1].Buffer };
 				const std::array Offsets = { VkDeviceSize(0) };
-				vkCmdBindVertexBuffers(SCB, 0, static_cast<uint32_t>(size(VBs)), data(VBs), data(Offsets));
-				vkCmdBindVertexBuffers(SCB, 1, static_cast<uint32_t>(size(NBs)), data(NBs), data(Offsets));
+				vkCmdBindVertexBuffers(SCB, 0, static_cast<uint32_t>(std::size(VBs)), std::data(VBs), std::data(Offsets));
+				vkCmdBindVertexBuffers(SCB, 1, static_cast<uint32_t>(std::size(NBs)), std::data(NBs), std::data(Offsets));
 				vkCmdBindIndexBuffer(SCB, IndexBuffers[0].Buffer, 0, VK_INDEX_TYPE_UINT32);
 
 				vkCmdDrawIndexedIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);
@@ -397,7 +367,7 @@ public:
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
 	}
 	void PopulateSecondaryCommandBuffer_Pass1() {
-		const auto Index = size(SwapchainBackBuffers);
+		const auto Index = std::size(SwapchainBackBuffers);
 
 		const auto RP = RenderPasses[1];
 		const auto PL = Pipelines[1];
@@ -424,12 +394,12 @@ public:
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(size(Viewports)), data(Viewports));
-			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(size(ScissorRects)), data(ScissorRects));
+			vkCmdSetViewport(SCB, 0, static_cast<uint32_t>(std::size(Viewports)), std::data(Viewports));
+			vkCmdSetScissor(SCB, 0, static_cast<uint32_t>(std::size(ScissorRects)), std::data(ScissorRects));
 
 			const std::array DSs = { DS };
 			constexpr std::array<uint32_t, 0> DynamicOffsets = {};
-			vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(size(DSs)), data(DSs), static_cast<uint32_t>(size(DynamicOffsets)), data(DynamicOffsets));
+			vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(std::size(DSs)), std::data(DSs), static_cast<uint32_t>(std::size(DynamicOffsets)), std::data(DynamicOffsets));
 
 			vkCmdDrawIndirect(SCB, IndirectBuffers[1].Buffer, 0, 1, 0);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(SCB));
@@ -463,11 +433,11 @@ public:
 					.renderPass = RP,
 					.framebuffer = FB,
 					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = VkExtent2D({.width = static_cast<uint32_t>(QuiltX), .height = static_cast<uint32_t>(QuiltY) })}),
-					.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
+					.clearValueCount = static_cast<uint32_t>(std::size(CVs)), .pClearValues = std::data(CVs)
 				};
 				vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
 					const std::array SCBs = { SCB };
-					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
+					vkCmdExecuteCommands(CB, static_cast<uint32_t>(std::size(SCBs)), std::data(SCBs));
 				} vkCmdEndRenderPass(CB);
 			}
 
@@ -480,7 +450,7 @@ public:
 			{
 				const auto RP = RenderPasses[1];
 				const auto FB = Framebuffers[i + 1];
-				const auto SCB = SecondaryCommandBuffers[size(SwapchainBackBuffers)];
+				const auto SCB = SecondaryCommandBuffers[std::size(SwapchainBackBuffers)];
 
 				constexpr std::array<VkClearValue, 0> CVs = {};
 				const VkRenderPassBeginInfo RPBI = {
@@ -489,40 +459,14 @@ public:
 					.renderPass = RP,
 					.framebuffer = FB,
 					.renderArea = VkRect2D({.offset = VkOffset2D({.x = 0, .y = 0 }), .extent = SurfaceExtent2D }),
-					.clearValueCount = static_cast<uint32_t>(size(CVs)), .pClearValues = data(CVs)
+					.clearValueCount = static_cast<uint32_t>(std::size(CVs)), .pClearValues = std::data(CVs)
 				};
 				vkCmdBeginRenderPass(CB, &RPBI, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS); {
 					const std::array SCBs = { SCB };
-					vkCmdExecuteCommands(CB, static_cast<uint32_t>(size(SCBs)), data(SCBs));
+					vkCmdExecuteCommands(CB, static_cast<uint32_t>(std::size(SCBs)), std::data(SCBs));
 				} vkCmdEndRenderPass(CB);
 			}
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
-	}
-
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
-	}
-	virtual void CreateProjectionMatrix(const int i) override {
-		if (-1 == i) { ProjectionMatrices.clear(); return; }
-
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
-		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
-
-		auto Prj = glm::perspective(Fov, LenticularBuffer.DisplayAspect, 0.1f, 100.0f);
-		Prj[2][0] += OffsetX / (CameraSize * LenticularBuffer.DisplayAspect);
-
-		ProjectionMatrices.emplace_back(Prj);
-	}
-	virtual void CreateViewMatrix(const int i) override {
-		if (-1 == i) { ViewMatrices.clear(); return; }
-
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
-		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
-
-		const auto OffsetLocal = glm::vec3(View * glm::vec4(OffsetX, 0.0f, CameraDistance, 1.0f));
-		ViewMatrices.emplace_back(glm::translate(View, OffsetLocal));
 	}
 	virtual void UpdateViewProjectionBuffer() override {
 		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
@@ -560,18 +504,9 @@ public:
 
 	uint32_t GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<uint32_t>(_countof(WorldBuffer.World))); }
 
+	virtual float GetMeshScale() const override { return 3.0f; }
+
 protected:
-	std::vector<uint32_t> Indices;
-	std::vector<glm::vec3> Vertices;
-	std::vector<glm::vec3> Normals;
-
-	std::vector<VkViewport> QuiltViewports;
-	std::vector<VkRect2D> QuiltScissorRects;
-
-	std::vector<glm::mat4> ProjectionMatrices;
-	glm::mat4 View;
-	std::vector<glm::mat4> ViewMatrices;
-
 	struct VIEW_PROJECTION {
 		glm::mat4 View;
 		glm::mat4 Projection;

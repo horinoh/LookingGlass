@@ -31,7 +31,7 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 	}
 	DescriptorUpdateTemplates.clear();
 	//!< 個別に開放できるのは VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT を指定した場合
-	//if (!empty(DescriptorSets)) { vkFreeDescriptorSets(Device, DescriptorPool, static_cast<uint32_t>(size(DescriptorSets)), data(DescriptorSets)); }
+	//if (!empty(DescriptorSets)) { vkFreeDescriptorSets(Device, DescriptorPool, static_cast<uint32_t>(std::size(DescriptorSets)), std::data(DescriptorSets)); }
 	DescriptorSets.clear();
 	//!< やらなくてもよい
 	//for (auto i : DescriptorPools) { vkResetDescriptorPool(Device, i, 0); }
@@ -183,8 +183,8 @@ void VK::CreateInstance(const std::vector<const char*>& AdditionalLayers, const 
 		.pNext = nullptr,
 		.flags = 0,
 		.pApplicationInfo = &AI,
-		.enabledLayerCount = static_cast<uint32_t>(size(Layers)), .ppEnabledLayerNames = data(Layers),
-		.enabledExtensionCount = static_cast<uint32_t>(size(Extensions)), .ppEnabledExtensionNames = data(Extensions)
+		.enabledLayerCount = static_cast<uint32_t>(std::size(Layers)), .ppEnabledLayerNames = std::data(Layers),
+		.enabledExtensionCount = static_cast<uint32_t>(std::size(Extensions)), .ppEnabledExtensionNames = std::data(Extensions)
 	};
 	VERIFY_SUCCEEDED(vkCreateInstance(&ICI, GetAllocationCallbacks(), &Instance));
 
@@ -199,7 +199,7 @@ void VK::SelectPhysicalDevice(VkInstance Inst)
 	uint32_t Count = 0;
 	VERIFY_SUCCEEDED(vkEnumeratePhysicalDevices(Inst, &Count, nullptr));
 	PhysicalDevices.resize(Count);
-	VERIFY_SUCCEEDED(vkEnumeratePhysicalDevices(Inst, &Count, data(PhysicalDevices)));
+	VERIFY_SUCCEEDED(vkEnumeratePhysicalDevices(Inst, &Count, std::data(PhysicalDevices)));
 
 	//!< 物理デバイスの選択、ここでは最大メモリを選択することにする (Select physical device, here select max memory size)
 	const auto Index = std::distance(begin(PhysicalDevices), std::ranges::max_element(PhysicalDevices, [](const VkPhysicalDevice& lhs, const VkPhysicalDevice& rhs) {
@@ -230,18 +230,18 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 		uint32_t Count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(PD, &Count, nullptr);
 		QFPs.resize(Count);
-		vkGetPhysicalDeviceQueueFamilyProperties(PD, &Count, data(QFPs));
+		vkGetPhysicalDeviceQueueFamilyProperties(PD, &Count, std::data(QFPs));
 
 		{
 			constexpr uint8_t QueueFamilyPropMax = 8;
-			VERIFY(size(QFPs) <= QueueFamilyPropMax);
+			VERIFY(std::size(QFPs) <= QueueFamilyPropMax);
 			//!< 機能を持つキューファミリインデックスのビットを立てておく
 			std::bitset<QueueFamilyPropMax> GraphicsMask;
 			std::bitset<QueueFamilyPropMax> PresentMask;
 			//!< 最初に見つかった、機能を持つキューファミリインデックス
 			GraphicsQueueFamilyIndex = UINT32_MAX;
 			PresentQueueFamilyIndex = UINT32_MAX;
-			for (auto i = 0; i < size(QFPs); ++i) {
+			for (auto i = 0; i < std::size(QFPs); ++i) {
 				if (VK_QUEUE_GRAPHICS_BIT & QFPs[i].queueFlags) {
 					GraphicsMask.set(i);
 					if (UINT32_MAX == GraphicsQueueFamilyIndex) {
@@ -263,13 +263,13 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 			}
 
 			//!< キューファミリ内でのインデックス及びプライオリティ、ここではグラフィック、プレゼントの分をプライオリティ0.5fで追加している
-			std::vector<std::vector<float>> Priorites(size(QFPs));
-			const uint32_t GraphicsQueueIndexInFamily = static_cast<uint32_t>(size(Priorites[GraphicsQueueFamilyIndex])); Priorites[GraphicsQueueFamilyIndex].emplace_back(0.5f);
-			const uint32_t PresentQueueIndexInFamily = static_cast<uint32_t>(size(Priorites[PresentQueueFamilyIndex])); Priorites[PresentQueueFamilyIndex].emplace_back(0.5f);
+			std::vector<std::vector<float>> Priorites(std::size(QFPs));
+			const uint32_t GraphicsQueueIndexInFamily = static_cast<uint32_t>(std::size(Priorites[GraphicsQueueFamilyIndex])); Priorites[GraphicsQueueFamilyIndex].emplace_back(0.5f);
+			const uint32_t PresentQueueIndexInFamily = static_cast<uint32_t>(std::size(Priorites[PresentQueueFamilyIndex])); Priorites[PresentQueueFamilyIndex].emplace_back(0.5f);
 		
 			//!< キュー作成情報 (Queue create information)
 			std::vector<VkDeviceQueueCreateInfo> DQCIs;
-			for (size_t i = 0; i < size(Priorites); ++i) {
+			for (size_t i = 0; i < std::size(Priorites); ++i) {
 				if (!empty(Priorites[i])) {
 					DQCIs.emplace_back(
 						VkDeviceQueueCreateInfo({
@@ -277,7 +277,7 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 							.pNext = nullptr,
 							.flags = 0,
 							.queueFamilyIndex = static_cast<uint32_t>(i),
-							.queueCount = static_cast<uint32_t>(size(Priorites[i])), .pQueuePriorities = data(Priorites[i])
+							.queueCount = static_cast<uint32_t>(std::size(Priorites[i])), .pQueuePriorities = std::data(Priorites[i])
 							})
 					);
 				}
@@ -293,9 +293,9 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 					.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 					.pNext = nullptr,
 					.flags = 0,
-					.queueCreateInfoCount = static_cast<uint32_t>(size(DQCIs)), .pQueueCreateInfos = data(DQCIs),
+					.queueCreateInfoCount = static_cast<uint32_t>(std::size(DQCIs)), .pQueueCreateInfos = std::data(DQCIs),
 					.enabledLayerCount = 0, .ppEnabledLayerNames = nullptr,
-					.enabledExtensionCount = static_cast<uint32_t>(size(Extensions)), .ppEnabledExtensionNames = data(Extensions),
+					.enabledExtensionCount = static_cast<uint32_t>(std::size(Extensions)), .ppEnabledExtensionNames = std::data(Extensions),
 					.pEnabledFeatures = &PDF
 				};
 				VERIFY_SUCCEEDED(vkCreateDevice(PD, &DCI, GetAllocationCallbacks(), &Device));
@@ -316,14 +316,14 @@ VkSurfaceFormatKHR VK::SelectSurfaceFormat(VkPhysicalDevice PD, VkSurfaceKHR Sfc
 	uint32_t Count = 0;
 	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfaceFormatsKHR(PD, Sfc, &Count, nullptr));
 	std::vector<VkSurfaceFormatKHR> SFs(Count);
-	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfaceFormatsKHR(PD, Sfc, &Count, data(SFs)));
+	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfaceFormatsKHR(PD, Sfc, &Count, std::data(SFs)));
 
 	const auto SelectedIndex = [&]() {
 		//!< 要素が 1 つのみで UNDEFINED の場合、制限は無く好きなものを選択できる (If there is only 1 element and which is UNDEFINED, we can choose any)
-		if (1 == size(SFs) && VK_FORMAT_UNDEFINED == SFs[0].format) {
+		if (1 == std::size(SFs) && VK_FORMAT_UNDEFINED == SFs[0].format) {
 			return -1;
 		}
-		for (auto i = 0; i < size(SFs); ++i) {
+		for (auto i = 0; i < std::size(SFs); ++i) {
 			//!< VK_FORMAT_UNDEFINED でない最初のもの
 			if (VK_FORMAT_UNDEFINED != SFs[i].format) {
 				return i;
@@ -341,7 +341,7 @@ VkPresentModeKHR VK::SelectSurfacePresentMode(VkPhysicalDevice PD, VkSurfaceKHR 
 	uint32_t Count;
 	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfacePresentModesKHR(PD, Sfc, &Count, nullptr));
 	std::vector<VkPresentModeKHR> PMs(Count);
-	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfacePresentModesKHR(PD, Sfc, &Count, data(PMs)));
+	VERIFY_SUCCEEDED(vkGetPhysicalDeviceSurfacePresentModesKHR(PD, Sfc, &Count, std::data(PMs)));
 
 	//!< 可能なら VK_PRESENT_MODE_MAILBOX_KHR を選択、そうでなければ VK_PRESENT_MODE_FIFO_KHR を選択 (Want to select VK_PRESENT_MODE_MAILBOX_KHR, or select VK_PRESENT_MODE_FIFO_KHR)
 	const auto SelectedPresentMode = [&]() {
@@ -412,7 +412,7 @@ void VK::CreateSwapchain(VkPhysicalDevice PD, VkSurfaceKHR Sfc, const uint32_t W
 		.imageArrayLayers = ImageArrayLayers,
 		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | AdditionalUsage,
 		.imageSharingMode = empty(QueueFamilyIndices) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
-		.queueFamilyIndexCount = static_cast<uint32_t>(size(QueueFamilyIndices)), .pQueueFamilyIndices = data(QueueFamilyIndices),
+		.queueFamilyIndexCount = static_cast<uint32_t>(std::size(QueueFamilyIndices)), .pQueueFamilyIndices = std::data(QueueFamilyIndices),
 		.preTransform = SurfaceTransform,
 		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 		.presentMode = SurfacePresentMode,
@@ -436,7 +436,7 @@ void VK::GetSwapchainImages()
 	uint32_t Count;
 	VERIFY_SUCCEEDED(vkGetSwapchainImagesKHR(Device, Swapchain, &Count, nullptr));
 	std::vector<VkImage> Images(Count);
-	VERIFY_SUCCEEDED(vkGetSwapchainImagesKHR(Device, Swapchain, &Count, data(Images)));
+	VERIFY_SUCCEEDED(vkGetSwapchainImagesKHR(Device, Swapchain, &Count, std::data(Images)));
 	for (auto i : Images) {
 		auto& SBB = SwapchainBackBuffers.emplace_back(SwapchainBackBuffer(i));
 		const VkImageViewCreateInfo IVCI = {
@@ -470,9 +470,9 @@ void VK::AllocatePrimaryCommandBuffer(const size_t Num)
 		.pNext = nullptr,
 		.commandPool = CP,
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandBufferCount = static_cast<uint32_t>(size(CommandBuffers))
+		.commandBufferCount = static_cast<uint32_t>(std::size(CommandBuffers))
 	};
-	VERIFY_SUCCEEDED(vkAllocateCommandBuffers(Device, &CBAI, data(CommandBuffers)));
+	VERIFY_SUCCEEDED(vkAllocateCommandBuffers(Device, &CBAI, std::data(CommandBuffers)));
 }
 void VK::AllocateSecondaryCommandBuffer(const size_t Num) 
 {
@@ -491,9 +491,9 @@ void VK::AllocateSecondaryCommandBuffer(const size_t Num)
 		.pNext = nullptr,
 		.commandPool = SCP,
 		.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
-		.commandBufferCount = static_cast<uint32_t>(size(SecondaryCommandBuffers))
+		.commandBufferCount = static_cast<uint32_t>(std::size(SecondaryCommandBuffers))
 	};
-	VERIFY_SUCCEEDED(vkAllocateCommandBuffers(Device, &CBAI, data(SecondaryCommandBuffers)));
+	VERIFY_SUCCEEDED(vkAllocateCommandBuffers(Device, &CBAI, std::data(SecondaryCommandBuffers)));
 }
 
 void VK::CreateRenderPass(VkRenderPass& RP, const std::vector<VkAttachmentDescription>& ADs, const std::vector<VkSubpassDescription>& SDs, const std::vector<VkSubpassDependency>& Deps)
@@ -502,9 +502,9 @@ void VK::CreateRenderPass(VkRenderPass& RP, const std::vector<VkAttachmentDescri
 		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.attachmentCount = static_cast<uint32_t>(size(ADs)), .pAttachments = data(ADs),
-		.subpassCount = static_cast<uint32_t>(size(SDs)), .pSubpasses = data(SDs),
-		.dependencyCount = static_cast<uint32_t>(size(Deps)), .pDependencies = data(Deps)
+		.attachmentCount = static_cast<uint32_t>(std::size(ADs)), .pAttachments = std::data(ADs),
+		.subpassCount = static_cast<uint32_t>(std::size(SDs)), .pSubpasses = std::data(SDs),
+		.dependencyCount = static_cast<uint32_t>(std::size(Deps)), .pDependencies = std::data(Deps)
 	};
 	VERIFY_SUCCEEDED(vkCreateRenderPass(Device, &RPCI, GetAllocationCallbacks(), &RP));
 }
@@ -534,8 +534,8 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.vertexBindingDescriptionCount = static_cast<uint32_t>(size(VIBDs)), .pVertexBindingDescriptions = data(VIBDs),
-		.vertexAttributeDescriptionCount = static_cast<uint32_t>(size(VIADs)), .pVertexAttributeDescriptions = data(VIADs)
+		.vertexBindingDescriptionCount = static_cast<uint32_t>(std::size(VIBDs)), .pVertexBindingDescriptions = std::data(VIBDs),
+		.vertexAttributeDescriptionCount = static_cast<uint32_t>(std::size(VIADs)), .pVertexAttributeDescriptions = std::data(VIADs)
 	};
 
 	//!< DXでは「トポロジ」と「パッチコントロールポイント」の指定はIASetPrimitiveTopology()の引数としてコマンドリストへ指定する、VKとは結構異なるので注意
@@ -621,7 +621,7 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 		.pNext = nullptr,
 		.flags = 0,
 		.logicOpEnable = VK_FALSE, .logicOp = VK_LOGIC_OP_COPY, //!< ブレンド時に論理オペレーションを行う (ブレンドは無効になる) (整数型アタッチメントに対してのみ)
-		.attachmentCount = static_cast<uint32_t>(size(PCBASs)), .pAttachments = data(PCBASs),
+		.attachmentCount = static_cast<uint32_t>(std::size(PCBASs)), .pAttachments = std::data(PCBASs),
 		.blendConstants = { 1.0f, 1.0f, 1.0f, 1.0f }
 	};
 
@@ -635,7 +635,7 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.dynamicStateCount = static_cast<uint32_t>(size(DSs)), .pDynamicStates = data(DSs)
+		.dynamicStateCount = static_cast<uint32_t>(std::size(DSs)), .pDynamicStates = std::data(DSs)
 	};
 
 	/**
@@ -655,7 +655,7 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 #else
 			.flags = 0,
 #endif
-			.stageCount = static_cast<uint32_t>(size(PSSCIs)), .pStages = data(PSSCIs),
+			.stageCount = static_cast<uint32_t>(std::size(PSSCIs)), .pStages = std::data(PSSCIs),
 			.pVertexInputState = &PVISCI,
 			.pInputAssemblyState = &PIASCI,
 			.pTessellationState = &PTSCI,
@@ -671,7 +671,7 @@ void VK::CreatePipelineVsFsTesTcsGs(VkPipeline& PL,
 		})
 	};
 	//!< VKでは1コールで複数のパイプラインを作成することもできるが、DXに合わせて1つしか作らないことにしておく
-	VERIFY_SUCCEEDED(vkCreateGraphicsPipelines(Dev, VK_NULL_HANDLE, static_cast<uint32_t>(size(GPCIs)), data(GPCIs), GetAllocationCallbacks(), &PL));
+	VERIFY_SUCCEEDED(vkCreateGraphicsPipelines(Dev, VK_NULL_HANDLE, static_cast<uint32_t>(std::size(GPCIs)), std::data(GPCIs), GetAllocationCallbacks(), &PL));
 }
 
 void VK::CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth, const FLOAT MaxDepth)
@@ -694,8 +694,8 @@ void VK::CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDe
 void VK::WaitForFence(VkDevice Device, VkFence Fence) 
 {
 	const std::array Fences = { Fence };
-	VERIFY_SUCCEEDED(vkWaitForFences(Device, static_cast<uint32_t>(size(Fences)), data(Fences), VK_TRUE, (std::numeric_limits<uint64_t>::max)()));
-	vkResetFences(Device, static_cast<uint32_t>(size(Fences)), data(Fences));
+	VERIFY_SUCCEEDED(vkWaitForFences(Device, static_cast<uint32_t>(std::size(Fences)), std::data(Fences), VK_TRUE, (std::numeric_limits<uint64_t>::max)()));
+	vkResetFences(Device, static_cast<uint32_t>(std::size(Fences)), std::data(Fences));
 }
 void VK::SubmitGraphics(const uint32_t i)
 {
@@ -709,12 +709,12 @@ void VK::SubmitGraphics(const uint32_t i)
 		VkSubmitInfo({
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 			.pNext = nullptr,
-			.waitSemaphoreCount = static_cast<uint32_t>(size(WaitSems)), .pWaitSemaphores = data(WaitSems), .pWaitDstStageMask = data(WaitStages), //!< 次イメージが取得できる(プレゼント完了)までウエイト
-			.commandBufferCount = static_cast<uint32_t>(size(CBs)), .pCommandBuffers = data(CBs),
-			.signalSemaphoreCount = static_cast<uint32_t>(size(SigSems)), .pSignalSemaphores = data(SigSems) //!< 描画完了を通知する
+			.waitSemaphoreCount = static_cast<uint32_t>(std::size(WaitSems)), .pWaitSemaphores = std::data(WaitSems), .pWaitDstStageMask = std::data(WaitStages), //!< 次イメージが取得できる(プレゼント完了)までウエイト
+			.commandBufferCount = static_cast<uint32_t>(std::size(CBs)), .pCommandBuffers = std::data(CBs),
+			.signalSemaphoreCount = static_cast<uint32_t>(std::size(SigSems)), .pSignalSemaphores = std::data(SigSems) //!< 描画完了を通知する
 		}),
 	};
-	VERIFY_SUCCEEDED(vkQueueSubmit(GraphicsQueue, static_cast<uint32_t>(size(SIs)), data(SIs), GraphicsFence));
+	VERIFY_SUCCEEDED(vkQueueSubmit(GraphicsQueue, static_cast<uint32_t>(std::size(SIs)), std::data(SIs), GraphicsFence));
 }
 void VK::Present() 
 {
@@ -722,14 +722,14 @@ void VK::Present()
 	//!< 同時に複数のプレゼントが可能だが、1つのスワップチェインからは1つのみ
 	const std::array Swapchains = { Swapchain };
 	const std::array ImageIndices = { SwapchainImageIndex };
-	VERIFY(size(Swapchains) == size(ImageIndices));
+	VERIFY(std::size(Swapchains) == std::size(ImageIndices));
 
 	//!< サブミット時に指定したセマフォ(RenderFinishedSemaphore)を待ってからプレゼントが行なわれる
 	const VkPresentInfoKHR PresentInfo = {
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.pNext = nullptr,
-		.waitSemaphoreCount = static_cast<uint32_t>(size(WaitSems)), .pWaitSemaphores = data(WaitSems),
-		.swapchainCount = static_cast<uint32_t>(size(Swapchains)), .pSwapchains = data(Swapchains), .pImageIndices = data(ImageIndices),
+		.waitSemaphoreCount = static_cast<uint32_t>(std::size(WaitSems)), .pWaitSemaphores = std::data(WaitSems),
+		.swapchainCount = static_cast<uint32_t>(std::size(Swapchains)), .pSwapchains = std::data(Swapchains), .pImageIndices = std::data(ImageIndices),
 		.pResults = nullptr
 	};
 	VERIFY_SUCCEEDED(vkQueuePresentKHR(PresentQueue, &PresentInfo));

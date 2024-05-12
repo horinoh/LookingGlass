@@ -140,6 +140,7 @@
     <ClInclude Include="..\DX.h" />
     <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\Holo.h" />
+    <ClInclude Include="..\HoloDX.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="QuiltDX.h" />
     <ClInclude Include="Resource.h" />
