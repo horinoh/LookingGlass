@@ -70,6 +70,7 @@ public:
 			.vertexOffset = 0, 
 			.firstInstance = 0 
 		};
+		LOG(std::data(std::format("InstanceCount = {}\n", DIIC.instanceCount)));
 		IndirectBuffers.emplace_back().Create(Device, PDMP, DIIC);
 		VK::Scoped<StagingBuffer> StagingPass0Indirect(Device);
 		StagingPass0Indirect.Create(Device, PDMP, sizeof(DIIC), &DIIC);
@@ -321,6 +322,13 @@ public:
 			VK::CreateFramebuffer(Framebuffers.emplace_back(), RenderPasses[1], SurfaceExtent2D.width, SurfaceExtent2D.height, 1, { i.ImageView });
 		}
 	}
+	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
+		//!<yPass0z
+		HoloViewsVK::CreateViewportScissor(MinDepth, MaxDepth);
+		//!<yPass1zƒXƒNƒŠ[ƒ“‚ðŽg—p [Using screen]
+		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
+	}
+
 	void PopulateSecondaryCommandBuffer_Pass0() {
 		const auto RP = RenderPasses[0];
 		const auto PL = Pipelines[0];

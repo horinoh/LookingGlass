@@ -72,6 +72,7 @@ public:
 			.BaseVertexLocation = 0,
 			.StartInstanceLocation = 0
 		};
+		LOG(std::data(std::format("InstanceCount = {}\n", DIA.InstanceCount)));
 		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DIA);
 		UploadResource UploadPass0Indirect;
 		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DIA), &DIA);
@@ -365,6 +366,10 @@ public:
 	virtual void CreateDescriptor() override {
 		CreateDescriptor_Pass0();
 		CreateDescriptor_Pass1();
+	}
+	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
+		HoloViewsDX::CreateViewportScissor(MinDepth, MaxDepth);
+		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	void PopulateBundleCommandList_Pass0(const size_t i) {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);

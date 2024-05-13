@@ -37,10 +37,10 @@ public:
 };
 #endif
 
-class HoloViewsVK : public HoloVK
+class HoloViewsVK : public Holo
 {
 public:
-	virtual void CreateViewport(const float Width, const float Height, const float MinDepth = 0.0f, const float MaxDepth = 1.0f) override {
+	void CreateViewportScissor(const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
 		//!<【Pass0】キルトレンダーターゲットを分割 [Split quilt render target]
 		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
 		const auto Ext2D = VkExtent2D({ .width = static_cast<uint32_t>(W), .height = static_cast<uint32_t>(H) });
@@ -52,8 +52,6 @@ public:
 				QuiltScissorRects.emplace_back(VkRect2D({ VkOffset2D({.x = static_cast<int32_t>(X), .y = static_cast<int32_t>(Y - H) }), Ext2D }));
 			}
 		}
-		//!<【Pass1】スクリーンを使用 [Using screen]
-		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void CreateProjectionMatrix(const int i) override {
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
@@ -87,8 +85,20 @@ protected:
 	glm::mat4 View;
 };
 
+#ifdef USE_TEXTURE
+class HoloViewsImageVK : public HoloViewsVK, public VKImage
+{
+public:
+	virtual uint32_t GetViewportMax() const override {
+		VkPhysicalDeviceProperties PDP;
+		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
+		return PDP.limits.maxViewports;
+	}
+};
+#endif
+
 #ifdef USE_GLTF
-class HoloGLTFVK : public HoloViewsVK, public Gltf::SDK
+class HoloGLTFVK : public VK, public HoloViewsVK, public Gltf::SDK
 {
 public:
 	virtual void Process() override {
@@ -191,6 +201,9 @@ public:
 				}
 			}
 		}
+
+		LOG(std::data(std::format("VertexCount = {}\n", std::size(Vertices))));
+		LOG(std::data(std::format("PolygonCount = {}\n", std::size(Indices) / 3)));
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 protected:
@@ -200,7 +213,7 @@ protected:
 };
 #endif
 #ifdef USE_FBX
-class HoloFBXVK : public HoloViewsVK, public Fbx
+class HoloFBXVK : public VK, public HoloViewsVK, public Fbx
 {
 public:
 	glm::vec3 ToVec3(const FbxVector4& rhs) { return glm::vec3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -220,6 +233,9 @@ public:
 		for (auto i = 0; i < Nrms.Size(); ++i) {
 			Normals.emplace_back(ToVec3(Nrms[i]));
 		}
+
+		LOG(std::data(std::format("VertexCount = {}\n", std::size(Vertices))));
+		LOG(std::data(std::format("PolygonCount = {}\n", std::size(Indices) / 3)));
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 protected:

@@ -29,14 +29,10 @@ public:
 };
 #endif
 
-class HoloViewsDX : public HoloDX
+class HoloViewsDX : public Holo
 {
 public:
-	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
-		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
-		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
-		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
-
+	void CreateViewportScissor(const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) {
 		//!<【Pass0】キルトレンダーターゲットを分割 [Split quilt render target]
 		const auto W = QuiltX / LenticularBuffer.TileX, H = QuiltY / LenticularBuffer.TileY;
 		for (auto i = 0; i < LenticularBuffer.TileY; ++i) {
@@ -47,8 +43,6 @@ public:
 				QuiltScissorRects.emplace_back(D3D12_RECT({ .left = static_cast<LONG>(X), .top = static_cast<LONG>(Y), .right = static_cast<LONG>(X + W), .bottom = static_cast<LONG>(Y + H) }));
 			}
 		}
-		//!<【Pass1】スクリーンを使用 [Using screen]
-		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 	virtual void CreateProjectionMatrix(const int i) override {
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
@@ -83,8 +77,16 @@ protected:
 	DirectX::XMMATRIX View;
 };
 
+#ifdef USE_TEXTURE
+class HoloViewsImageDX : public HoloViewsDX, public DXImage
+{
+public:
+	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+};
+#endif
+
 #ifdef USE_GLTF
-class HoloGLTFDX : public HoloViewsDX, public  Gltf::SDK
+class HoloGLTFDX : public DX, public HoloViewsDX, public  Gltf::SDK
 {
 public:
 	virtual void Process() override {
@@ -187,6 +189,9 @@ public:
 				}
 			}
 		}
+
+		LOG(std::data(std::format("VertexCount = {}\n", std::size(Vertices))));
+		LOG(std::data(std::format("PolygonCount = {}\n", std::size(Indices) / 3)));
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 protected:
@@ -198,7 +203,7 @@ protected:
 }; 
 #endif
 #ifdef USE_FBX
-class HoloFBXDX : public HoloViewsDX, public Fbx
+class HoloFBXDX : public DX, public HoloViewsDX, public Fbx
 {
 public:
 	DirectX::XMFLOAT3 ToFloat3(const FbxVector4& rhs) { return DirectX::XMFLOAT3(static_cast<FLOAT>(rhs[0]), static_cast<FLOAT>(rhs[1]), static_cast<FLOAT>(rhs[2])); }
@@ -218,6 +223,9 @@ public:
 		for (auto i = 0; i < Nrms.Size(); ++i) {
 			Normals.emplace_back(ToFloat3(Nrms[i]));
 		}
+
+		LOG(std::data(std::format("VertexCount = {}\n", std::size(Vertices))));
+		LOG(std::data(std::format("PolygonCount = {}\n", std::size(Indices) / 3)));
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 protected:
