@@ -6,7 +6,6 @@
 #include "Mesh2VK.h"
 
 #include "../BorderlessWin.h"
-#include "../Holo.h"
 
 Mesh2VK* Inst = nullptr;
 

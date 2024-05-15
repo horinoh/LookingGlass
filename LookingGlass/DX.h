@@ -459,6 +459,35 @@ protected:
 	void CreatePipelineState_VsPsGs(COM_PTR<ID3D12PipelineState>& PST, ID3D12RootSignature* RS, const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 3>& SBCs) {
 		CreatePipelineState_VsPsGs_Input(PST, RS, PTT, RD, DepthEnable, {}, SBCs);
 	}
+	void CreatePipelineState_VsPsDsHsGs_Input(COM_PTR<ID3D12PipelineState>& PST, ID3D12RootSignature* RS, const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::vector<D3D12_INPUT_ELEMENT_DESC>& IEDs, const std::array<D3D12_SHADER_BYTECODE, 5>& SBCs)
+	{
+		const std::vector RTBDs = {
+			D3D12_RENDER_TARGET_BLEND_DESC({
+				.BlendEnable = FALSE, .LogicOpEnable = FALSE,
+				.SrcBlend = D3D12_BLEND_ONE, .DestBlend = D3D12_BLEND_ZERO, .BlendOp = D3D12_BLEND_OP_ADD,
+				.SrcBlendAlpha = D3D12_BLEND_ONE, .DestBlendAlpha = D3D12_BLEND_ZERO, .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+				.LogicOp = D3D12_LOGIC_OP_NOOP,
+				.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+			}),
+		};
+		constexpr D3D12_DEPTH_STENCILOP_DESC DSOD = {
+			.StencilFailOp = D3D12_STENCIL_OP_KEEP,
+			.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP,
+			.StencilPassOp = D3D12_STENCIL_OP_KEEP,
+			.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS
+		};
+		const D3D12_DEPTH_STENCIL_DESC DSD = {
+			.DepthEnable = DepthEnable, .DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL, .DepthFunc = D3D12_COMPARISON_FUNC_LESS,
+			.StencilEnable = FALSE, .StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK, .StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK,
+			.FrontFace = DSOD, .BackFace = DSOD
+		};
+		const std::vector RTVs = { DXGI_FORMAT_R8G8B8A8_UNORM };
+
+		Threads.emplace_back(std::thread::thread(DX::CreatePipelineStateVsPsDsHsGs, std::ref(PST), COM_PTR_GET(Device), RS, PTT, RTBDs, RD, DSD, SBCs[0], SBCs[1], SBCs[2], SBCs[3], SBCs[4], IEDs, RTVs, nullptr));
+	}
+	void CreatePipelineState_VsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST, ID3D12RootSignature* RS, const D3D12_PRIMITIVE_TOPOLOGY_TYPE PTT, const D3D12_RASTERIZER_DESC& RD, const BOOL DepthEnable, const std::array<D3D12_SHADER_BYTECODE, 5>& SBCs) {
+		CreatePipelineState_VsPsDsHsGs_Input(PST, RS, PTT, RD, DepthEnable, {}, SBCs);
+	}
 
 	void PopulateCommandList_Clear(const size_t i, const DirectX::XMVECTORF32& Color) {
 		const auto CL = COM_PTR_GET(DirectCommandLists[i]);

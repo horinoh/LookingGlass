@@ -6,7 +6,6 @@
 #include "Mesh2DX.h"
 
 #include "../BorderlessWin.h"
-#include "../Holo.h"
 
 Mesh2DX* Inst = nullptr;
 

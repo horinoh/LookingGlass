@@ -1,12 +1,12 @@
-// QuiltVK.cpp : Defines the entry point for the application.
+// DisplacementDX.cpp : Defines the entry point for the application.
 //
 
 #include "framework.h"
-#include "QuiltVK.h"
+#include "DisplacementDX.h"
 
 #include "../BorderlessWin.h"
 
-QuiltVK* Inst = nullptr;
+DisplacementDX* Inst = nullptr;
 
 #define MAX_LOADSTRING 100
 
@@ -33,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_QUILTVK, szWindowClass, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_DISPLACEMENTDX, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
@@ -42,7 +42,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_QUILTVK));
+    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_DISPLACEMENTDX));
 
     MSG msg;
 
@@ -77,10 +77,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_QUILTVK));
+    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_DISPLACEMENTDX));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_QUILTVK);
+    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_DISPLACEMENTDX);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -149,8 +149,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-            Inst = new QuiltVK();
-            Inst->OnCreate(hWnd, hInst, TEXT("QuiltVK"));
+            Inst = new DisplacementDX();
+            Inst->OnCreate(hWnd, hInst, TEXT("DisplacementDX"));
         }
         break;
     case WM_SIZE:

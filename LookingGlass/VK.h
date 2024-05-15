@@ -717,6 +717,45 @@ protected:
 	void CreatePipelineState_VsFsGs(VkPipeline& PL, const VkPipelineLayout PLL, const VkRenderPass RP, const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 3>& PSSCIs) {
 		CreatePipelineState_VsFsGs_Input(PL, PLL, RP, PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
 	}
+	void CreatePipeline_VsFsTesTcsGs_Input(VkPipeline& PL, const VkPipelineLayout PLL, const VkRenderPass RP, const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::vector<VkVertexInputBindingDescription>& VIBDs, const std::vector<VkVertexInputAttributeDescription>& VIADs, const std::array<VkPipelineShaderStageCreateInfo, 5>& PSSCIs)
+	{
+		const VkPipelineDepthStencilStateCreateInfo PDSSCI = {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.depthTestEnable = DepthEnable, .depthWriteEnable = DepthEnable, .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+			.depthBoundsTestEnable = VK_FALSE,
+			.stencilTestEnable = VK_FALSE,
+			.front = VkStencilOpState({
+				.failOp = VK_STENCIL_OP_KEEP,
+				.passOp = VK_STENCIL_OP_KEEP,
+				.depthFailOp = VK_STENCIL_OP_KEEP,
+				.compareOp = VK_COMPARE_OP_NEVER,
+				.compareMask = 0, .writeMask = 0, .reference = 0
+				}),
+			.back = VkStencilOpState({
+				.failOp = VK_STENCIL_OP_KEEP,
+				.passOp = VK_STENCIL_OP_KEEP,
+				.depthFailOp = VK_STENCIL_OP_KEEP,
+				.compareOp = VK_COMPARE_OP_ALWAYS,
+				.compareMask = 0, .writeMask = 0, .reference = 0
+				}),
+			.minDepthBounds = 0.0f, .maxDepthBounds = 1.0f
+		};
+		const std::vector PCBASs = {
+			VkPipelineColorBlendAttachmentState({
+				.blendEnable = VK_FALSE,
+				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE, .dstColorBlendFactor = VK_BLEND_FACTOR_ONE, .colorBlendOp = VK_BLEND_OP_ADD,
+				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE, .alphaBlendOp = VK_BLEND_OP_ADD,
+				.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+			}),
+		};
+
+		Threads.emplace_back(std::thread::thread(VK::CreatePipelineVsFsTesTcsGs, std::ref(PL), Device, PLL, RP, PT, PatchControlPoints, PRSCI, PDSSCI, &PSSCIs[0], &PSSCIs[1], &PSSCIs[2], &PSSCIs[3], &PSSCIs[4], VIBDs, VIADs, PCBASs));
+	}
+	void CreatePipeline_VsFsTesTcsGs(VkPipeline& PL, const VkPipelineLayout PLL, const VkRenderPass RP, const VkPrimitiveTopology PT, const uint32_t PatchControlPoints, const VkPipelineRasterizationStateCreateInfo& PRSCI, const VkBool32 DepthEnable, const std::array<VkPipelineShaderStageCreateInfo, 5>& PSSCIs) {
+		CreatePipeline_VsFsTesTcsGs_Input(PL, PLL, RP, PT, PatchControlPoints, PRSCI, DepthEnable, {}, {}, PSSCIs);
+	}
 
 	void CreateFrameBuffer_Default(const VkRenderPass RP, const uint32_t Width, const uint32_t Height) {
 		for (const auto& i : SwapchainBackBuffers) {

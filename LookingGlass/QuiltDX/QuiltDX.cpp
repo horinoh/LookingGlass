@@ -5,7 +5,6 @@
 #include "QuiltDX.h"
 
 #include "../BorderlessWin.h"
-#include "../Holo.h"
 
 QuiltDX* Inst = nullptr;
 
