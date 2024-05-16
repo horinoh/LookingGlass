@@ -85,8 +85,13 @@ public:
 		//!< デプス、カラーテクスチャ
 		const auto DCA = DirectCommandAllocators[0];
 		const auto DCL = DirectCommandLists[0];
+#if 1
+		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Rocks007_2K_Displacement.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Rocks007_2K_Color.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+#else
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "depth.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "color.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+#endif
 	}
 	virtual void CreateStaticSampler() override {
 		//!<【Pass1】
@@ -180,10 +185,10 @@ public:
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 					}),
 					D3D12_ROOT_PARAMETER1({
-					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
-					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-				}),
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+					}),
 				},
 				{
 					StaticSamplerDescs[1], //!< D3D12_SHADER_VISIBILITY_PIXEL
@@ -294,7 +299,11 @@ public:
 				auto& Handle = Desc.second;
 				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+#if 0
+					.NumDescriptors = DescCount + 2,
+#else
 					.NumDescriptors = DescCount,
+#endif
 					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 					.NodeMask = 0
 				};
@@ -318,6 +327,18 @@ public:
 					CDH.ptr += IncSize;
 					GDH.ptr += IncSize;
 				}
+#if 0
+				//!< SRV0
+				Device->CreateShaderResourceView(COM_PTR_GET(XTKTextures[0].Resource), &XTKTextures[0].SRV, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+				//!< SRV1
+				Device->CreateShaderResourceView(COM_PTR_GET(XTKTextures[1].Resource), &XTKTextures[1].SRV, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+#endif
 			}
 		}
 	}

@@ -19,6 +19,7 @@ void main()
 						0, 4, 0, 0,
 						0, 0, 1, 0,
 						0, 0, 0, 1);
+
 	for(int i=0;i<gl_in.length();++i) {
 		gl_Position = VPB.ViewProjection[gl_InvocationID] * W * gl_in[i].gl_Position;	
 		OutTexcoord = InTexcoord[i];

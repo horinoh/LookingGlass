@@ -24,6 +24,11 @@ void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instan
 {
 	OUT Out;
 
+	const float4x4 W = float4x4(4, 0, 0, 0,
+								0, 4, 0, 0,
+								0, 0, 1, 0,
+								0, 0, 0, 1);
+
 	[unroll]
 	for (int i = 0; i < 3; ++i) {
 		Out.Position = mul(VPB.ViewProjection[instanceID], float4(In[i].Position, 1.0f));

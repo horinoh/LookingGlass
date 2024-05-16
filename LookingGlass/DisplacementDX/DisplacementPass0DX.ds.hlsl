@@ -21,9 +21,9 @@ OUT main(const TESS_FACTOR tess, const float2 uv : SV_DomainLocation, const Outp
 {
 	OUT Out;
 
-	const float HeightScale = 0.2f;
+	const float HeightScale = 1.0f;
 	Out.Texcoord = float2(uv.x, 1.0f - uv.y);
-//	Out.Position = float3(2.0f * uv - 1.0f, HeightScale * DisplacementMap.SampleLevel(Sampler, Out.Texcoord, 0).r);
+//	Out.Position = float3(2.0f * uv - 1.0f, HeightScale * (DisplacementMap.SampleLevel(Sampler, Out.Texcoord, 0).r * 2.0f - 1.0f));
 	Out.Position = float3(2.0f * uv - 1.0f, HeightScale * 1);
 
 	return Out;

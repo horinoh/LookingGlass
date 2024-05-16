@@ -9,10 +9,8 @@ layout (location = 0) out vec2 OutTexcoord;
 layout (quads, equal_spacing, cw) in;
 void main()
 {
-//	const float HeightScale = 0.2f;
-	const float HeightScale = 1.2f;
+	const float HeightScale = 1.0f;
 	OutTexcoord = vec2(gl_TessCoord.x, 1.0f - gl_TessCoord.y);
-	gl_Position = vec4(2.0f * gl_TessCoord.xy - 1.0f, HeightScale * textureLod(DisplacementMap, OutTexcoord, 0.0f).r, 1.0f);
-//	gl_Position = vec4(2.0f * gl_TessCoord.xy - 1.0f, HeightScale * 1, 1.0f);
+	gl_Position = vec4(2.0f * gl_TessCoord.xy - 1.0f, HeightScale * (textureLod(DisplacementMap, OutTexcoord, 0.0f).r * 2.0f - 1.0f), 1.0f);
 }
 
