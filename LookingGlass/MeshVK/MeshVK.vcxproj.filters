@@ -89,13 +89,13 @@
     <CustomBuild Include="MeshPass0VK.vert">
       <Filter>Shader Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="MeshPass1VK.frag">
+    <CustomBuild Include="..\Shaders\FinalPassQuiltDispVK.frag">
       <Filter>Shader Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="MeshPass1VK.vert">
+    <CustomBuild Include="..\Shaders\FinalPassVK.frag">
       <Filter>Shader Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="MeshQuiltVK.frag">
+    <CustomBuild Include="..\Shaders\FinalPassVK.vert">
       <Filter>Shader Files</Filter>
     </CustomBuild>
   </ItemGroup>

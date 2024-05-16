@@ -213,11 +213,11 @@ public:
 		CreatePipelineState_VsPsGs_Input(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, IEDs, SBCsPass0);
 
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass1;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass1DX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "FinalPassDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #ifdef DISPLAY_QUILT
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2QuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "FinalPassQuiltDispDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #else
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "Mesh2Pass1DX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "FinalPassDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #endif
 		const std::array SBCsPass1 = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass1[0]->GetBufferPointer(), .BytecodeLength = SBs_Pass1[0]->GetBufferSize() }),

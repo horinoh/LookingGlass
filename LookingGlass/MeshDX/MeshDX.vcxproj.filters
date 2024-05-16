@@ -89,13 +89,13 @@
     <FxCompile Include="MeshPass0DX.gs.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="MeshPass1DX.ps.hlsl">
+    <FxCompile Include="..\Shaders\FinalPassDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="MeshPass1DX.vs.hlsl">
+    <FxCompile Include="..\Shaders\FinalPassDX.vs.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="MeshQuiltDX.ps.hlsl">
+    <FxCompile Include="..\Shaders\FinalPassQuiltDispDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

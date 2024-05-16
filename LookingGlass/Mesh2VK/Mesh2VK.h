@@ -182,11 +182,11 @@ public:
 		CreatePipelineState_VsFsGs_Input(Pipelines[0], PipelineLayouts[0], RenderPasses[0], VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, PRSCI, VK_TRUE, VIBDs, VIADs, PSSCIs_Pass0);
 
 		const std::array SMs_Pass1 = {
-			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass1VK.vert.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "FinalPassVK.vert.spv"),
 #ifdef DISPLAY_QUILT
-			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2QuiltVK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "FinalPassQuiltDispVK.frag.spv"),
 #else
-			VK::CreateShaderModule(std::filesystem::path(".") / "Mesh2Pass1VK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "FinalPassVK.frag.spv"),
 #endif
 		};
 		const std::array PSSCIs_Pass1 = {

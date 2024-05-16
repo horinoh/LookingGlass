@@ -190,11 +190,11 @@ public:
 		
 		//!< [Pass1]
 		const std::array SMs_Pass1 = {
-			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.vert.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "FinalPassVK.vert.spv"),
 #ifdef DISPLAY_QUILT
-			VK::CreateShaderModule(std::filesystem::path(".") / "MeshQuiltVK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "FinalPassQuiltDispVK.frag.spv"),
 #else
-			VK::CreateShaderModule(std::filesystem::path(".") / "MeshPass1VK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "FinalPassVK.frag.spv"),
 #endif
 		};
 		const std::array PSSCIs_Pass1 = {

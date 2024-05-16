@@ -36,36 +36,35 @@ public:
 		const auto GF = COM_PTR_GET(GraphicsFence);
 
 		//!<yPass0zƒƒbƒVƒ…•`‰æ—p [To draw mesh] 
-		constexpr D3D12_DRAW_INDEXED_ARGUMENTS DIA = {
-			.IndexCountPerInstance = 1,
+		constexpr D3D12_DRAW_ARGUMENTS DA0 = {
+			.VertexCountPerInstance = 1,
 			.InstanceCount = 1,
-			.StartIndexLocation = 0,
-			.BaseVertexLocation = 0,
+			.StartVertexLocation = 0,
 			.StartInstanceLocation = 0
 		};
-		LOG(std::data(std::format("InstanceCount = {}\n", DIA.InstanceCount)));
-		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DIA);
+		LOG(std::data(std::format("InstanceCount = {}\n", DA0.InstanceCount)));
+		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA0);
 		UploadResource UploadPass0Indirect;
-		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DIA), &DIA);
+		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DA0), &DA0);
 
 		//!<yPass1zƒtƒ‹ƒXƒNƒŠ[ƒ“•`‰æ—p [To draw render texture]
-		constexpr D3D12_DRAW_ARGUMENTS DA = {
+		constexpr D3D12_DRAW_ARGUMENTS DA1 = {
 			.VertexCountPerInstance = 4,
 			.InstanceCount = 1,
 			.StartVertexLocation = 0,
 			.StartInstanceLocation = 0
 		};
-		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA).ExecuteCopyCommand(COM_PTR_GET(Device), CA, CL, GCQ, GF, sizeof(DA), &DA);
+		IndirectBuffers.emplace_back().Create(COM_PTR_GET(Device), DA1).ExecuteCopyCommand(COM_PTR_GET(Device), CA, CL, GCQ, GF, sizeof(DA1), &DA1);
 		UploadResource UploadPass1Indirect;
-		UploadPass1Indirect.Create(COM_PTR_GET(Device), sizeof(DA), &DA);
+		UploadPass1Indirect.Create(COM_PTR_GET(Device), sizeof(DA1), &DA1);
 
 		//!< ƒRƒ}ƒ“ƒh”­s [Issue upload command]
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
 			//!<yPass0z
-			IndirectBuffers[0].PopulateCopyCommand(CL, sizeof(DIA), COM_PTR_GET(UploadPass0Indirect.Resource));
+			IndirectBuffers[0].PopulateCopyCommand(CL, sizeof(DA0), COM_PTR_GET(UploadPass0Indirect.Resource));
 
 			//!<yPass1z
-			IndirectBuffers[1].PopulateCopyCommand(CL, sizeof(DA), COM_PTR_GET(UploadPass1Indirect.Resource));
+			IndirectBuffers[1].PopulateCopyCommand(CL, sizeof(DA1), COM_PTR_GET(UploadPass1Indirect.Resource));
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(GCQ, CL, COM_PTR_GET(GraphicsFence));
 	}
@@ -83,11 +82,11 @@ public:
 		CreateTexture_Render(QuiltX, QuiltY);
 		CreateTexture_Depth(QuiltX, QuiltY);
 
-		//!< ƒJƒ‰[AƒfƒvƒXƒeƒNƒXƒ`ƒƒ
+		//!< ƒfƒvƒXAƒJƒ‰[ƒeƒNƒXƒ`ƒƒ
 		const auto DCA = DirectCommandAllocators[0];
 		const auto DCL = DirectCommandLists[0];
-		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "color.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "depth.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "color.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	}
 	virtual void CreateStaticSampler() override {
 		//!<yPass1z
@@ -106,18 +105,52 @@ public:
 					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 				})
 			};
+#if 0
+			constexpr std::array DRs_SRV0 = {
+				D3D12_DESCRIPTOR_RANGE1({
+					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0, 
+					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND 
+				})
+			};
+			constexpr std::array DRs_SRV1 = {
+				D3D12_DESCRIPTOR_RANGE1({
+					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+					.NumDescriptors = 1, .BaseShaderRegister = 1, .RegisterSpace = 0, 
+					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+				})
+			};
+#endif
 			DX::SerializeRootSignature(Blob,
 				{
-					//!< CBV -> SetGraphicsRootDescriptorTable(0,..)
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
 					}),
+#if 0
+					D3D12_ROOT_PARAMETER1({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV0)), .pDescriptorRanges = std::data(DRs_SRV0)}),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
+					}),
+					D3D12_ROOT_PARAMETER1({
+						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV1)), .pDescriptorRanges = std::data(DRs_SRV1) }),
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+					}),
+#endif
 				},
 				{
+#if 0
+					StaticSamplerDescs[0], //!< D3D12_SHADER_VISIBILITY_DOMAIN
+					StaticSamplerDescs[1], //!< D3D12_SHADER_VISIBILITY_PIXEL
+#endif
 				},
-				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | SHADER_ROOT_ACCESS_GS);
+				//SHADER_ROOT_ACCESS_DS_GS_PS
+				SHADER_ROOT_ACCESS_GS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 		}
 		//!<yPass1z
@@ -153,7 +186,7 @@ public:
 				}),
 				},
 				{
-					StaticSamplerDescs[0],
+					StaticSamplerDescs[1], //!< D3D12_SHADER_VISIBILITY_PIXEL
 				},
 				SHADER_ROOT_ACCESS_PS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
@@ -174,11 +207,11 @@ public:
 
 		//!<yPass0z
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass0;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ds.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.ds.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		const std::array SBCsPass0 = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[0]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[0]->GetBufferSize() }),
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[1]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[1]->GetBufferSize() }),
@@ -186,15 +219,15 @@ public:
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[3]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[3]->GetBufferSize() }),
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[4]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[4]->GetBufferSize() }),
 		};
-		CreatePipelineState_VsPsDsHsGs(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, RD, TRUE, SBCsPass0);
+		CreatePipelineState_VsPsDsHsGs(PipelineStates[0], COM_PTR_GET(RootSignatures[0]), D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH, RD, TRUE, SBCsPass0);
 
 		//!< [Pass1]
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass1;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass1DX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "FinalPassDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #ifdef DISPLAY_QUILT
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementQuiltDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "FinalPassQuiltDispDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #else
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass1DX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "FinalPassDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass1.emplace_back())));
 #endif
 		const std::array SBCsPass1 = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass1[0]->GetBufferPointer(), .BytecodeLength = SBs_Pass1[0]->GetBufferSize() }),
@@ -344,12 +377,8 @@ public:
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
 		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
-			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
-			BCL->IASetVertexBuffers(0, static_cast<UINT>(std::size(VBVs)), std::data(VBVs));
-			BCL->IASetIndexBuffer(&IndexBuffers[0].View);
-
+			BCL->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);
+			
 			const auto IB = IndirectBuffers[0];
 			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
 		}
@@ -478,7 +507,7 @@ public:
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {
-		DirectX::XMFLOAT4X4 ViewProjection[64]; //!< 64 ‚à‚ ‚ê‚Î\•ª [64 will be enough]
+		DirectX::XMFLOAT4X4 ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };
