@@ -275,7 +275,7 @@ public:
 		}
 		{
 			const auto BackBufferCount = std::size(SwapChainBackBuffers);
-			const auto DescCount = 2;
+			const auto DescCount = GetViewportDrawCount() + 1;
 
 			const auto CB0Index = 0;
 			const auto CB1Index = BackBufferCount;
@@ -324,7 +324,7 @@ public:
 		}
 	}
 	void CreateDescriptor_Pass1() {
-		const auto DescCount = 1;
+		const auto DescCount = 2;
 
 		const auto CBIndex = std::size(SwapChainBackBuffers) * 2;
 

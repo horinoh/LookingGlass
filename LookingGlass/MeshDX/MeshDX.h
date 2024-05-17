@@ -282,7 +282,7 @@ public:
 
 		//!< コンスタントバッファービュー [Constant buffer view]
 		{
-			const auto DescCount = 1;
+			const auto DescCount = GetViewportDrawCount();
 
 			{
 				auto& Desc = CbvSrvUavDescs.emplace_back();
@@ -323,7 +323,7 @@ public:
 		auto& Handle = Desc.second;
 		const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-			.NumDescriptors = 1,
+			.NumDescriptors = 2,
 			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 			.NodeMask = 0
 		};

@@ -117,7 +117,7 @@ public:
 		Threads.clear();
 	}
 	virtual void CreateDescriptor() override {
-		const auto DescCount = 1;
+		const auto DescCount = 2;
 		{
 			auto& Desc = CbvSrvUavDescs.emplace_back();
 			auto& Heap = Desc.first;
