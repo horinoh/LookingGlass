@@ -83,7 +83,8 @@ public:
 				PopulateCommandList(i);
 			}
 		}
-		SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+		//SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+		//SendMessage(hWnd, WM_PAINT, 0, 0);
 	}
 	virtual void OnTimer(HWND hWnd, HINSTANCE hInstance) { SendMessage(hWnd, WM_PAINT, 0, 0); }
 	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance)  { Draw(); }

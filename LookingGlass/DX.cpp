@@ -23,7 +23,14 @@ void AdjustScale(std::vector<DirectX::XMFLOAT3>& Vertices, const float Scale)
 
 void DX::CreateDevice([[maybe_unused]] HWND hWnd)
 {
+#ifdef _DEBUG
+	COM_PTR<ID3D12Debug> Debug;
+	VERIFY_SUCCEEDED(D3D12GetDebugInterface(COM_PTR_UUIDOF_PUTVOID(Debug)));
+	Debug->EnableDebugLayer();
+	VERIFY_SUCCEEDED(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, COM_PTR_UUIDOF_PUTVOID(Factory)));
+#else
 	VERIFY_SUCCEEDED(CreateDXGIFactory1(COM_PTR_UUIDOF_PUTVOID(Factory)));
+#endif
 
 	//!< アダプター(GPU)の選択
 	std::vector<DXGI_ADAPTER_DESC> ADs;

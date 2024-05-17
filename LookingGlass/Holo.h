@@ -103,6 +103,7 @@ public:
 			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex))));
 			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);
+			//::ShowWindow(hWnd, SW_SHOWMAXIMIZED);
 		} else {
 			::SetWindowPos(hWnd, nullptr, 0, 0, 1536, 2048, SWP_FRAMECHANGED);
 			::ShowWindow(hWnd, SW_SHOW);

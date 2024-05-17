@@ -86,17 +86,17 @@ public:
 		const auto DCA = DirectCommandAllocators[0];
 		const auto DCL = DirectCommandLists[0];
 #if 1
-		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Rocks007_2K_Displacement.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Rocks007_2K_Color.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Rocks007_2K_Displacement.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 #else
-		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "depth.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "color.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "depth.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 #endif
 	}
 	virtual void CreateStaticSampler() override {
 		//!<【Pass1】
-		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_DOMAIN);
-		CreateStaticSampler_LinearWrap(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+		CreateStaticSampler_LinearWrap(1, 0, D3D12_SHADER_VISIBILITY_DOMAIN);
 	}
 	virtual void CreateRootSignature() override {
 		//!<【Pass0】
@@ -110,7 +110,6 @@ public:
 					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 				})
 			};
-#if 0
 			constexpr std::array DRs_SRV0 = {
 				D3D12_DESCRIPTOR_RANGE1({
 					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -127,7 +126,6 @@ public:
 					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 				})
 			};
-#endif
 			DX::SerializeRootSignature(Blob,
 				{
 					D3D12_ROOT_PARAMETER1({
@@ -135,27 +133,22 @@ public:
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
 						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
 					}),
-#if 0
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV0)), .pDescriptorRanges = std::data(DRs_SRV0)}),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
 					}),
 					D3D12_ROOT_PARAMETER1({
 						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV1)), .pDescriptorRanges = std::data(DRs_SRV1) }),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+						.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
 					}),
-#endif
 				},
 				{
-#if 0
-					StaticSamplerDescs[0], //!< D3D12_SHADER_VISIBILITY_DOMAIN
-					StaticSamplerDescs[1], //!< D3D12_SHADER_VISIBILITY_PIXEL
-#endif
+					StaticSamplerDescs[0], //!< SHADER_VISIBILITY_PIXEL
+					StaticSamplerDescs[1], //!< SHADER_VISIBILITY_DOMAIN
 				},
-				//SHADER_ROOT_ACCESS_DS_GS_PS
-				SHADER_ROOT_ACCESS_GS);
+				SHADER_ROOT_ACCESS_DS_GS_PS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
 		}
 		//!<【Pass1】
@@ -191,7 +184,7 @@ public:
 					}),
 				},
 				{
-					StaticSamplerDescs[1], //!< D3D12_SHADER_VISIBILITY_PIXEL
+					StaticSamplerDescs[0], //!< SHADER_VISIBILITY_PIXEL
 				},
 				SHADER_ROOT_ACCESS_PS);
 			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
@@ -291,7 +284,7 @@ public:
 
 		//!< コンスタントバッファービュー [Constant buffer view]
 		{
-			const auto DescCount = 1;
+			const auto DescCount = GetViewportDrawCount() + 2;
 
 			{
 				auto& Desc = CbvSrvUavDescs.emplace_back();
@@ -299,11 +292,7 @@ public:
 				auto& Handle = Desc.second;
 				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-#if 0
-					.NumDescriptors = DescCount + 2,
-#else
 					.NumDescriptors = DescCount,
-#endif
 					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 					.NodeMask = 0
 				};
@@ -327,7 +316,6 @@ public:
 					CDH.ptr += IncSize;
 					GDH.ptr += IncSize;
 				}
-#if 0
 				//!< SRV0
 				Device->CreateShaderResourceView(COM_PTR_GET(XTKTextures[0].Resource), &XTKTextures[0].SRV, CDH);
 				Handle.emplace_back(GDH);
@@ -338,7 +326,6 @@ public:
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;
 				GDH.ptr += IncSize;
-#endif
 			}
 		}
 	}
@@ -348,7 +335,7 @@ public:
 		auto& Handle = Desc.second;
 		const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-			.NumDescriptors = 1,
+			.NumDescriptors = 2,
 			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 			.NodeMask = 0
 		};
@@ -412,7 +399,8 @@ public:
 		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			const auto IB = IndirectBuffers[0];
+
+			const auto IB = IndirectBuffers[1];
 			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
 		}
 		VERIFY_SUCCEEDED(BCL->Close());
@@ -458,16 +446,21 @@ public:
 					const std::array DHs = { COM_PTR_GET(Heap) };
 					DCL->SetDescriptorHeaps(static_cast<UINT>(std::size(DHs)), std::data(DHs));
 
+					const auto DrawCount = GetViewportDrawCount();
+					//!< SRV0, SRV1
+					DCL->SetGraphicsRootDescriptorTable(1, Handle[DrawCount]);	
+					DCL->SetGraphicsRootDescriptorTable(2, Handle[DrawCount + 1]);
+
 					//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行) [Because viewport max is 16, need to draw few times]
-					for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
+					for (uint32_t j = 0; j < DrawCount; ++j) {
 						const auto Offset = GetViewportSetOffset(j);
 						const auto Count = GetViewportSetCount(j);
 
 						DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
 						DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
 
-						//!< オフセット毎のハンドルを使用 [Use handle on each offset]
-						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]); //!< CBV
+						//!< CBV オフセット毎のハンドルを使用 [Use handle on each offset]
+						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]);
 
 						DCL->ExecuteBundle(BCL);
 					}

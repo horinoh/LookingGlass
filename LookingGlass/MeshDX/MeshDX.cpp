@@ -152,6 +152,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (nullptr == Inst) {
             Inst = new MeshDX();
             Inst->OnCreate(hWnd, hInst, TEXT("MeshDX"));
+            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         break;
     case WM_SIZE:
@@ -160,6 +162,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_EXITSIZEMOVE:
         if (nullptr != Inst) {
             Inst->OnExitSizeMove(hWnd, hInst);
+            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         break;
     case WM_KEYDOWN:
@@ -169,6 +173,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case VK_RETURN:
             BorderlessWin::ToggleBorderless(hWnd);
+            break;
+        case VK_TAB:
+            SendMessage(hWnd, WM_PAINT, 0, 0);
             break;
         default:
             break;
