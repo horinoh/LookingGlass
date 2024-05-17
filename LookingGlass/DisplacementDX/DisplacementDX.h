@@ -205,11 +205,11 @@ public:
 
 		//!<yPass0z
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass0;
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.ds.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementPass0DX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ds.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		const std::array SBCsPass0 = {
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[0]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[0]->GetBufferSize() }),
 			D3D12_SHADER_BYTECODE({.pShaderBytecode = SBs_Pass0[1]->GetBufferPointer(), .BytecodeLength = SBs_Pass0[1]->GetBufferSize() }),

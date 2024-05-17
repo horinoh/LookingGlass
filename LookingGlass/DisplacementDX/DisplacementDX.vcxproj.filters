@@ -77,21 +77,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="DisplacementPass0DX.ds.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="DisplacementPass0DX.gs.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="DisplacementPass0DX.hs.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="DisplacementPass0DX.ps.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="DisplacementPass0DX.vs.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
     <FxCompile Include="..\Shaders\FinalPassDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
@@ -99,6 +84,21 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="..\Shaders\FinalPassQuiltDispDX.ps.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\DisplacementDX.ds.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\DisplacementDX.gs.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\DisplacementDX.hs.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\DisplacementDX.ps.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\DisplacementDX.vs.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>
