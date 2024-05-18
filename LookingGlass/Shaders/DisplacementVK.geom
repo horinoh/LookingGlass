@@ -15,10 +15,10 @@ layout (triangles, invocations = 16) in;
 layout (triangle_strip, max_vertices = 3) out;
 void main()
 {
-	const mat4 W = mat4(4, 0, 0, 0,
-						0, 4, 0, 0,
-						0, 0, 1, 0,
-						0, 0, 0, 1);
+	const mat4 W = mat4(3.5f, 0.0f, 0.0f, 0.0f,
+						0.0f, 3.5f, 0.0f, 0.0f,
+						0.0f, 0.0f, 1.0f, 0.0f,
+						0.0f, 0.0f, 0.0f, 1.0f);
 
 	for(int i=0;i<gl_in.length();++i) {
 		gl_Position = VPB.ViewProjection[gl_InvocationID] * W * gl_in[i].gl_Position;	

@@ -367,16 +367,15 @@ public:
 		CreateDescriptor_Pass0();
 		CreateDescriptor_Pass1();
 	}
-	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
-		HoloViewsDX::CreateViewportScissor(MinDepth, MaxDepth);
-		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
-	}
 	void PopulateBundleCommandList_Pass0(const size_t i) {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[i]);
 		const auto PS = COM_PTR_GET(PipelineStates[0]);
+		const auto RS = COM_PTR_GET(RootSignatures[0]);
 		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
+			BCL->SetGraphicsRootSignature(RS);
+
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			const std::array VBVs = { VertexBuffers[0].View, VertexBuffers[1].View };
@@ -392,9 +391,13 @@ public:
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[std::size(SwapChainBackBuffers)]);
 		const auto PS = COM_PTR_GET(PipelineStates[1]);
+		const auto RS = COM_PTR_GET(RootSignatures[1]);
 		VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 		{
+			BCL->SetGraphicsRootSignature(RS);
+
 			BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+			
 			const auto IB = IndirectBuffers[0];
 			BCL->ExecuteIndirect(COM_PTR_GET(IB.CommandSignature), 1, COM_PTR_GET(IB.Resource), 0, nullptr, 0);
 		}

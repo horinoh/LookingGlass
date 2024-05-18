@@ -159,8 +159,12 @@ public:
 			const auto PS = COM_PTR_GET(PipelineStates[0]);
 			const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 			const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
+			const auto RS = COM_PTR_GET(RootSignatures[0]);
+
 			VERIFY_SUCCEEDED(BCL->Reset(BCA, PS));
 			{
+				BCL->SetGraphicsRootSignature(RS);
+
 				BCL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 				BCL->ExecuteIndirect(COM_PTR_GET(IndirectBuffers[0].CommandSignature), 1, COM_PTR_GET(IndirectBuffers[0].Resource), 0, nullptr, 0);
 			}
@@ -172,10 +176,11 @@ public:
 		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+		const auto RS = COM_PTR_GET(RootSignatures[0]);
 
 		VERIFY_SUCCEEDED(DCL->Reset(DCA, PS));
 		{
-			DCL->SetGraphicsRootSignature(COM_PTR_GET(RootSignatures[0]));
+			DCL->SetGraphicsRootSignature(RS);
 
 			DCL->RSSetViewports(static_cast<UINT>(std::size(Viewports)), std::data(Viewports));
 			DCL->RSSetScissorRects(static_cast<UINT>(std::size(ScissorRects)), std::data(ScissorRects));

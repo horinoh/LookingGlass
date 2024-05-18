@@ -24,10 +24,10 @@ void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instan
 {
 	OUT Out;
 
-	const float4x4 W = float4x4(4, 0, 0, 0,
-								0, 4, 0, 0,
-								0, 0, 1, 0,
-								0, 0, 0, 1);
+	const float4x4 W = float4x4(3.5f, 0.0f, 0.0f, 0.0f,
+								0.0f, 3.5f, 0.0f, 0.0f,
+								0.0f, 0.0f, 1.0f, 0.0f,
+								0.0f, 0.0f, 0.0f, 1.0f);
 
 	[unroll]
 	for (int i = 0; i < 3; ++i) {
