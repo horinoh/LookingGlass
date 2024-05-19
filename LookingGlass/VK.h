@@ -1084,6 +1084,7 @@ protected:
 	std::vector<UniformBuffer> UniformBuffers;
 
 	VkFormat DepthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
+	std::vector<Texture> Textures;
 	std::vector<DepthTexture> DepthTextures;
 	std::vector<RenderTexture> RenderTextures;
 	std::vector<VkSampler> Samplers;

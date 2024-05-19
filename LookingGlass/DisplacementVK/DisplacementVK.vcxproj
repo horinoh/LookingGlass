@@ -68,12 +68,14 @@
     <Import Project="..\Prop\HOLO.props" />
     <Import Project="..\Prop\VK.props" />
     <Import Project="..\Prop\GLI.props" />
+    <Import Project="..\Prop\CV.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Prop\HOLO.props" />
     <Import Project="..\Prop\VK.props" />
     <Import Project="..\Prop\GLI.props" />
+    <Import Project="..\Prop\CV.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -136,9 +138,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
+    <ClInclude Include="..\CV.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="..\HoloVK.h" />
     <ClInclude Include="..\VK.h" />
+    <ClInclude Include="..\VKImage.h" />
     <ClInclude Include="DisplacementVK.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
@@ -146,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BorderlessWin.cpp" />
+    <ClCompile Include="..\CV.cpp" />
     <ClCompile Include="..\Holo.cpp" />
     <ClCompile Include="..\VK.cpp" />
     <ClCompile Include="DisplacementVK.cpp" />

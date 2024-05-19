@@ -41,6 +41,10 @@
 - リンカエラー 4099 が出る(#pragma では回避できない)ので以下のようにしている
     - Configuration Properties - Linker - CommandLine - AdditionalOptions - /ignore:4099
 
+### [OpenCV](https://github.com/opencv/opencv)
+- インストール先を環境変数 OPENCV_SDK_PATH へセット
+- 環境変数 Path へ $(OPENCV_SDK_PATH)\build\x64\vc16\bin を追加
+
 ## アセット (Assets)
 - キルト画像(DDS)やメッシュ(FBX)は LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
     

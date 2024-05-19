@@ -8,6 +8,10 @@
 #include "DX.h"
 #endif
 
+#ifdef USE_CV
+#include "CV.h"
+#endif
+
 #ifdef USE_GLTF
 #include "GltfSDK.h"
 #endif
@@ -389,13 +393,17 @@ public:
 					CDH.ptr += IncSize;
 					GDH.ptr += IncSize;
 				}
-				//!< SRV0
-				Device->CreateShaderResourceView(COM_PTR_GET(XTKTextures[0].Resource), &XTKTextures[0].SRV, CDH);
+				//!< SRV
+				//const auto& ColorMap = GetColorMap();
+				const auto& ColorMap = XTKTextures[0];
+				Device->CreateShaderResourceView(COM_PTR_GET(ColorMap.Resource), &ColorMap.SRV, CDH);
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;
 				GDH.ptr += IncSize;
 				//!< SRV1
-				Device->CreateShaderResourceView(COM_PTR_GET(XTKTextures[1].Resource), &XTKTextures[1].SRV, CDH);
+				//const auto& DepthMap = GetDepthMap();
+				const auto& DepthMap = XTKTextures[1];
+				Device->CreateShaderResourceView(COM_PTR_GET(DepthMap.Resource), &DepthMap.SRV, CDH);
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;
 				GDH.ptr += IncSize;
@@ -587,6 +595,9 @@ public:
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}
 	}
+
+	virtual const Texture& GetColorMap() const = 0;
+	virtual const Texture& GetDepthMap() const = 0;
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {

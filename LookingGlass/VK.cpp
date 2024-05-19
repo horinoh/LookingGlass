@@ -74,6 +74,10 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 		i.Destroy(Device); 
 	}
 	DepthTextures.clear();
+	for (auto& i : Textures) {
+		i.Destroy(Device);
+	}
+	Textures.clear();
 
 	for (auto i : UniformBuffers) { 
 		i.Destroy(Device);

@@ -101,13 +101,12 @@ public:
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する [Get window position, size from Looking Glass and apply]
 		if (-1 != DeviceIndex) {
 			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex))));
-			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);
-			::ShowWindow(hWnd, SW_SHOW);
-			//::ShowWindow(hWnd, SW_SHOWMAXIMIZED);
+			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);	
 		} else {
 			::SetWindowPos(hWnd, nullptr, 0, 0, 1536, 2048, SWP_FRAMECHANGED);
-			::ShowWindow(hWnd, SW_SHOW);
 		}
+		::ShowWindow(hWnd, SW_SHOW);
+		//::ShowWindow(hWnd, SW_SHOWMAXIMIZED);
 	}
 	
 	virtual void UpdateLenticularBuffer(const int Column, const int Row, const int Width, const int Height) {

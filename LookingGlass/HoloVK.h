@@ -8,6 +8,10 @@
 #include "VK.h"
 #endif
 
+#ifdef USE_CV
+#include "CV.h"
+#endif
+
 #ifdef USE_GLTF
 #include "GltfSDK.h"
 #endif
@@ -318,10 +322,12 @@ public:
 		//!<	ex) 100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 ‚È‚ç 25 ‚ðŽw’è‚·‚é‚Æ‚¢‚¤‚±‚Æ
 		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 		{
+			const auto& ColorMap = GetColorMap();
+			const auto& DepthMap = GetDepthMap();
 			const DescriptorUpdateInfo DUI = {
 				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + 0].Buffer, .offset = 0, .range = DynamicOffset }),
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }), //!< Depth
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = GLITextures[1].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }), //!< Color
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = ColorMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Depth
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = DepthMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Color
 			};
 			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + 0], DUT, &DUI);
 		}
@@ -551,6 +557,9 @@ public:
 			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
 		}
 	}
+
+	virtual const Texture& GetColorMap() const = 0;
+	virtual const Texture& GetDepthMap() const = 0;
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {
