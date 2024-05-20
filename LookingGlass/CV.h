@@ -56,5 +56,7 @@ public:
 		cv::minMaxLoc(Disparity, &MinVal, &MaxVal);
 		const auto A = 255.0 / (MaxVal - MinVal);
 		Disparity.convertTo(Disparity, CV_8UC1, A, -A * MinVal);
+		//!< •‚ª‰šA”’‚ª“Ê‚É‚È‚é‚æ‚¤‚É”½“]
+		Disparity = ~Disparity;
 	}
 };

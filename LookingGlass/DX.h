@@ -326,20 +326,7 @@ protected:
 			};
 			GCL->CopyTextureRegion(&TCL_Dst, 0, 0, 0, &TCL_Src, nullptr);
 		}
-		{
-			const std::array RBs = {
-				D3D12_RESOURCE_BARRIER({
-					.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-					.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-					.Transition = D3D12_RESOURCE_TRANSITION_BARRIER({
-						.pResource = Dst,
-						.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-						.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST, .StateAfter = RS
-					})
-				})
-			};
-			GCL->ResourceBarrier(static_cast<UINT>(std::size(RBs)), std::data(RBs));
-		}
+		ResourceBarrier(GCL, Dst, D3D12_RESOURCE_STATE_COPY_DEST, RS);
 	}
 
 	void CreateTexture_Depth(const UINT64 Width, const UINT Height) {

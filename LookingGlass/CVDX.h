@@ -14,9 +14,25 @@ public:
 		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
 		const auto RD = Tex.Resource->GetDesc();
 
+		const auto Layers = RD.DepthOrArraySize;
+		const auto PitchSize = RD.Width * CVImage.channels();
+		const auto AlignedPitchSize = static_cast<UINT>(RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT));
+		const auto AlignedLayerSize = RD.Height * AlignedPitchSize;
+		const std::array AlignedTop = { 
+			RoundUp(0, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT), 
+			RoundUp(AlignedLayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) 
+		};
+
 		ResourceBase Upload;
 		{
-			Upload.Create(COM_PTR_GET(Device), CVImage.cols * CVImage.rows * CVImage.channels(), D3D12_HEAP_TYPE_UPLOAD, CVImage.ptr());
+			const size_t AlignedSize = AlignedTop[1] + AlignedLayerSize;
+			std::vector<std::byte> AlignedData(AlignedSize, std::byte());
+			for (UINT32 i = 0; i < 1; ++i) {
+				for (UINT j = 0; j < RD.Height; ++j) {
+					std::memcpy(&AlignedData[AlignedTop[0] + j * AlignedPitchSize], CVImage.ptr() + j * PitchSize, PitchSize);
+				}
+			}
+			Upload.Create(COM_PTR_GET(Device), std::size(AlignedData), D3D12_HEAP_TYPE_UPLOAD, std::data(AlignedData));
 		}
 
 		const std::vector PSFs = {

@@ -424,49 +424,20 @@ protected:
 	}
 
 	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs, const uint32_t Levels, const uint32_t Layers) {
-		constexpr std::array<VkMemoryBarrier, 0> MBs = {};
-		constexpr std::array<VkBufferMemoryBarrier, 0> BMBs = {};
 		assert(!empty(BICs) && "BufferImageCopy is empty");
-		const VkImageSubresourceRange ISR = {
-			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-			.baseMipLevel = 0, .levelCount = Levels,
-			.baseArrayLayer = 0, .layerCount = Layers
-		};
+		ImageMemoryBarrier(CB,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0, VK_ACCESS_TRANSFER_WRITE_BIT,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			Dst);
 		{
-			const std::array IMBs = {
-				VkImageMemoryBarrier({
-					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					.pNext = nullptr,
-					.srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-					.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-					.image = Dst,
-					.subresourceRange = ISR
-				})
-			};
-			vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-				static_cast<uint32_t>(std::size(MBs)), std::data(MBs),
-				static_cast<uint32_t>(std::size(BMBs)), std::data(BMBs),
-				static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
+			vkCmdCopyBufferToImage(CB, Src, Dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(std::size(BICs)), std::data(BICs));
 		}
-		vkCmdCopyBufferToImage(CB, Src, Dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(std::size(BICs)), std::data(BICs));
-		{
-			const std::array IMBs = {
-				VkImageMemoryBarrier({
-					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					.pNext = nullptr,
-					.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = AF,
-					.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .newLayout = IL,
-					.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-					.image = Dst,
-					.subresourceRange = ISR
-				})
-			};
-			vkCmdPipelineBarrier(CB, VK_PIPELINE_STAGE_TRANSFER_BIT, PSF, 0,
-				static_cast<uint32_t>(std::size(MBs)), std::data(MBs),
-				static_cast<uint32_t>(std::size(BMBs)), std::data(BMBs),
-				static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
-		}
+		ImageMemoryBarrier(CB,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, PSF,
+			VK_ACCESS_TRANSFER_WRITE_BIT, AF,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, IL,
+			Dst);
 	}
 
 	void CreateTexture_Depth(const uint32_t Width, const uint32_t Height) {

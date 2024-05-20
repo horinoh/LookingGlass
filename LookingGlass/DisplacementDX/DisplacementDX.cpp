@@ -151,6 +151,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (nullptr == Inst) {
 #ifdef USE_CV
             Inst = new DisplacementRGBDDX();
+            //Inst = new DisplacementStereoDX();
 #else
             Inst = new DisplacementRGBD2DX();
 #endif
