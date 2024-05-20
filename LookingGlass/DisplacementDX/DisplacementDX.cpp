@@ -149,7 +149,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-            Inst = new DisplacementRGBDSepDX();
+#ifdef USE_CV
+            Inst = new DisplacementRGBDDX();
+#else
+            Inst = new DisplacementRGBD2DX();
+#endif
             Inst->OnCreate(hWnd, hInst, TEXT("DisplacementDX"));
             //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             SendMessage(hWnd, WM_PAINT, 0, 0);

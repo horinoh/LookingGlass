@@ -8,10 +8,6 @@
 #include "VK.h"
 #endif
 
-#ifdef USE_CV
-#include "CV.h"
-#endif
-
 #ifdef USE_GLTF
 #include "GltfSDK.h"
 #endif

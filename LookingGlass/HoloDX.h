@@ -8,10 +8,6 @@
 #include "DX.h"
 #endif
 
-#ifdef USE_CV
-#include "CV.h"
-#endif
-
 #ifdef USE_GLTF
 #include "GltfSDK.h"
 #endif
@@ -394,15 +390,13 @@ public:
 					GDH.ptr += IncSize;
 				}
 				//!< SRV
-				//const auto& ColorMap = GetColorMap();
-				const auto& ColorMap = XTKTextures[0];
+				const auto& ColorMap = GetColorMap();
 				Device->CreateShaderResourceView(COM_PTR_GET(ColorMap.Resource), &ColorMap.SRV, CDH);
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;
 				GDH.ptr += IncSize;
 				//!< SRV1
-				//const auto& DepthMap = GetDepthMap();
-				const auto& DepthMap = XTKTextures[1];
+				const auto& DepthMap = GetDepthMap();
 				Device->CreateShaderResourceView(COM_PTR_GET(DepthMap.Resource), &DepthMap.SRV, CDH);
 				Handle.emplace_back(GDH);
 				CDH.ptr += IncSize;

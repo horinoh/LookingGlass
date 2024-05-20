@@ -138,6 +138,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
+    <ClInclude Include="..\CVDX.h" />
     <ClInclude Include="..\DX.h" />
     <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\Holo.h" />
@@ -149,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BorderlessWin.cpp" />
+    <ClCompile Include="..\CV.cpp" />
     <ClCompile Include="..\DX.cpp" />
     <ClCompile Include="..\DXImage.cpp" />
     <ClCompile Include="..\Holo.cpp" />

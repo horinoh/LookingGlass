@@ -42,10 +42,10 @@
     <ClInclude Include="..\Holo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\CV.h">
+    <ClInclude Include="..\VKImage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\VKImage.h">
+    <ClInclude Include="..\CVVK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -138,7 +138,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
-    <ClInclude Include="..\CV.h" />
+    <ClInclude Include="..\CVVK.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="..\HoloVK.h" />
     <ClInclude Include="..\VK.h" />

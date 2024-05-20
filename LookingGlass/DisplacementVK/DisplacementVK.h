@@ -3,10 +3,12 @@
 #include "resource.h"
 
 #define USE_TEXTURE
-#define USE_CV
 #include "../HoloVK.h"
 
-class DisplacementRGBDSepVK : public DisplacementVK 
+#define USE_CV
+#include "../CVVK.h"
+
+class DisplacementRGBD2VK : public DisplacementVK 
 {
 private:
 	using Super = DisplacementVK;
@@ -31,17 +33,17 @@ public:
 		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "depth.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 #endif
 
-#if 0
 		const auto CVPath = CV::GetOpenCVPath();
 		auto L = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
 		cv::imshow("L", L);
+		cv::cvtColor(L, L, cv::COLOR_BGR2RGBA);
 
-		const auto TotalSize = L.cols * L.rows * L.channels();
 		const auto Ext = VkExtent3D({ .width = static_cast<uint32_t>(L.cols), .height = static_cast<uint32_t>(L.rows), .depth = 1 });
 		auto Tex = Textures.emplace_back().Create(Device, PDMP, VK_FORMAT_B8G8R8A8_UNORM, Ext);
 
+		const auto TotalSize = L.cols * L.rows * L.channels();
 		VK::Scoped<BufferMemory> StagingBuffer(Device);
-		StagingBuffer.Create(Device, PDMP, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, TotalSize, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, L.ptr());
+		StagingBuffer.Create(Device, PDMP, TotalSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, L.ptr());
 		const std::vector BICs = {
 			VkBufferImageCopy({
 				.bufferOffset = 0, .bufferRowLength = 0, .bufferImageHeight = 0,
@@ -59,7 +61,6 @@ public:
 			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, BICs, 1, 1);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
-#endif
 	}
 
 	virtual const Texture& GetColorMap() const override { return GLITextures[0]; };
@@ -67,10 +68,53 @@ public:
 };
 
 #ifdef USE_CV
-class DisplacementStereoVK : public DisplacementVK
+class DisplacementRGBDVK : public DisplacementCVVK
 {
 private:
-	using Super = DisplacementVK;
+	using Super = DisplacementCVVK;
+public:
+	virtual void CreateTexture() override {
+		Super::CreateTexture();
+
+#if 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "rgbd.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string()); 
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14295.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14297.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14298.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14299.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "elephant1_rgbd_s.png").string());
+#else
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "elephant2_rgbd_s.png").string());
+#endif
+
+		const auto Cols = RGBD.cols / 2;
+		auto RGB = cv::Mat(RGBD, cv::Rect(0, 0, Cols, RGBD.rows));
+		cv::cvtColor(RGB, RGB, cv::COLOR_BGR2RGBA);
+
+		auto D = cv::Mat(RGBD, cv::Rect(Cols, 0, Cols, RGBD.rows));
+		cv::cvtColor(D, D, cv::COLOR_BGR2GRAY);
+
+		Update(Create(Textures.emplace_back(), RGB, VK_FORMAT_R8G8B8A8_UNORM), RGB, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+		Update(Create(Textures.emplace_back(), D, VK_FORMAT_R8_UNORM), D, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+	}
+
+
+
+	virtual const Texture& GetColorMap() const override { return Textures[0]; };
+	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
+};
+class DisplacementStereoVK : public DisplacementCVVK
+{
+private:
+	using Super = DisplacementCVVK;
 public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
@@ -87,7 +131,7 @@ public:
 		cv::Mat Disparity;
 		CV::StereoMatching(L, R, Disparity);
 
-		cv::imshow("Disparity", Disparity);
+		//cv::imshow("Disparity", Disparity);
 	}
 };
 #endif

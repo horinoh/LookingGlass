@@ -3,10 +3,12 @@
 #include "resource.h"
 
 #define USE_TEXTURE
-//#define USE_CV
 #include "../HoloDX.h"
 
-class DisplacementRGBDSepDX : public DisplacementDX 
+#define USE_CV
+#include "../CVDX.h"
+
+class DisplacementRGBD2DX : public DisplacementDX 
 {
 private:
 	using Super = DisplacementDX;
@@ -37,10 +39,51 @@ public:
 };
 
 #ifdef USE_CV
-class DisplacementStereoDX : public DisplacementDX
+class DisplacementRGBDDX : public DisplacementCVDX
 {
 private:
-	using Super = DisplacementDX;
+	using Super = DisplacementCVDX;
+public:
+	virtual void CreateTexture() override {
+		Super::CreateTexture();
+
+#if 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "rgbd.png").string());
+#elif 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string());
+#elif 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14295.png").string());
+#elif 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14297.png").string());
+#elif 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14298.png").string());
+#elif 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14299.png").string());
+#elif 0
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "elephant1_rgbd_s.png").string());
+#else
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "elephant2_rgbd_s.png").string());
+#endif
+
+		const auto Cols = RGBD.cols / 2;
+		auto RGB = cv::Mat(RGBD, cv::Rect(0, 0, Cols, RGBD.rows));
+		cv::cvtColor(RGB, RGB, cv::COLOR_BGR2RGBA);
+
+		auto D = cv::Mat(RGBD, cv::Rect(Cols, 0, Cols, RGBD.rows));
+		cv::cvtColor(D, D, cv::COLOR_BGR2GRAY);
+
+		Update(Create(Textures.emplace_back(), RGB, DXGI_FORMAT_R8G8B8A8_UNORM), RGB);
+
+		Update(Create(Textures.emplace_back(), D, DXGI_FORMAT_R8_UNORM), D);
+	}
+
+	virtual const Texture& GetColorMap() const override { return Textures[0]; };
+	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
+};
+class DisplacementStereoDX : public DisplacementCVDX
+{
+private:
+	using Super = DisplacementCVDX;
 public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
