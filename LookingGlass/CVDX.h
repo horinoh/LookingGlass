@@ -14,7 +14,6 @@ public:
 		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
 		const auto RD = Tex.Resource->GetDesc();
 
-		const auto Layers = RD.DepthOrArraySize;
 		const auto PitchSize = RD.Width * CVImage.channels();
 		const auto AlignedPitchSize = static_cast<UINT>(RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT));
 		const auto AlignedLayerSize = RD.Height * AlignedPitchSize;
@@ -27,10 +26,8 @@ public:
 		{
 			const size_t AlignedSize = AlignedTop[1] + AlignedLayerSize;
 			std::vector<std::byte> AlignedData(AlignedSize, std::byte());
-			for (UINT32 i = 0; i < 1; ++i) {
-				for (UINT j = 0; j < RD.Height; ++j) {
-					std::memcpy(&AlignedData[AlignedTop[0] + j * AlignedPitchSize], CVImage.ptr() + j * PitchSize, PitchSize);
-				}
+			for (UINT i = 0; i < RD.Height; ++i) {
+				std::memcpy(&AlignedData[AlignedTop[0] + i * AlignedPitchSize], CVImage.ptr() + i * PitchSize, PitchSize);
 			}
 			Upload.Create(COM_PTR_GET(Device), std::size(AlignedData), D3D12_HEAP_TYPE_UPLOAD, std::data(AlignedData));
 		}
