@@ -41,7 +41,7 @@ public:
 };
 
 #ifdef USE_CV
-//!< 1枚のテクスチャにカラーとデプスが左右に共存してるケース (要 OpenCV、DDS 以外も可)
+//!< 1枚のテクスチャにカラーとデプスが左右に共存してるケース (要 OpenCV)
 class DisplacementRGBDVK : public DisplacementCVVK
 {
 private:
@@ -51,9 +51,11 @@ public:
 		Super::CreateTexture();
 
 #if 1
-		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "rgbd.png").string());
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "Bricks076C_1K.png").string());
 #elif 1
-		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string()); 
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "rgbd.png").string());
 #elif 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "14295.png").string());
 #elif 1
