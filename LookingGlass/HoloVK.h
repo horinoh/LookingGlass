@@ -63,16 +63,6 @@ protected:
 	glm::mat4 View;
 };
 
-//class HoloVK : public VK, public Holo
-//{
-//public:
-//	virtual uint32_t GetViewportMax() const override {
-//		VkPhysicalDeviceProperties PDP;
-//		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-//		return PDP.limits.maxViewports;
-//	}
-//};
-
 #ifdef USE_TEXTURE
 class HoloImageVK : public VKImage, public Holo
 {

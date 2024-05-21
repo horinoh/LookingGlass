@@ -63,12 +63,6 @@ protected:
 	DirectX::XMMATRIX View;
 };
 
-//class HoloDX : public DX, public Holo
-//{
-//public:
-//	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
-//};
-
 #ifdef USE_TEXTURE
 class HoloImageDX : public DXImage, public Holo
 {

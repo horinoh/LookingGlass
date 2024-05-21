@@ -13,6 +13,8 @@ layout (location = 0) out vec2 OutTexcoord;
 
 layout (triangles, invocations = 16) in;
 layout (triangle_strip, max_vertices = 3) out;
+//layout (line_strip, max_vertices = 3) out;
+//layout (points, max_vertices = 3) out;
 void main()
 {
 	const mat4 W = mat4(3.5f, 0.0f, 0.0f, 0.0f,
@@ -24,6 +26,8 @@ void main()
 		gl_Position = VPB.ViewProjection[gl_InvocationID] * W * gl_in[i].gl_Position;	
 		OutTexcoord = InTexcoord[i];
 		gl_ViewportIndex = gl_InvocationID;
+		gl_PointSize = 5.0f;
+
 		EmitVertex();
 	}
 	EndPrimitive();	

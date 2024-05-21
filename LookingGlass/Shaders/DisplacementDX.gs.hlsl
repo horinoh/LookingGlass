@@ -21,6 +21,8 @@ struct OUT
 [instance(16)]
 [maxvertexcount(3)]
 void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instanceID : SV_GSInstanceID)
+//void main(const triangle IN In[3], inout LineStream<OUT> stream, uint instanceID : SV_GSInstanceID)
+//void main(const triangle IN In[3], inout PointStream<OUT> stream, uint instanceID : SV_GSInstanceID)
 {
 	OUT Out;
 
@@ -31,7 +33,6 @@ void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instan
 
 	[unroll]
 	for (int i = 0; i < 3; ++i) {
-		//Out.Position = mul(VPB.ViewProjection[instanceID], float4(In[i].Position, 1.0f));
 		Out.Position = mul(mul(VPB.ViewProjection[instanceID], W), float4(In[i].Position, 1.0f));
 
 		Out.Texcoord = In[i].Texcoord;
