@@ -80,10 +80,14 @@ public:
 		cv::cvtColor(D, D, cv::COLOR_BGR2GRAY);
 
 		//!< カラー (CVデータをテクスチャへ)
-		Update(Create(Textures.emplace_back(), RGB, DXGI_FORMAT_R8G8B8A8_UNORM), RGB);
+		Create(Textures.emplace_back(), RGB, DXGI_FORMAT_R8G8B8A8_UNORM);
 
 		//!< デプス (CVデータをテクスチャへ)
-		Update(Create(Textures.emplace_back(), D, DXGI_FORMAT_R8_UNORM), D);
+		Create(Textures.emplace_back(), D, DXGI_FORMAT_R8_UNORM);
+
+		//!< テクスチャ更新
+		Update2(Textures[0], RGB, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			Textures[1], D, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	}
 
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
@@ -112,12 +116,17 @@ public:
 		CV::StereoMatching(L, R, Disparity);
 		//cv::imshow("Disparity", Disparity);
 
-		//!< カラー (CVデータをテクスチャへ)
 		cv::cvtColor(L, L, cv::COLOR_BGR2RGBA);
-		Update(Create(Textures.emplace_back(), L, DXGI_FORMAT_R8G8B8A8_UNORM), L);
+
+		//!< カラー (CVデータをテクスチャへ)
+		Create(Textures.emplace_back(), L, DXGI_FORMAT_R8G8B8A8_UNORM);
 
 		//!< デプス (CVデータをテクスチャへ)
-		Update(Create(Textures.emplace_back(), Disparity, DXGI_FORMAT_R8_UNORM), Disparity);
+		Create(Textures.emplace_back(), Disparity, DXGI_FORMAT_R8_UNORM);
+
+		//!< テクスチャ更新
+		Update2(Textures[0], L, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			Textures[1], Disparity, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	}
 
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };

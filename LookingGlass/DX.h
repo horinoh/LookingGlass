@@ -654,6 +654,153 @@ protected:
 			return *this;
 		}
 	};
+
+	void UpdateTexture(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES State) {
+		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
+		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
+
+		ResourceBase Upload;
+		{
+			const auto RD = Tex.Resource->GetDesc();
+
+			const auto PitchSize = RD.Width * Bpp;
+			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+			const auto LayerSize = RD.Height * PitchSizeA;
+			
+			constexpr auto Layers = 1;
+
+			//!< アラインされたサイズ
+			size_t SizeA = 0;
+			for (UINT32 i = 0; i < Layers; ++i) {
+				SizeA = RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
+			}
+			std::vector AlignedData(SizeA, std::byte());
+			
+			for (UINT32 i = 0; i < Layers; ++i) {
+				for (UINT j = 0; j < RD.Height; ++j) {
+					const auto Src = reinterpret_cast<const std::byte*>(Data) + j * PitchSize;
+					std::copy(Src, Src + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+				}
+			}
+
+			Upload.Create(COM_PTR_GET(Device), std::size(AlignedData), D3D12_HEAP_TYPE_UPLOAD, std::data(AlignedData));
+		}
+
+		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
+			{
+				const auto RD = Tex.Resource->GetDesc();
+				
+				constexpr UINT64 i = 0;
+				const std::vector PSFs = {
+					D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
+						.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+						.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
+							.Format = RD.Format,
+							.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
+							.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
+						})
+					})
+				};
+				PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), PSFs, State);
+			}
+		} VERIFY_SUCCEEDED(CL->Close());
+		DX::ExecuteAndWait(COM_PTR_GET(GraphicsCommandQueue), CL, COM_PTR_GET(GraphicsFence));
+	}
+
+	void UpdateTexture2(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES State,
+		Texture& Tex1, const uint32_t Bpp1, const void* Data1, const D3D12_RESOURCE_STATES State1) {
+		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
+		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
+
+		ResourceBase Upload;
+		{
+			const auto RD = Tex.Resource->GetDesc();
+
+			const auto PitchSize = RD.Width * Bpp;
+			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+			const auto LayerSize = RD.Height * PitchSizeA;
+
+			constexpr auto Layers = 1;
+
+			size_t SizeA = 0;
+			for (UINT32 i = 0; i < Layers; ++i) {
+				SizeA = RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
+			}
+			std::vector AlignedData(SizeA, std::byte());
+
+			for (UINT32 i = 0; i < Layers; ++i) {
+				for (UINT j = 0; j < RD.Height; ++j) {
+					const auto Src = reinterpret_cast<const std::byte*>(Data) + j * PitchSize;
+					std::copy(Src, Src + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+				}
+			}
+
+			Upload.Create(COM_PTR_GET(Device), std::size(AlignedData), D3D12_HEAP_TYPE_UPLOAD, std::data(AlignedData));
+		}
+
+		ResourceBase Upload1;
+		{
+			const auto RD = Tex1.Resource->GetDesc();
+
+			const auto PitchSize = RD.Width * Bpp1;
+			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+			const auto LayerSize = RD.Height * PitchSizeA;
+
+			constexpr auto Layers = 1;
+
+			size_t SizeA = 0;
+			for (UINT32 i = 0; i < Layers; ++i) {
+				SizeA = RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
+			}
+			std::vector AlignedData(SizeA, std::byte());
+
+			for (UINT32 i = 0; i < Layers; ++i) {
+				for (UINT j = 0; j < RD.Height; ++j) {
+					const auto Src = reinterpret_cast<const std::byte*>(Data1) + j * PitchSize;
+					std::copy(Src, Src + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+				}
+			}
+
+			Upload1.Create(COM_PTR_GET(Device), std::size(AlignedData), D3D12_HEAP_TYPE_UPLOAD, std::data(AlignedData));
+		}
+
+		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
+			{
+				const auto RD = Tex.Resource->GetDesc();
+
+				constexpr UINT64 i = 0;
+				const std::vector PSFs = {
+					D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
+						.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+						.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
+							.Format = RD.Format,
+							.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
+							.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
+						})
+					})
+				};
+				PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), PSFs, State);
+			}
+			{
+				const auto RD = Tex1.Resource->GetDesc();
+
+				constexpr UINT64 i = 0;
+				const std::vector PSFs = {
+					D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
+						.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+						.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
+							.Format = RD.Format,
+							.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
+							.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp1, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
+						})
+					})
+				};
+				PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload1.Resource), COM_PTR_GET(Tex1.Resource), PSFs, State1);
+			}
+		} VERIFY_SUCCEEDED(CL->Close());
+		DX::ExecuteAndWait(COM_PTR_GET(GraphicsCommandQueue), CL, COM_PTR_GET(GraphicsFence));
+	}
+
 protected:
 	RECT Rect;
 	std::vector<std::thread> Threads;
