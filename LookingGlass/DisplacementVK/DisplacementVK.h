@@ -80,10 +80,14 @@ public:
 		cv::cvtColor(D, D, cv::COLOR_BGR2GRAY);
 
 		//!< カラー (CVデータをテクスチャへ)
-		Update(Create(Textures.emplace_back(), RGB, VK_FORMAT_R8G8B8A8_UNORM), RGB, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		Create(Textures.emplace_back(), RGB, VK_FORMAT_R8G8B8A8_UNORM);
 
 		//!< デプス (CVデータをテクスチャへ)
-		Update(Create(Textures.emplace_back(), D, VK_FORMAT_R8_UNORM), D, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+		Create(Textures.emplace_back(), D, VK_FORMAT_R8_UNORM);
+
+		//!< テクスチャ更新
+		Update2(Textures[0], RGB, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			Textures[1], D, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 	}
 
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
@@ -114,10 +118,14 @@ public:
 
 		//!< カラー (CVデータをテクスチャへ)
 		cv::cvtColor(L, L, cv::COLOR_BGR2RGBA);
-		Update(Create(Textures.emplace_back(), L, VK_FORMAT_R8G8B8A8_UNORM), L, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
+		Create(Textures.emplace_back(), L, VK_FORMAT_R8G8B8A8_UNORM);
+	
 		//!< デプス (CVデータをテクスチャへ)
-		Update(Create(Textures.emplace_back(), Disparity, VK_FORMAT_R8_UNORM), Disparity, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+		Create(Textures.emplace_back(), Disparity, VK_FORMAT_R8_UNORM);
+
+		//!< テクスチャ更新
+		Update2(Textures[0], L, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			Textures[1], Disparity, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 	}
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
 	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
