@@ -26,8 +26,15 @@ void main(const triangle IN In[3], inout TriangleStream<OUT> stream, uint instan
 {
 	OUT Out;
 
-	const float4x4 W = float4x4(3.5f, 0.0f, 0.0f, 0.0f,
-								0.0f, 3.5f, 0.0f, 0.0f,
+#if 1
+	//!< Portrait
+	const float X = 6.0f * 0.5f, Y = 8.0f * 0.5f;
+#else
+	//!< Standard
+	const float X = 9.0f * 0.5f, Y = 5.0f * 0.5f;
+#endif
+	const float4x4 W = float4x4(X, 0.0f, 0.0f, 0.0f,
+								0.0f, Y, 0.0f, 0.0f,
 								0.0f, 0.0f, 1.0f, 0.0f,
 								0.0f, 0.0f, 0.0f, 1.0f);
 

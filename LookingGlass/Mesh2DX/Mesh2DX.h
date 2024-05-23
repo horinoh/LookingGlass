@@ -508,7 +508,7 @@ public:
 		while (Angle < 0.0f) { Angle += 360.0f; }
 
 		const auto Count = GetInstanceCount();
-		constexpr auto Radius = 2.0f;
+		const auto Radius = 2.5f * static_cast<float>(LenticularBuffer.TileY) / LenticularBuffer.TileX;
 		constexpr auto Height = 10.0f;
 		const auto OffsetY = Height / static_cast<float>(Count);
 		for (UINT i = 0; i < Count; ++i) {

@@ -486,7 +486,7 @@ public:
 		const auto AxisY = glm::vec3(0.0f, 1.0f, 0.0f);
 		
 		const auto Count = GetInstanceCount();
-		constexpr auto Radius = 2.0f;
+		const auto Radius = 2.5f * static_cast<float>(LenticularBuffer.TileY) / LenticularBuffer.TileX;
 		constexpr auto Height = 10.0f;
 		const auto OffsetY = Height / static_cast<float>(Count);
 		for (uint32_t i = 0; i < Count; ++i) {
