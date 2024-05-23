@@ -43,13 +43,13 @@ public:
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
 
-		//Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
-		Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.FBX");
+		Load(std::filesystem::path("..") / "Asset" / "Mesh" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "happy_vrip.FBX");
 
-		//Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "happy_vrip.glb");
 
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
 		VK::Scoped<StagingBuffer> StagingPass0Vertex(Device);

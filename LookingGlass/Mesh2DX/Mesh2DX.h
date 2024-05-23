@@ -45,13 +45,13 @@ public:
 		const auto GCQ = COM_PTR_GET(GraphicsCommandQueue);
 		const auto GF = COM_PTR_GET(GraphicsFence);
 
-		//Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
-		Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.FBX");
+		Load(std::filesystem::path("..") / "Asset" / "Mesh" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "happy_vrip.FBX");
 
-		//Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "happy_vrip.glb");
 
 		VertexBuffers.emplace_back().Create(COM_PTR_GET(Device), TotalSizeOf(Vertices), sizeof(Vertices[0]));
 		UploadResource UploadPass0Vertex;

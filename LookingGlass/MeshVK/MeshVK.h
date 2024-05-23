@@ -38,17 +38,17 @@ public:
 
 		//!<yPass0zƒƒbƒVƒ…•`‰æ—p [To draw mesh] 
 #ifdef USE_GLTF
-		Load(std::filesystem::path("..") / "Asset" / "bunny.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "dragon.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "Sphere.glb");
-		//Load(std::filesystem::path("..") / "Asset" / "Box.glb");
+		Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "dragon.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "happy_vrip.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "Sphere.glb");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "Box.glb");
 #else
-		Load(std::filesystem::path("..") / "Asset" / "bunny.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "dragon.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "happy_vrip.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "Bee.FBX");
-		//Load(std::filesystem::path("..") / "Asset" / "ALucy.FBX");
+		Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "dragon.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "happy_vrip.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "Bee.FBX");
+		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "ALucy.FBX");
 #endif
 		
 		VertexBuffers.emplace_back().Create(Device, PDMP, TotalSizeOf(Vertices));
