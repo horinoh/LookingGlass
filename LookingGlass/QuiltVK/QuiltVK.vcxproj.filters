@@ -86,5 +86,8 @@
     <CustomBuild Include="QuiltVK.vert">
       <Filter>Shader Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\Shaders\FinalPassQuiltDispVK.frag">
+      <Filter>Shader Files</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
