@@ -153,7 +153,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             Inst = new DisplacementRGBDVK();
             //Inst = new DisplacementStereoVK();
 #else
-            Inst = new DisplacementRGBD2VK();
+            Inst = new DisplacementRGB_DVK();
 #endif
             Inst->OnCreate(hWnd, hInst, TEXT("DisplacementVK"));
             //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);

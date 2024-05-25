@@ -17,20 +17,8 @@ layout (triangle_strip, max_vertices = 3) out;
 //layout (points, max_vertices = 3) out;
 void main()
 {
-#if 1
-	//!< Portrait
-	const float X = 6.0f * 0.5f, Y = 8.0f * 0.5f;
-#else
-	//!< Standard
-	const float X = 9.0f * 0.5f, Y = 5.0f * 0.5f;
-#endif
-	const mat4 W = mat4(X, 0.0f, 0.0f, 0.0f,
-						0.0f, Y, 0.0f, 0.0f,
-						0.0f, 0.0f, 1.0f, 0.0f,
-						0.0f, 0.0f, 0.0f, 1.0f);
-
 	for(int i=0;i<gl_in.length();++i) {
-		gl_Position = VPB.ViewProjection[gl_InvocationID] * W * gl_in[i].gl_Position;	
+		gl_Position = VPB.ViewProjection[gl_InvocationID] * gl_in[i].gl_Position;	
 		OutTexcoord = InTexcoord[i];
 		gl_ViewportIndex = gl_InvocationID;
 		gl_PointSize = 5.0f;

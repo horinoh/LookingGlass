@@ -9,7 +9,7 @@ struct TESS_FACTOR
 };
 struct OUT
 {
-	float3 Position : POSITION;
+	float4 Position : POSITION;
 	float2 Texcoord : TEXCOORD0;
 };
 
@@ -21,10 +21,20 @@ OUT main(const TESS_FACTOR tess, const float2 uv : SV_DomainLocation, const Outp
 {
 	OUT Out;
 
-	const float HeightScale = 1.0f;
+#if 1
+	//!< Portrait
+	const float X = 6.0f * 0.5f, Y = 8.0f * 0.5f;
+#else
+	//!< Standard
+	const float X = 9.0f * 0.5f, Y = 5.0f * 0.5f;
+#endif
+	const float4x4 World = float4x4(X, 0.0f, 0.0f, 0.0f,
+		0.0f, Y, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f);
+
 	Out.Texcoord = float2(uv.x, 1.0f - uv.y);
-	Out.Position = float3(2.0f * uv - 1.0f, HeightScale * (DisplacementMap.SampleLevel(Sampler, Out.Texcoord, 0).r * 2.0f - 1.0f));
-	//Out.Position = float3(2.0f * uv - 1.0f, HeightScale * 1);
+	Out.Position = mul(World, float4(2.0f * uv - 1.0f,  DisplacementMap.SampleLevel(Sampler, Out.Texcoord, 0).r * 2.0f - 1.0f, 1.0f));
 
 	return Out;
 }

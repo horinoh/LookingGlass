@@ -9,7 +9,7 @@
 #include "../CVDX.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
-class DisplacementRGBD2DX : public DisplacementDX
+class DisplacementRGB_DDX : public DisplacementDX
 {
 private:
 	using Super = DisplacementDX;
@@ -50,8 +50,10 @@ public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
-#if 1	
+#if 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "Bricks076C_1K.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "kame.jpg").string());
 #elif 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string());
 #elif 1

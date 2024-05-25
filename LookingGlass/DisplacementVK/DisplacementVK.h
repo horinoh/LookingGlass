@@ -9,7 +9,7 @@
 #include "../CVVK.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
-class DisplacementRGBD2VK : public DisplacementVK 
+class DisplacementRGB_DVK : public DisplacementVK
 {
 private:
 	using Super = DisplacementVK;
@@ -52,6 +52,8 @@ public:
 
 #if 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "Bricks076C_1K.png").string());
+#elif 1
+		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "kame.jpg").string());
 #elif 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string());
 #elif 1

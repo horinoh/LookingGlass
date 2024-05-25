@@ -43,12 +43,18 @@
 
 ### [OpenCV](https://github.com/opencv/opencv)
 - インストール先を環境変数 OPENCV_SDK_PATH へセット (Create install folder as environment variable OPENCV_SDK_PATH)
-- 環境変数 Path へ \$(OPENCV_SDK_PATH)\build\x64\vc16\bin を追加 (Add $(OPENCV_SDK_PATH)\build\x64\vc16\bin to environment variable Path)
+- 環境変数 Path へ \$(OPENCV_SDK_PATH)\\build\\x64\\vc16\\bin を追加 (Add \$(OPENCV_SDK_PATH)\\build\\x64\\vc16\\bin to environment variable Path)
+
+### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)
+- [comtool](https://dl.sipeed.com/shareURL/MaixSense/MaixSense_A010/software_pack/comtool) をインストールしておく
 
 ## アセット (Assets)
-- キルト画像(DDS)やメッシュ(FBX)は LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
-- DDS のミップマップは不要 (No need mipmaps)
-- RGBD 画像は RGBD/ 以下へ (Put RGBD images in folder RBGD/)
+- アセットは LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
+    - Mesh/ メッシュ
+    - Quilt/ キルト画像
+    - RGBD/ RGBD 画像
+    - RGB_D/ RGB, Depth 画像 (DDS)
+        - DDS のミップマップは不要 (No need mipmaps)
     
 ### キルト画像 (Quilt image)
 - [Jane_Guan_Space_Nap_qs8x6.webp](https://docs.lookingglassfactory.com/keyconcepts/quilts) を ペイントツール等で png 等の形式で保存してから dds へ変換する (Convert Jane_Guan_Space_Nap_qs8x6.webp to dds format)
