@@ -69,6 +69,7 @@
     <Import Project="..\Prop\DX_TEX.props" />
     <Import Project="..\Prop\HLSL_DEBUG.props" />
     <Import Project="..\Prop\CV.props" />
+    <Import Project="..\Prop\ASIO.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -76,6 +77,7 @@
     <Import Project="..\Prop\HLSL.props" />
     <Import Project="..\Prop\DX_TEX.props" />
     <Import Project="..\Prop\CV.props" />
+    <Import Project="..\Prop\ASIO.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -139,6 +141,7 @@
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\CVDX.h" />
+    <ClInclude Include="..\DepthSenser.h" />
     <ClInclude Include="..\DX.h" />
     <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\Holo.h" />

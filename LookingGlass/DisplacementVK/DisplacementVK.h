@@ -8,6 +8,8 @@
 #define USE_CV
 #include "../CVVK.h"
 
+#include "../DepthSenser.h"
+
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
 class DisplacementRGB_DVK : public DisplacementVK
 {
@@ -42,7 +44,7 @@ public:
 
 #ifdef USE_CV
 //!< 1枚のテクスチャにカラーとデプスが左右に共存してるケース (要 OpenCV)
-class DisplacementRGBDVK : public DisplacementCVVK
+class DisplacementRGBDVK : public DisplacementCVVK, public DepthSenserA010
 {
 private:
 	using Super = DisplacementCVVK;
@@ -90,10 +92,33 @@ public:
 		//!< テクスチャ更新
 		Update2(Textures[0], RGB, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			Textures[1], D, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+
+#if 0
+		cv::imshow("DepthSenser", Depth);
+
+		if (DepthSenserA010::Open(COM::COM3)) {
+#if 0
+			std::thread Thread([&] { DepthSenserA010::Update(); });
+			Thread.join();
+#else
+			DepthSenserA010::Update();
+#endif
+		}
+#endif
 	}
 
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
 	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
+
+	virtual void OnDepthUpdate() override {
+		LOG(std::data(std::format("OnDepthUpdate()\n")));
+
+		Depth = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+
+		//cv::resize(Depth, Depth, cv::Size(800, 800));
+	}
+
+	cv::Mat Depth = cv::Mat(cv::Size(100, 100), CV_8UC1);
 };
 class DisplacementStereoVK : public DisplacementCVVK
 {
