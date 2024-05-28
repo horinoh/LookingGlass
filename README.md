@@ -43,10 +43,13 @@
 
 ### [OpenCV](https://github.com/opencv/opencv)
 - インストール先を環境変数 OPENCV_SDK_PATH へセット (Create install folder as environment variable OPENCV_SDK_PATH)
-- 環境変数 Path へ \$(OPENCV_SDK_PATH)\\build\\x64\\vc16\\bin を追加 (Add \$(OPENCV_SDK_PATH)\\build\\x64\\vc16\\bin to environment variable Path)
+- 環境変数 Path へ `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` を追加 (Add `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` to environment variable Path)
 
 ### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)
 - [comtool](https://dl.sipeed.com/shareURL/MaixSense/MaixSense_A010/software_pack/comtool) をインストールしておく
+
+### [asio](https://github.com/chriskohlhoff/asio.git)
+- サブモジュールとして追加した
 
 ## アセット (Assets)
 - アセットは LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
