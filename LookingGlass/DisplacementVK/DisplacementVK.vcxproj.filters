@@ -48,7 +48,7 @@
     <ClInclude Include="..\CVVK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DepthSenser.h">
+    <ClInclude Include="..\DepthSensor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

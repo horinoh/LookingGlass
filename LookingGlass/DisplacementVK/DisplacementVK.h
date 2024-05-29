@@ -8,7 +8,7 @@
 #define USE_CV
 #include "../CVVK.h"
 
-#define USE_DEPTH_SENSOR
+//#define USE_DEPTH_SENSOR
 #include "../DepthSensor.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
