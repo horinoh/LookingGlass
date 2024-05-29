@@ -93,7 +93,7 @@ public:
 		Update2(Textures[0], RGB, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			Textures[1], D, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 
-#if 0
+#if 1
 		cv::imshow("DepthSenser", Depth);
 
 		if (DepthSenserA010::Open(COM::COM3)) {
@@ -113,12 +113,12 @@ public:
 	virtual void OnDepthUpdate() override {
 		LOG(std::data(std::format("OnDepthUpdate()\n")));
 
-		Depth = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
-
-		//cv::resize(Depth, Depth, cv::Size(800, 800));
+		auto Tmp = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+		cv::resize(Tmp, Tmp, cv::Size(800, 800));
+		Tmp.copyTo(Depth);
 	}
 
-	cv::Mat Depth = cv::Mat(cv::Size(100, 100), CV_8UC1);
+	cv::Mat Depth = cv::Mat(cv::Size(800, 800), CV_8UC1);
 };
 class DisplacementStereoVK : public DisplacementCVVK
 {
