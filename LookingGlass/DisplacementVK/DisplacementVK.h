@@ -8,6 +8,7 @@
 #define USE_CV
 #include "../CVVK.h"
 
+//#define USE_DEPTH_SENSOR
 #include "../DepthSenser.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
@@ -44,7 +45,10 @@ public:
 
 #ifdef USE_CV
 //!< 1枚のテクスチャにカラーとデプスが左右に共存してるケース (要 OpenCV)
-class DisplacementRGBDVK : public DisplacementCVVK, public DepthSenserA010
+class DisplacementRGBDVK : public DisplacementCVVK
+#ifdef USE_DEPTH_SENSOR
+	, public DepthSenserA010
+#endif
 {
 private:
 	using Super = DisplacementCVVK;
@@ -93,16 +97,10 @@ public:
 		Update2(Textures[0], RGB, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			Textures[1], D, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 
-#if 1
-		cv::imshow("DepthSenser", Depth);
-
-		if (DepthSenserA010::Open(COM::COM3)) {
-#if 0
-			std::thread Thread([&] { DepthSenserA010::Update(); });
-			Thread.join();
-#else
-			DepthSenserA010::Update();
-#endif
+#ifdef USE_DEPTH_SENSOR
+		//!< デプスセンサーのテスト
+		if (Open(COM::COM3)) {
+			Update();
 		}
 #endif
 	}
@@ -110,15 +108,29 @@ public:
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
 	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
 
-	virtual void OnDepthUpdate() override {
-		LOG(std::data(std::format("OnDepthUpdate()\n")));
+#ifdef USE_DEPTH_SENSOR
+	virtual void Update() override {
+		DepthSenserA010::Update();
 
-		auto Tmp = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
-		cv::resize(Tmp, Tmp, cv::Size(800, 800));
-		Tmp.copyTo(Depth);
+		auto Depth = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+		//!< 黒白が凹凸となるように反転
+		Depth = ~Depth;
+
+		//!< プレビューする為の処理
+		cv::resize(Depth, Depth, cv::Size(420, 560));
+		Depth.copyTo(Preview);
+		cv::imshow("Preview", Preview);
 	}
 
-	cv::Mat Depth = cv::Mat(cv::Size(800, 800), CV_8UC1);
+	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance) { 
+		VK::OnPaint(hWnd, hInstance);
+
+		//!< デプスセンサーの更新
+		Update();
+	}
+
+	cv::Mat Preview = cv::Mat(cv::Size(420, 560), CV_8UC1);
+#endif
 };
 class DisplacementStereoVK : public DisplacementCVVK
 {

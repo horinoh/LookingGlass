@@ -42,7 +42,6 @@ public:
 		return false;
 	}
 	virtual void Update() {}
-	virtual void OnDepthUpdate() {}
 
 	virtual bool VerifyError() {
 		if (ErrorCode) {
@@ -73,6 +72,7 @@ public:
 
 	virtual bool Open(const COM Com) override {
 		if (Super::Open(Com)) {
+			//SetCmdDISP(DISP::LCD_USB);
 			return true;
 		}
 		return false;
@@ -112,7 +112,7 @@ public:
 				SerialPort.read_some(asio::buffer(&EOP, sizeof(EOP)), ErrorCode); VerifyError();
 				LOG(std::data(std::format("[A010] EndOfPacket = {:#x} = {:#x}\n\n", static_cast<uint8_t>(FRAME_FLAG::End), EOP)));
 
-				//break;
+				break;
 			}
 		}
 	}
@@ -171,6 +171,7 @@ public:
 			const auto CmdStr = std::format("AT+{}={}\r", std::data(Cmd), Arg);
 			LOG(std::data(std::format("[A010] {}\n", CmdStr)));
 			SerialPort.write_some(asio::buffer(CmdStr)); VerifyError();
+			WaitOK();
 		}
 		return false;
 	}
