@@ -8,8 +8,8 @@
 #define USE_CV
 #include "../CVVK.h"
 
-//#define USE_DEPTH_SENSOR
-#include "../DepthSenser.h"
+#define USE_DEPTH_SENSOR
+#include "../DepthSensor.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
 class DisplacementRGB_DVK : public DisplacementVK
@@ -47,7 +47,7 @@ public:
 //!< 1枚のテクスチャにカラーとデプスが左右に共存してるケース (要 OpenCV)
 class DisplacementRGBDVK : public DisplacementCVVK
 #ifdef USE_DEPTH_SENSOR
-	, public DepthSenserA010
+	, public DepthSensorA010
 #endif
 {
 private:
@@ -110,11 +110,14 @@ public:
 
 #ifdef USE_DEPTH_SENSOR
 	virtual void Update() override {
-		DepthSenserA010::Update();
+		DepthSensorA010::Update();
 
 		auto Depth = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
 		//!< 黒白が凹凸となるように反転
 		Depth = ~Depth;
+
+		//Update2(Textures[0], Depth, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		//	Textures[1], Depth, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 
 		//!< プレビューする為の処理
 		cv::resize(Depth, Depth, cv::Size(420, 560));

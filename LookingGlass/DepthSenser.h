@@ -10,7 +10,7 @@
 
 #include "Common.h"
 
-class DepthSenser
+class DepthSensor
 {
 public:
 	enum class COM : uint8_t {
@@ -22,8 +22,8 @@ public:
 		//....
 	};
 	
-	DepthSenser() : Context(), SerialPort(Context) {}
-	virtual ~DepthSenser() {
+	DepthSensor() : Context(), SerialPort(Context) {}
+	virtual ~DepthSensor() {
 		if (SerialPort.is_open()) {
 			SerialPort.close();
 		}
@@ -58,14 +58,14 @@ protected:
 };
 
 //!< MaixSense A010
-class DepthSenserA010 : public DepthSenser
+class DepthSensorA010 : public DepthSensor
 {
 private:
-	using Super = DepthSenser;
+	using Super = DepthSensor;
 
 public:
-	DepthSenserA010() {}
-	virtual ~DepthSenserA010() {
+	DepthSensorA010() {}
+	virtual ~DepthSensorA010() {
 		if (SerialPort.is_open()) {
 		}
 	}
@@ -120,7 +120,7 @@ public:
 	virtual void OnFrame() {
 		LOG(std::data(std::format("[A010]\tReserved1 = {:#x}\n", Frame.Header.Reserved1)));
 		LOG(std::data(std::format("[A010]\tOutputMode = {}\n", 0 == Frame.Header.OutputMode ? "Depth" :"Depth + IR")));
-		LOG(std::data(std::format("[A010]\tSenserTemp = {}, DriverTemp = {}\n", Frame.Header.SenserTemp, Frame.Header.DriverTemp)));
+		LOG(std::data(std::format("[A010]\tSensorTemp = {}, DriverTemp = {}\n", Frame.Header.SensorTemp, Frame.Header.DriverTemp)));
 		LOG(std::data(std::format("[A010]\tExposureTime = {}, {}, {}, {}\n", Frame.Header.ExposureTime[0], Frame.Header.ExposureTime[1], Frame.Header.ExposureTime[2], Frame.Header.ExposureTime[3])));
 		LOG(std::data(std::format("[A010]\tErrorCode = {}\n", Frame.Header.ErrorCode)));
 		LOG(std::data(std::format("[A010]\tReserved2 = {:#x}\n", Frame.Header.Reserved2)));
@@ -204,7 +204,7 @@ public:
 		//!< 16 ƒoƒCƒg
 		uint8_t Reserved1;		//!< 0xff
 		uint8_t OutputMode;		//!< 0:depth only, 1:depth+ir
-		uint8_t SenserTemp;
+		uint8_t SensorTemp;
 		uint8_t DriverTemp;
 		uint8_t ExposureTime[4];
 		uint8_t ErrorCode;
