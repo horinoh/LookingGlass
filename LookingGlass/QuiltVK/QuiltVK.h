@@ -43,7 +43,8 @@ public:
 		//timestar_40.dds // 8x6
 		//soccerballquilt.dds // 8x6
 		//Jane_Guan_Space_Nap_qs8x6.dds //https://docs.lookingglassfactory.com/keyconcepts/quilts
-		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "Jane_Guan_Space_Nap_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "Rocks011_1K_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		//GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "Jane_Guan_Space_Nap_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 		//GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "StreetFighterII_8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
 		const auto& Extent = GLITextures.back().GetGliTexture().extent(0);

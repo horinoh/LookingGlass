@@ -62,7 +62,6 @@
 ### キルト画像 (Quilt image)
 - [Jane_Guan_Space_Nap_qs8x6.webp](https://docs.lookingglassfactory.com/keyconcepts/quilts) を ペイントツール等で png 等の形式で保存してから dds へ変換する (Convert Jane_Guan_Space_Nap_qs8x6.webp to dds format)
 
-### メッシュ (Mesh)
-- Thanks to [The Stanford 3D Scanning Repository](https://graphics.stanford.edu/data/3Dscanrep/)
-
-
+### アセット Thanks to
+- [The Stanford 3D Scanning Repository](https://graphics.stanford.edu/data/3Dscanrep/)
+- [cc0textures](https://cc0textures.com/)
