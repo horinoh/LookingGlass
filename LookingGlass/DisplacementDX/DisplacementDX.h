@@ -8,6 +8,74 @@
 #define USE_CV
 #include "../CVDX.h"
 
+//#define USE_DEPTH_SENSOR
+#include "../DepthSensor.h"
+
+#ifdef USE_DEPTH_SENSOR
+class DisplacementDepthSensorA010DX : public DisplacementDX, public DepthSensorA010
+{
+private:
+	using Super = DisplacementDX;
+public:
+	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
+		Super::OnCreate(hWnd, hInstance, Title);
+
+		//!< デプスセンサーオープン
+		Open(COM::COM3);
+#ifdef USE_CV
+		if (SerialPort.is_open()) {
+			cv::imshow("Preview", Preview);
+			cv::createTrackbar("Unit", "Preview", &Unit, static_cast<int>(UNIT::Max), [](int Value, void* Userdata) {
+				//static_cast<DepthSensorA010*>(Userdata)->SetCmdUNIT(Value);
+				}, this);
+			cv::createTrackbar("FPS", "Preview", &FPS, static_cast<int>(FPS::Max), [](int Value, void* Userdata) { 
+				//static_cast<DepthSensorA010*>(Userdata)->SetCmdFPS(Value);
+				}, this);
+		}
+#endif
+	}
+	virtual void CreateTexture() override {
+		Super::CreateTexture();
+
+		Textures.emplace_back().Create(COM_PTR_GET(Device), 100, 100, 1, DXGI_FORMAT_R8_UNORM);
+	}
+	virtual void DrawFrame(const UINT i) override {
+		Super::DrawFrame(i);
+
+		//!< デプスセンサーの更新
+		Update();
+	}
+	virtual const Texture& GetColorMap() const override { return Textures[0]; };
+	virtual const Texture& GetDepthMap() const override { return Textures[0]; };
+
+	virtual void Update() override {
+		DepthSensorA010::Update();
+
+		if (SerialPort.is_open()) {
+#ifdef USE_CV
+			auto Depth = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+			//!< 黒白が凹凸となるように反転
+			Depth = ~Depth;
+
+			//!< #TODO
+			//DX::UpdateTexture(Textures[0], 1, std::data(Frame.Payload), D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+
+			//!< プレビューする為の処理
+			cv::resize(Depth, Depth, cv::Size(420, 560));
+			Depth.copyTo(Preview);
+			cv::imshow("Preview", Preview);
+#endif
+		}
+	}
+
+#ifdef USE_CV
+	cv::Mat Preview = cv::Mat(cv::Size(420, 560), CV_8UC1);
+	int Unit;
+	int FPS;
+#endif
+};
+#endif
+
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
 class DisplacementRGB_DDX : public DisplacementDX
 {

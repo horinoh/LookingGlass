@@ -79,40 +79,42 @@ public:
 	}
 
 	virtual void Update() override {
-		while (true) {
-			uint16_t FrameBegin;
-			SerialPort.read_some(asio::buffer(&FrameBegin, sizeof(FrameBegin)), ErrorCode); VerifyError();
-			if (static_cast<uint16_t>(FRAME_FLAG::Begin) == FrameBegin) {
-				//!< フレーム開始のヘッダ発見
-				LOG(std::data(std::format("[A010] Frame hader = {:#x}\n", FrameBegin)));
+		if (SerialPort.is_open()) {
+			while (true) {
+				uint16_t FrameBegin;
+				SerialPort.read_some(asio::buffer(&FrameBegin, sizeof(FrameBegin)), ErrorCode); VerifyError();
+				if (static_cast<uint16_t>(FRAME_FLAG::Begin) == FrameBegin) {
+					//!< フレーム開始のヘッダ発見
+					LOG(std::data(std::format("[A010] Frame hader = {:#x}\n", FrameBegin)));
 
-				//!< データサイズ取得
-				uint16_t FrameDataLen;
-				SerialPort.read_some(asio::buffer(&FrameDataLen, sizeof(FrameDataLen)), ErrorCode); VerifyError();
-				LOG(std::data(std::format("[A010] Fame data length = {}\n", FrameDataLen)));
+					//!< データサイズ取得
+					uint16_t FrameDataLen;
+					SerialPort.read_some(asio::buffer(&FrameDataLen, sizeof(FrameDataLen)), ErrorCode); VerifyError();
+					LOG(std::data(std::format("[A010] Fame data length = {}\n", FrameDataLen)));
 
-				//!< フレームデータ取得
-				SerialPort.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
-				OnFrame();
+					//!< フレームデータ取得
+					SerialPort.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
+					OnFrame();
 
-				{
-					//!< フレーム開始ヘッダ以降ここまでの「(バイト数ではなく)値」を加算したものの下位 8 ビットを求める
-					const auto SumInit = (static_cast<uint16_t>(FRAME_FLAG::Begin) & 0xff) + (static_cast<uint16_t>(FRAME_FLAG::Begin) >> 8) + (FrameDataLen & 0xff) + (FrameDataLen >> 8);
-					auto P = reinterpret_cast<const uint8_t*>(&Frame);
-					const auto Sum = std::accumulate(P, P + FrameDataLen, SumInit) & 0xff;
+					{
+						//!< フレーム開始ヘッダ以降ここまでの「(バイト数ではなく)値」を加算したものの下位 8 ビットを求める
+						const auto SumInit = (static_cast<uint16_t>(FRAME_FLAG::Begin) & 0xff) + (static_cast<uint16_t>(FRAME_FLAG::Begin) >> 8) + (FrameDataLen & 0xff) + (FrameDataLen >> 8);
+						auto P = reinterpret_cast<const uint8_t*>(&Frame);
+						const auto Sum = std::accumulate(P, P + FrameDataLen, SumInit) & 0xff;
 
-					//!< チェックサム
-					uint8_t CheckSum;
-					SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
-					LOG(std::data(std::format("[A010] CheckSum = {} = {}\n", CheckSum, Sum)));
+						//!< チェックサム
+						uint8_t CheckSum;
+						SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
+						LOG(std::data(std::format("[A010] CheckSum = {} = {}\n", CheckSum, Sum)));
+					}
+
+					//!< エンドオブパケット
+					uint8_t EOP;
+					SerialPort.read_some(asio::buffer(&EOP, sizeof(EOP)), ErrorCode); VerifyError();
+					LOG(std::data(std::format("[A010] EndOfPacket = {:#x} = {:#x}\n\n", static_cast<uint8_t>(FRAME_FLAG::End), EOP)));
+
+					break;
 				}
-
-				//!< エンドオブパケット
-				uint8_t EOP;
-				SerialPort.read_some(asio::buffer(&EOP, sizeof(EOP)), ErrorCode); VerifyError();
-				LOG(std::data(std::format("[A010] EndOfPacket = {:#x} = {:#x}\n\n", static_cast<uint8_t>(FRAME_FLAG::End), EOP)));
-
-				break;
 			}
 		}
 	}
@@ -166,6 +168,15 @@ public:
 		Rate2000000 = 7,
 		Rate3000000 = 8,
 	};
+	enum class UNIT : uint8_t {
+		Min = 0,
+		Auto = Min,
+		Max = 10,
+	};
+	enum class FPS : uint8_t {
+		Min = 1,
+		Max = 19,
+	};
 	bool SetCmd(std::string_view Cmd, const uint8_t Arg) {
 		if (SerialPort.is_open()) {
 			const auto CmdStr = std::format("AT+{}={}\r", std::data(Cmd), Arg);
@@ -184,9 +195,9 @@ public:
 	//!< ボーレート(UART時) (Baudrate)
 	bool SetCmdBAUD(const BAUD Arg) { return SetCmd("BAUD", static_cast<const uint8_t>(Arg)); }
 	//!< 量子化ユニット (Quantization unit) 小さな値程、近距離が詳細になり、遠距離
-	bool SetCmdUNIT(const uint8_t Arg) { return SetCmd("UNIT", (std::clamp)(Arg, uint8_t(0), uint8_t(10))); }
+	bool SetCmdUNIT(const uint8_t Arg) { return SetCmd("UNIT", (std::clamp)(Arg, static_cast<uint8_t>(UNIT::Min), static_cast<uint8_t>(UNIT::Max))); }
 	//!< フレームレート (Frame per second)
-	bool SetCmdFPS(const uint8_t Arg) { return SetCmd("FPS", (std::clamp)(Arg, uint8_t(1), uint8_t(19))); }
+	bool SetCmdFPS(const uint8_t Arg) { return SetCmd("FPS", (std::clamp)(Arg, static_cast<uint8_t>(FPS::Min), static_cast<uint8_t>(FPS::Max))); }
 
 	bool WaitOK() {
 		if (SerialPort.is_open()) {
@@ -221,7 +232,6 @@ public:
 		std::array<uint8_t, 100 * 100> Payload;
 	} FRAME;
 
-	FRAME Frame;
-
 protected:
+	FRAME Frame;
 };

@@ -150,8 +150,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
 #ifdef USE_CV
+#ifdef USE_DEPTH_SENSOR
+            Inst = new DisplacementDepthSensorA010DX();
+#else
             Inst = new DisplacementRGBDDX();
             //Inst = new DisplacementStereoDX();
+#endif
 #else
             Inst = new DisplacementRGB_DDX();
 #endif
