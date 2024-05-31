@@ -438,7 +438,7 @@ public:
 		CreateDescriptor_Pass0();
 		CreateDescriptor_Pass1();
 	}
-	void PopulateBundleCommandList_Pass0() {
+	virtual void PopulateBundleCommandList_Pass0() {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
 		const auto PS = COM_PTR_GET(PipelineStates[0]);

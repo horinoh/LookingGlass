@@ -5,6 +5,8 @@
 #include <format>
 #include <algorithm>
 #include <thread>
+#include <thread>
+#include <random>
 
 #include <asio.hpp>
 
@@ -22,8 +24,19 @@ public:
 		//....
 	};
 	
-	DepthSensor() : Context(), SerialPort(Context) {}
+	DepthSensor() : Context(), SerialPort(Context) {
+#if defined(USE_CV) && defined(_DEBUG)
+		cv::imshow(WinNameCV, PreviewCV);
+		//cv::createTrackbar("X", WinNameCV, &X, XMax, [](int Value, void* Userdata) { static_cast<XXX*>(Userdata)->Xxx(Value); }, this);
+		//cv::createTrackbar("Y", WinNameCV, &Y, YMax, [](int Value, void* Userdata) { static_cast<YYY*>(Userdata)->Yyy(Value); }, this);
+#endif
+	}
 	virtual ~DepthSensor() {
+		Mutex.lock(); {
+			if (Thread.joinable()) {
+				Thread.detach();
+			}
+		} Mutex.unlock();
 		if (SerialPort.is_open()) {
 			SerialPort.close();
 		}
@@ -41,7 +54,24 @@ public:
 		}
 		return false;
 	}
+
 	virtual void Update() {}
+	virtual void UpdateAsyncStart() {
+		if (!Thread.joinable()) {
+			Thread = std::thread([&]() {
+				while (true) {
+					Update();
+					UpdateCV();
+					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
+				}
+			});
+		}
+	}
+	virtual void UpdateCV() {
+#if defined(USE_CV) && defined(_DEBUG)
+		cv::imshow(WinNameCV, PreviewCV);
+#endif
+	}
 
 	virtual bool VerifyError() {
 		if (ErrorCode) {
@@ -55,6 +85,15 @@ protected:
 	asio::io_context Context;
 	asio::serial_port SerialPort;
 	asio::error_code ErrorCode;
+
+	std::thread Thread;
+	std::mutex Mutex;
+
+#if defined(USE_CV) && defined(_DEBUG)
+	const cv::String WinNameCV = "Show";
+	cv::Mat PreviewCV = cv::Mat(cv::Size(800, 800), CV_8UC3);
+	cv::Mat DepthCV;
+#endif
 };
 
 //!< MaixSense A010
@@ -65,22 +104,22 @@ private:
 
 public:
 	DepthSensorA010() {}
-	virtual ~DepthSensorA010() {
-		if (SerialPort.is_open()) {
-		}
-	}
-
-	virtual bool Open(const COM Com) override {
-		if (Super::Open(Com)) {
-			//SetCmdDISP(DISP::LCD_USB);
-			return true;
-		}
-		return false;
-	}
-
+	virtual ~DepthSensorA010() {}
+	
 	virtual void Update() override {
-		if (SerialPort.is_open()) {
+		if (!SerialPort.is_open()) {
+			std::random_device RndDev;
+			Mutex.lock(); {
+				std::ranges::generate(Frame.Payload, [&]() { return RndDev(); });
+#if defined(USE_CV) && defined(_DEBUG)
+				DepthCV = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+#endif
+			} Mutex.unlock();
+		}
+		else {
 			while (true) {
+				if (!SerialPort.is_open()) { break; }
+
 				uint16_t FrameBegin;
 				SerialPort.read_some(asio::buffer(&FrameBegin, sizeof(FrameBegin)), ErrorCode); VerifyError();
 				if (static_cast<uint16_t>(FRAME_FLAG::Begin) == FrameBegin) {
@@ -93,20 +132,32 @@ public:
 					LOG(std::data(std::format("[A010] Fame data length = {}\n", FrameDataLen)));
 
 					//!< フレームデータ取得
-					SerialPort.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
+					Mutex.lock(); {
+						SerialPort.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
+						//!< 黒白が凹凸となるように反転
+						std::ranges::transform(Frame.Payload, std::begin(Frame.Payload), [](const uint8_t i) { return 0xff - i; });
+#if defined(USE_CV) && defined(_DEBUG)
+						DepthCV = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+#endif
+					} Mutex.unlock();
 					OnFrame();
 
+					//!< チェックサム
+#ifdef _DEBUG
 					{
 						//!< フレーム開始ヘッダ以降ここまでの「(バイト数ではなく)値」を加算したものの下位 8 ビットを求める
 						const auto SumInit = (static_cast<uint16_t>(FRAME_FLAG::Begin) & 0xff) + (static_cast<uint16_t>(FRAME_FLAG::Begin) >> 8) + (FrameDataLen & 0xff) + (FrameDataLen >> 8);
 						auto P = reinterpret_cast<const uint8_t*>(&Frame);
 						const auto Sum = std::accumulate(P, P + FrameDataLen, SumInit) & 0xff;
 
-						//!< チェックサム
 						uint8_t CheckSum;
 						SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
 						LOG(std::data(std::format("[A010] CheckSum = {} = {}\n", CheckSum, Sum)));
 					}
+#else
+					uint8_t CheckSum;
+					SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
+#endif
 
 					//!< エンドオブパケット
 					uint8_t EOP;
@@ -117,6 +168,15 @@ public:
 				}
 			}
 		}
+	}
+	virtual void UpdateCV() override {
+#if defined(USE_CV) && defined(_DEBUG)
+		//DepthCV = ~DepthCV;
+		//!< 複数画像をまとめて表示したい場合は cv::hconcat() や cv::vconcat() を使う
+		cv::resize(DepthCV, DepthCV, PreviewCV.size());
+		DepthCV.copyTo(PreviewCV);
+#endif
+		Super::UpdateCV();
 	}
 
 	virtual void OnFrame() {
@@ -233,5 +293,5 @@ public:
 	} FRAME;
 
 protected:
-	FRAME Frame;
+	FRAME Frame = { .Header = { .Rows = 100, .Cols = 100 } };
 };

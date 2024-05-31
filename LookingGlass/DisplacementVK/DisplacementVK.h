@@ -18,61 +18,29 @@ private:
 	using Super = DisplacementVK;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		Super::OnCreate(hWnd, hInstance, Title);
-
 		//!< デプスセンサーオープン
 		Open(COM::COM3);
-#ifdef USE_CV
-		if (SerialPort.is_open()) {
-			cv::imshow("Preview", Preview);
-			cv::createTrackbar("Unit", "Preview", &Unit, static_cast<int>(UNIT::Max), [](int Value, void* Userdata) {
-				//static_cast<DepthSensorA010*>(Userdata)->SetCmdUNIT(Value);
-				}, this);
-			cv::createTrackbar("FPS", "Preview", &FPS, static_cast<int>(FPS::Max), [](int Value, void* Userdata) {
-				//static_cast<DepthSensorA010*>(Userdata)->SetCmdFPS(Value);
-				}, this);
-		}
-#endif
+		
+		//!< 非同期更新開始
+		UpdateAsyncStart();
+
+		Super::OnCreate(hWnd, hInstance, Title);
 	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
-		Textures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, VK_FORMAT_R8_UNORM, VkExtent3D({ .width = 100, .height = 100, .depth = 1 }));	
-	}
-	virtual void DrawFrame(const UINT i) override {
-		Super::DrawFrame(i);
-
-		//!< デプスセンサーの更新
-		Update();
+		Textures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, VK_FORMAT_R8_UNORM, VkExtent3D({ .width = Frame.Header.Cols, .height = Frame.Header.Rows, .depth = 1 }));	
 	}
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
 	virtual const Texture& GetDepthMap() const override { return Textures[0]; };
 
-	virtual void Update() override {
-		DepthSensorA010::Update();
+	virtual void PopulateSecondaryCommandBuffer_Pass0() override {
+		Mutex.lock(); {
+			VK::UpdateTexture(Textures[0], Frame.Header.Cols, Frame.Header.Rows, 1, std::data(Frame.Payload), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+		} Mutex.unlock();
 
-		if (SerialPort.is_open()) {
-#ifdef USE_CV
-			auto Depth = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
-			//!< 黒白が凹凸となるように反転
-			Depth = ~Depth;
-
-			//!< #TODO
-			//VK::UpdateTexture(Textures[0], Frame.Header.Cols, Frame.Header.Rows, 1, std::data(Frame.Payload), VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
-
-			//!< プレビューする為の処理
-			cv::resize(Depth, Depth, cv::Size(420, 560));
-			Depth.copyTo(Preview);
-			cv::imshow("Preview", Preview);
-#endif
-		}
+		Super::PopulateSecondaryCommandBuffer_Pass0();
 	}
-
-#ifdef USE_CV
-	cv::Mat Preview = cv::Mat(cv::Size(420, 560), CV_8UC1);
-	int Unit;
-	int FPS;
-#endif
 };
 #endif
 

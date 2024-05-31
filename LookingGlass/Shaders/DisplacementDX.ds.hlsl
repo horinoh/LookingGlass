@@ -32,9 +32,11 @@ OUT main(const TESS_FACTOR tess, const float2 uv : SV_DomainLocation, const Outp
 		0.0f, Y, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
+	
+	const float Displacement = 1.0f;
 
 	Out.Texcoord = float2(uv.x, 1.0f - uv.y);
-	Out.Position = mul(World, float4(2.0f * uv - 1.0f,  DisplacementMap.SampleLevel(Sampler, Out.Texcoord, 0).r * 2.0f - 1.0f, 1.0f));
+	Out.Position = mul(World, float4(2.0f * uv - 1.0f, Displacement * (DisplacementMap.SampleLevel(Sampler, Out.Texcoord, 0).r * 2.0f - 1.0f), 1.0f));
 
 	return Out;
 }
