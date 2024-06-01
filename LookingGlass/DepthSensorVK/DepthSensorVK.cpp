@@ -1,12 +1,12 @@
-// DisplacementDX.cpp : Defines the entry point for the application.
+// DepthSensorVK.cpp : Defines the entry point for the application.
 //
 
 #include "framework.h"
-#include "DisplacementDX.h"
+#include "DepthSensorVK.h"
 
 #include "../BorderlessWin.h"
 
-DisplacementDX* Inst = nullptr;
+DepthSensorVK* Inst = nullptr;
 
 #define MAX_LOADSTRING 100
 
@@ -33,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_DISPLACEMENTDX, szWindowClass, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_DEPTHSENSORVK, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
@@ -42,7 +42,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_DISPLACEMENTDX));
+    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_DEPTHSENSORVK));
 
     MSG msg;
 
@@ -77,10 +77,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_DISPLACEMENTDX));
+    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_DEPTHSENSORVK));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_DISPLACEMENTDX);
+    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_DEPTHSENSORVK);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -149,15 +149,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-#ifdef USE_CV
-            Inst = new DisplacementRGBDDX();
-            //Inst = new DisplacementStereoDX();
-#else
-            Inst = new DisplacementRGB_DDX();
-#endif
-            Inst->OnCreate(hWnd, hInst, TEXT("DisplacementDX"));
-            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
-            SendMessage(hWnd, WM_PAINT, 0, 0);
+            Inst = new DepthSensorVK();
+            Inst->OnCreate(hWnd, hInst, TEXT("DepthSensorVK"));
+            SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         break;
     case WM_SIZE:
@@ -166,8 +161,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_EXITSIZEMOVE:
         if (nullptr != Inst) {
             Inst->OnExitSizeMove(hWnd, hInst);
-            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
-            SendMessage(hWnd, WM_PAINT, 0, 0);
+            SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         break;
     case WM_KEYDOWN:
@@ -178,9 +173,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case VK_RETURN:
             BorderlessWin::ToggleBorderless(hWnd);
             break;
-        case VK_TAB:
-            SendMessage(hWnd, WM_PAINT, 0, 0);
-            break;
+            //case VK_TAB:
+            //    SendMessage(hWnd, WM_PAINT, 0, 0);
+            //    break;
         default:
             break;
         }

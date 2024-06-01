@@ -46,10 +46,11 @@
 - 環境変数 Path へ `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` を追加 (Add `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` to environment variable Path)
 
 ### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)
-- [comtool](https://dl.sipeed.com/shareURL/MaixSense/MaixSense_A010/software_pack/comtool) をインストールしておく
+- デプスセンサーとして使用 (Used as depth sensor)
+- [comtool](https://dl.sipeed.com/shareURL/MaixSense/MaixSense_A010/software_pack/comtool) をインストールしておく (Install comtool)
 
 ### [asio](https://github.com/chriskohlhoff/asio.git)
-- サブモジュールとして追加した
+- サブモジュールとして追加した (Add as submodule)
 
 ## アセット (Assets)
 - アセットは LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
@@ -58,10 +59,19 @@
     - RGBD/ RGBD 画像
     - RGB_D/ RGB, Depth 画像 (DDS)
         - DDS のミップマップは不要 (No need mipmaps)
-    
-### キルト画像 (Quilt image)
-- [Jane_Guan_Space_Nap_qs8x6.webp](https://docs.lookingglassfactory.com/keyconcepts/quilts) を ペイントツール等で png 等の形式で保存してから dds へ変換する (Convert Jane_Guan_Space_Nap_qs8x6.webp to dds format)
-
-### アセット Thanks to
+### Thanks to
 - [The Stanford 3D Scanning Repository](https://graphics.stanford.edu/data/3Dscanrep/)
 - [cc0textures](https://cc0textures.com/)
+
+## プロジェクト (Projects)
+- QulitVK, QuiltDX
+    - キルト画像を Looking Glass (LKG) へ表示
+- MeshVK, MeshDX
+    - メッシュを複数視点から描画しキルト画像を作成
+    - LKG へ表示
+- Mesh2VK, Mesh2DX
+    - 上記に加え、メッシュを複数表示(インスタンシング)、回転させている
+- DisplacementVK, DisplacementDX
+    - デプスマップで板メッシュをディスプレースメントする
+    - 複数視点描画しキルト画像を作成
+    - LKG へ表示
