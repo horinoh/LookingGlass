@@ -1020,19 +1020,17 @@ protected:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			{
-				constexpr uint32_t Layers = 1;
-				constexpr uint32_t i = 0;
-				const std::vector BICs = {
-					VkBufferImageCopy({
-						.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
-						.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
-						.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
-						.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
-					}),
-				};
-				PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage, BICs, 1, Layers);
-			}
+			constexpr uint32_t Layers = 1;
+			constexpr uint32_t i = 0;
+			const std::vector BICs = {
+				VkBufferImageCopy({
+					.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
+					.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
+					.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
+					.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
+				}),
+			};
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage, BICs, 1, Layers);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
 	}

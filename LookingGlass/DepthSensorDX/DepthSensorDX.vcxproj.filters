@@ -45,6 +45,9 @@
     <ClInclude Include="..\HoloDX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\DepthSensor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DepthSensorDX.cpp">
@@ -99,6 +102,9 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="..\Shaders\FinalPassQuiltDispDX.ps.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\DisplacementGrayScaleDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

@@ -220,7 +220,7 @@ public:
 		//!< [Pass0]
 		const std::array SMs_Pass0 = {
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.vert.spv"),
-			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.frag.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / (DrawGrayScale() ? "DisplacementGrayScaleVK.frag.spv" : "DisplacementVK.frag.spv")),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.tese.spv"),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.tesc.spv"),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.geom.spv"),
@@ -546,6 +546,7 @@ public:
 
 	virtual const Texture& GetColorMap() const = 0;
 	virtual const Texture& GetDepthMap() const = 0;
+	virtual bool DrawGrayScale() const { return false; }
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {

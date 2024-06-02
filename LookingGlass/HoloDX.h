@@ -273,7 +273,7 @@ public:
 		//!<yPass0z
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass0;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ps.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / (DrawGrayScale() ? "DisplacementGrayScaleDX.ps.cso" : "DisplacementDX.ps.cso")).wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ds.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
@@ -586,6 +586,7 @@ public:
 
 	virtual const Texture& GetColorMap() const = 0;
 	virtual const Texture& GetDepthMap() const = 0;
+	virtual bool DrawGrayScale() const { return false; }
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {

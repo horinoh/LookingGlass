@@ -33,6 +33,12 @@ public:
 	}
 	virtual const Texture& GetColorMap() const override { return Textures[0]; };
 	virtual const Texture& GetDepthMap() const override { return Textures[0]; };
+	virtual bool DrawGrayScale() const override { return true; }
+
+	virtual void DrawFrame(const UINT i) override {
+		//Update();
+		//UpdateCV();
+	}
 
 	virtual void PopulateSecondaryCommandBuffer_Pass0() override {
 		Mutex.lock(); {

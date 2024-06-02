@@ -33,9 +33,7 @@ public:
 	}
 	virtual ~DepthSensor() {
 		Mutex.lock(); {
-			if (Thread.joinable()) {
-				Thread.detach();
-			}
+			Detach();
 		} Mutex.unlock();
 		if (SerialPort.is_open()) {
 			SerialPort.close();
@@ -67,6 +65,12 @@ public:
 			});
 		}
 	}
+	void Detach() {
+		if (Thread.joinable()) {
+			Thread.detach();
+		}
+	}
+
 	virtual void UpdateCV() {
 #if defined(USE_CV) && defined(_DEBUG)
 		cv::imshow(WinNameCV, PreviewCV);
@@ -106,6 +110,19 @@ public:
 	DepthSensorA010() {}
 	virtual ~DepthSensorA010() {}
 	
+	virtual bool Open(const DepthSensor::COM Com) override {
+		if (Super::Open(Com)) {
+			SetCmdISP(ISP::Off);
+			SetCmdDISP(DISP::USB);
+			SetCmdBAUD(BAUD::Rate0115200);
+			SetCmdUNIT(UNIT::Auto);
+			SetCmdFPS(FPS::Max);
+			SetCmdISP(ISP::On);
+			return true;
+		}
+		return false;
+	}
+
 	virtual void Update() override {
 		if (!SerialPort.is_open()) {
 			std::random_device RndDev;
@@ -242,30 +259,41 @@ public:
 			const auto CmdStr = std::format("AT+{}={}\r", std::data(Cmd), Arg);
 			LOG(std::data(std::format("[A010] {}\n", CmdStr)));
 			SerialPort.write_some(asio::buffer(CmdStr)); VerifyError();
+
 			WaitOK();
 		}
 		return false;
 	}
 	//!< オンオフ (Image Signal Processor)
 	bool SetCmdISP(const ISP Arg) { return SetCmd("ISP", static_cast<const uint8_t>(Arg)); }
-	//!< ビニング(解像度) (Binning)
+	//!< ビニング (解像度) (Binning)
 	bool SetCmdBINN(const BINN Arg) { return SetCmd("BINN", static_cast<const uint8_t>(Arg)); }
 	//!< 表示設定 (Display)
 	bool SetCmdDISP(const DISP Arg) { return SetCmd("DISP", static_cast<const uint8_t>(Arg)); }
-	//!< ボーレート(UART時) (Baudrate)
+	//!< ボーレート (UART時) (Baudrate)
 	bool SetCmdBAUD(const BAUD Arg) { return SetCmd("BAUD", static_cast<const uint8_t>(Arg)); }
 	//!< 量子化ユニット (Quantization unit) 小さな値程、近距離が詳細になり、遠距離
 	bool SetCmdUNIT(const uint8_t Arg) { return SetCmd("UNIT", (std::clamp)(Arg, static_cast<uint8_t>(UNIT::Min), static_cast<uint8_t>(UNIT::Max))); }
+	bool SetCmdUNIT(const UNIT Arg) { return SetCmdUNIT(static_cast<const uint8_t>(Arg)); }
 	//!< フレームレート (Frame per second)
 	bool SetCmdFPS(const uint8_t Arg) { return SetCmd("FPS", (std::clamp)(Arg, static_cast<uint8_t>(FPS::Min), static_cast<uint8_t>(FPS::Max))); }
+	bool SetCmdFPS(const FPS Arg) { return SetCmdFPS(static_cast<const uint8_t>(Arg)); }
 
 	bool WaitOK() {
 		if (SerialPort.is_open()) {
-			std::array<char, 3> Res;
-			SerialPort.read_some(asio::buffer(std::data(Res), sizeof(Res)), ErrorCode); VerifyError();
-			if ('O' == Res[0] && 'K' == Res[1] && '\r' == Res[2]) {
-				LOG(std::data(std::format("[A010] {}{}\n", Res[0], Res[1])));
-				return true;
+			while (true) {
+				char Res;
+				SerialPort.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
+				if ('O' == Res) {
+					SerialPort.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
+					if ('K' == Res) {
+						SerialPort.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
+						if ('\r' == Res) {
+							LOG(std::data(std::format("[A010]\tOK\n")));
+							return true;
+						}
+					}
+				}
 			}
 		}
 		return false;
