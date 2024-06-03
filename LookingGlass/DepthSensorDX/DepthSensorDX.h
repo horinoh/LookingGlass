@@ -37,9 +37,11 @@ public:
 	virtual bool DrawGrayScale() const override { return true; }
 
 	virtual void DrawFrame(const UINT i) override {
-		constexpr auto Bpp = 1;
-		constexpr auto Layers = 1;
-		AnimatedTextures[0].UpdateUploadBuffer(Frame.Header.Cols, Frame.Header.Rows, Bpp, std::data(Frame.Payload), Layers);
+		if (0 == i) {
+			constexpr auto Bpp = 1;
+			constexpr auto Layers = 1;
+			AnimatedTextures[0].UpdateUploadBuffer(Frame.Header.Cols, Frame.Header.Rows, Bpp, std::data(Frame.Payload), Layers);
+		}
 	}
 	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);

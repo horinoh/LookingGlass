@@ -1018,11 +1018,10 @@ protected:
 	private:
 		using Super = Texture;
 	public:
-		AnimatedTexture& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkFormat Format, const VkExtent3D& Extent) {
+		AnimatedTexture& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkFormat Format, const uint32_t Bpp, const VkExtent3D& Extent) {
 			Super::Create(Device, PDMP, Format, Extent);
 
 			//!< ステージングバッファを作る
-			constexpr auto Bpp = 1; //!< フォーマットから分かるが…
 			const auto Size = Extent.width * Extent.height * Bpp;
 			StagingBuffer.Create(Device, PDMP, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT); 
 
