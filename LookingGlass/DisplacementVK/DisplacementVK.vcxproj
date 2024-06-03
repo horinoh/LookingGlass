@@ -139,7 +139,6 @@
   <ItemGroup>
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\CVVK.h" />
-    <ClInclude Include="..\DepthSensor.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="..\HoloVK.h" />
     <ClInclude Include="..\VK.h" />

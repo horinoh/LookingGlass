@@ -14,7 +14,7 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="Shader Files">
-      <UniqueIdentifier>{e6fd7b39-159c-427f-8b9a-672b09bdac1f}</UniqueIdentifier>
+      <UniqueIdentifier>{92b96446-78a0-44b6-a5f6-0007f77f6ca0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -27,10 +27,7 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DisplacementDX.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\BorderlessWin.h">
+    <ClInclude Include="StereoDX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\DX.h">
@@ -39,10 +36,10 @@
     <ClInclude Include="..\Holo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\HoloDX.h">
+    <ClInclude Include="..\Leap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DXImage.h">
+    <ClInclude Include="..\BorderlessWin.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\CVDX.h">
@@ -50,10 +47,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DisplacementDX.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\BorderlessWin.cpp">
+    <ClCompile Include="StereoDX.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\DX.cpp">
@@ -62,7 +56,10 @@
     <ClCompile Include="..\Holo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\DXImage.cpp">
+    <ClCompile Include="..\Leap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BorderlessWin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\CV.cpp">
@@ -70,7 +67,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="DisplacementDX.rc">
+    <ResourceCompile Include="StereoDX.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
@@ -78,11 +75,14 @@
     <Image Include="small.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="DisplacementDX.ico">
+    <Image Include="StereoDX.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Shaders\DisplacementDX.vs.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
     <FxCompile Include="..\Shaders\FinalPassDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
@@ -102,9 +102,6 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="..\Shaders\DisplacementDX.ps.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\DisplacementDX.vs.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

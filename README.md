@@ -52,6 +52,9 @@
 ### [asio](https://github.com/chriskohlhoff/asio.git)
 - サブモジュールとして追加した (Add as submodule)
 
+### [LeapMotion]()
+- - インストール先を環境変数 LEAP_SDK_PATH へセット (Create install folder as environment variable LEAP_SDK_PATH)
+
 ## アセット (Assets)
 - アセットは LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
     - Mesh/ メッシュ

@@ -14,7 +14,7 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="Shader Files">
-      <UniqueIdentifier>{e6fd7b39-159c-427f-8b9a-672b09bdac1f}</UniqueIdentifier>
+      <UniqueIdentifier>{d0d03604-4a6b-4f95-92ad-4731d9edfa30}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -27,50 +27,41 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DisplacementDX.h">
+    <ClInclude Include="StereoVK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\BorderlessWin.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\DX.h">
+    <ClInclude Include="..\CVVK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Holo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\HoloDX.h">
+    <ClInclude Include="..\Leap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DXImage.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\CVDX.h">
+    <ClInclude Include="..\BorderlessWin.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DisplacementDX.cpp">
+    <ClCompile Include="StereoVK.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\BorderlessWin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\DX.cpp">
+    <ClCompile Include="..\CV.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Holo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\DXImage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\CV.cpp">
+    <ClCompile Include="..\Leap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="DisplacementDX.rc">
+    <ResourceCompile Include="StereoVK.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
@@ -78,34 +69,36 @@
     <Image Include="small.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="DisplacementDX.ico">
+    <Image Include="StereoVK.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\Shaders\FinalPassDX.ps.hlsl">
+    <None Include="..\Shaders\DisplacementVK.geom">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\FinalPassDX.vs.hlsl">
+    </None>
+    <None Include="..\Shaders\DisplacementVK.tesc">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\FinalPassQuiltDispDX.ps.hlsl">
+    </None>
+    <None Include="..\Shaders\DisplacementVK.tese">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\DisplacementDX.ds.hlsl">
+    </None>
+    <None Include="..\Shaders\DisplacementVK.vert">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\DisplacementDX.gs.hlsl">
+    </None>
+    <None Include="..\Shaders\FinalPassQuiltDispVK.frag">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\DisplacementDX.hs.hlsl">
+    </None>
+    <None Include="..\Shaders\FinalPassVK.frag">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\DisplacementDX.ps.hlsl">
+    </None>
+    <None Include="..\Shaders\FinalPassVK.vert">
       <Filter>Shader Files</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\DisplacementDX.vs.hlsl">
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Shaders\DisplacementVK.frag">
       <Filter>Shader Files</Filter>
-    </FxCompile>
+    </CustomBuild>
   </ItemGroup>
 </Project>

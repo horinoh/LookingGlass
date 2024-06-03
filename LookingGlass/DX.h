@@ -174,7 +174,7 @@ protected:
 		if (nullptr != Source) {
 			BYTE* Data;
 			VERIFY_SUCCEEDED((*Resource)->Map(0, nullptr, reinterpret_cast<void**>(&Data))); {
-				memcpy(Data, Source, Size);
+				std::memcpy(Data, Source, Size);
 			} (*Resource)->Unmap(0, nullptr);
 		}
 	}
@@ -508,14 +508,19 @@ protected:
 			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
 			const auto LayerSize = Height * PitchSizeA;
 			const auto SizeA = RoundUp((Layers - 1) * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
-			std::vector AlignedData(SizeA, std::byte());
-			for (UINT32 i = 0; i < Layers; ++i) {
-				for (UINT j = 0; j < Height; ++j) {
-					const auto Src = reinterpret_cast<const std::byte*>(Source) + j * PitchSize;
-					std::copy(Src, Src + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+			if (nullptr != Source) {
+				std::vector AlignedData(SizeA, std::byte());
+				for (UINT32 i = 0; i < Layers; ++i) {
+					for (UINT j = 0; j < Height; ++j) {
+						const auto Src = reinterpret_cast<const std::byte*>(Source) + j * PitchSize;
+						std::copy(Src, Src + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+					}
 				}
+				return Create(Device, SizeA, HT, std::data(AlignedData));
 			}
-			return Create(Device, std::size(AlignedData), HT, std::data(AlignedData));
+			else {
+				return Create(Device, SizeA, HT, nullptr);
+			}
 		}
 
 		void PopulateCopyCommand(ID3D12GraphicsCommandList* GCL, const size_t Size, ID3D12Resource* Upload, const D3D12_RESOURCE_STATES RS = D3D12_RESOURCE_STATE_GENERIC_READ) {
@@ -670,6 +675,56 @@ protected:
 			return *this;
 		}
 	};
+	class AnimatedTexture : public Texture
+	{
+	private:
+		using Super = Texture;
+	public:
+		AnimatedTexture Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format) {
+			Super::Create(Device, Width, Height, DepthOrArraySize, Format);
+
+			//!< アップロードバッファを作る
+			const auto RD = Resource->GetDesc();
+			constexpr auto Bpp = 1; //!< フォーマットから分かるが…
+			UploadBuffer.Create(Device, RD.Width, RD.Height, Bpp, DepthOrArraySize, D3D12_HEAP_TYPE_UPLOAD);
+
+			return *this;
+		}
+		void UpdateUploadBuffer(const UINT64 Width, const UINT Height, const UINT Bpp, const void* Src, const UINT Layers = 1) {
+			const auto PitchSize = Width * Bpp;
+			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+			const auto LayerSize = Height * PitchSizeA;
+			const auto SizeA = RoundUp((Layers - 1) * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
+			std::vector AlignedData(SizeA, std::byte());
+			for (UINT32 i = 0; i < Layers; ++i) {
+				for (UINT j = 0; j < Height; ++j) {
+					const auto Ptr = reinterpret_cast<const std::byte*>(Src) + j * PitchSize;
+					std::copy(Ptr, Ptr + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+				}
+			}
+			BYTE* Dst;
+			VERIFY_SUCCEEDED(UploadBuffer.Resource->Map(0, nullptr, reinterpret_cast<void**>(&Dst))); {
+				std::memcpy(Dst, std::data(AlignedData), std::size(AlignedData));
+			} UploadBuffer.Resource->Unmap(0, nullptr);
+		}
+		void PopulateUploadToTextureCommand(ID3D12GraphicsCommandList* CL, const UINT Bpp, const D3D12_RESOURCE_STATES RS) {
+			const auto RD = Resource->GetDesc();
+			constexpr UINT64 i = 0; //!< Layers == 1
+			const std::vector PSFs = {
+				D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
+					.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+					.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
+						.Format = RD.Format,
+						.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
+						.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
+					})
+				})
+			};
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), PSFs, RS);
+		}
+	protected:
+		ResourceBase UploadBuffer;
+	};
 
 	void UpdateTexture(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES State) {
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
@@ -792,6 +847,7 @@ protected:
 	std::vector<Texture> Textures;
 	std::vector<DepthTexture> DepthTextures;
 	std::vector<RenderTexture> RenderTextures;
+	std::vector<AnimatedTexture> AnimatedTextures;
 	std::vector<D3D12_STATIC_SAMPLER_DESC> StaticSamplerDescs;
 
 	std::vector<COM_PTR<ID3D12RootSignature>> RootSignatures;

@@ -282,6 +282,25 @@ protected:
 		}
 		return 0xffff;
 	}
+	static void CopyToDeviceMemory(VkDeviceMemory* DeviceMemory, const VkDevice Device, const size_t Size, const VkBufferUsageFlags BUF, const void* Src) {
+		constexpr auto MapSize = VK_WHOLE_SIZE;
+		void* Dst;
+		VERIFY_SUCCEEDED(vkMapMemory(Device, *DeviceMemory, 0, MapSize, static_cast<VkMemoryMapFlags>(0), &Dst)); {
+			std::memcpy(Dst, Src, Size);
+			if (!(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT & BUF)) {
+				const std::array MMRs = {
+					VkMappedMemoryRange({
+						.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, 
+						.pNext = nullptr, 
+						.memory = *DeviceMemory, 
+						.offset = 0, 
+						.size = MapSize
+					}),
+				};
+				VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Device, static_cast<uint32_t>(std::size(MMRs)), std::data(MMRs)));
+			}
+		} vkUnmapMemory(Device, *DeviceMemory);
+	}
 	static void CreateBufferMemory(VkBuffer* Buffer, VkDeviceMemory* DeviceMemory, const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const size_t Size, const VkBufferUsageFlags BUF, const VkMemoryPropertyFlags MPF, const void* Source = nullptr) {
 		constexpr std::array<uint32_t, 0> QFI = {};
 		const VkBufferCreateInfo BCI = {
@@ -314,18 +333,7 @@ protected:
 		VERIFY_SUCCEEDED(vkBindBufferMemory(Device, *Buffer, *DeviceMemory, 0));
 
 		if (nullptr != Source) {
-			constexpr auto MapSize = VK_WHOLE_SIZE;
-			void* Data;
-			VERIFY_SUCCEEDED(vkMapMemory(Device, *DeviceMemory, 0, MapSize, static_cast<VkMemoryMapFlags>(0), &Data)); {
-				memcpy(Data, Source, Size);
-				if (!(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT & BUF)) {
-					const std::array MMRs = {
-						VkMappedMemoryRange({.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, .pNext = nullptr, .memory = *DeviceMemory, .offset = 0, .size = MapSize }),
-					};
-					VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Device, static_cast<uint32_t>(std::size(MMRs)), std::data(MMRs)));
-				}
-
-			} vkUnmapMemory(Device, *DeviceMemory);
+			CopyToDeviceMemory(DeviceMemory, Device, Size, BUF, Source);
 		}
 	}
 	static void CreateImageMemory(VkImage* Image, VkDeviceMemory* DM, const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkImageCreateFlags ICF, const VkImageType IT, const VkFormat Format, const VkExtent3D& Extent, const uint32_t Levels, const uint32_t Layers, const VkImageUsageFlags IUF) {
@@ -388,8 +396,8 @@ protected:
 				})
 			};
 			void* Data;
-			VERIFY_SUCCEEDED(vkMapMemory(Dev, DM, Offset, /*Size*/MappedRangeSize, static_cast<VkMemoryMapFlags>(0), &Data)); {
-				memcpy(Data, Source, Size);
+			VERIFY_SUCCEEDED(vkMapMemory(Dev, DM, Offset, MappedRangeSize, static_cast<VkMemoryMapFlags>(0), &Data)); {
+				std::memcpy(Data, Source, Size);
 				VERIFY_SUCCEEDED(vkFlushMappedMemoryRanges(Dev, static_cast<uint32_t>(std::size(MMRs)), std::data(MMRs)));
 			} vkUnmapMemory(Dev, DM);
 		}
@@ -1005,6 +1013,44 @@ protected:
 			return *this;
 		}
 	};
+	class AnimatedTexture : public Texture
+	{
+	private:
+		using Super = Texture;
+	public:
+		AnimatedTexture& Create(const VkDevice Device, const VkPhysicalDeviceMemoryProperties PDMP, const VkFormat Format, const VkExtent3D& Extent) {
+			Super::Create(Device, PDMP, Format, Extent);
+
+			//!< ステージングバッファを作る
+			constexpr auto Bpp = 1; //!< フォーマットから分かるが…
+			const auto Size = Extent.width * Extent.height * Bpp;
+			StagingBuffer.Create(Device, PDMP, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT); 
+
+			return *this;
+		}
+		void UpdateStagingBuffer(const VkDevice Device, const size_t Size, const void* Src) {
+			CopyToDeviceMemory(&StagingBuffer.DeviceMemory, Device, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Src);
+		}
+		void PopulateStagingToImageCommand(VkCommandBuffer CB, const uint32_t Width, const uint32_t Height, const VkPipelineStageFlags Stage) {
+			constexpr uint32_t Layers = 1;
+			constexpr uint32_t i = 0;
+			const std::vector BICs = {
+				VkBufferImageCopy({
+					.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
+					.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
+					.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
+					.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
+				}),
+			};
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage, BICs, 1, Layers);
+		}
+		virtual void Destroy(const VkDevice Device) override {
+			Super::Destroy(Device);
+			StagingBuffer.Destroy(Device);
+		}
+	protected:
+		BufferMemory StagingBuffer;
+	};
 
 	void UpdateTexture(Texture& Tex, const uint32_t Width, const uint32_t Height, const uint32_t Bpp, const void* Data, const VkPipelineStageFlags Stage) {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
@@ -1135,6 +1181,7 @@ protected:
 	std::vector<Texture> Textures;
 	std::vector<DepthTexture> DepthTextures;
 	std::vector<RenderTexture> RenderTextures;
+	std::vector<AnimatedTexture> AnimatedTextures;
 	std::vector<VkSampler> Samplers;
 
 	std::vector<VkDescriptorSetLayout> DescriptorSetLayouts;

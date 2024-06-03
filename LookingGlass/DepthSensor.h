@@ -32,9 +32,8 @@ public:
 #endif
 	}
 	virtual ~DepthSensor() {
-		Mutex.lock(); {
-			Detach();
-		} Mutex.unlock();
+		ExitThread();
+
 		if (SerialPort.is_open()) {
 			SerialPort.close();
 		}
@@ -57,7 +56,7 @@ public:
 	virtual void UpdateAsyncStart() {
 		if (!Thread.joinable()) {
 			Thread = std::thread([&]() {
-				while (true) {
+				while (!IsExitThread) {
 					Update();
 					UpdateCV();
 					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
@@ -65,9 +64,10 @@ public:
 			});
 		}
 	}
-	void Detach() {
+	void ExitThread() {
+		IsExitThread = true;
 		if (Thread.joinable()) {
-			Thread.detach();
+			Thread.join();
 		}
 	}
 
@@ -92,6 +92,7 @@ protected:
 
 	std::thread Thread;
 	std::mutex Mutex;
+	bool IsExitThread = false;
 
 #if defined(USE_CV) && defined(_DEBUG)
 	const cv::String WinNameCV = "Show";
@@ -113,7 +114,7 @@ public:
 	virtual bool Open(const DepthSensor::COM Com) override {
 		if (Super::Open(Com)) {
 			SetCmdISP(ISP::Off);
-			SetCmdDISP(DISP::USB);
+			SetCmdDISP(DISP::LCD_USB);
 			SetCmdBAUD(BAUD::Rate0115200);
 			SetCmdUNIT(UNIT::Auto);
 			SetCmdFPS(FPS::Max);
@@ -134,7 +135,7 @@ public:
 			} Mutex.unlock();
 		}
 		else {
-			while (true) {
+			while (!IsExitThread) {
 				if (!SerialPort.is_open()) { break; }
 
 				uint16_t FrameBegin;

@@ -478,11 +478,14 @@ public:
 			PopulateBundleCommandList_Pass1();
 		}
 	}
+	virtual void PopulateAnimatedTextureCommand(const size_t i) {}
 	virtual void PopulateCommandList(const size_t i) override {
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
 		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
 		VERIFY_SUCCEEDED(DCL->Reset(DCA, nullptr));
 		{
+			PopulateAnimatedTextureCommand(i);
+
 			//!<yPass0z
 			{
 				const auto RS = COM_PTR_GET(RootSignatures[0]);

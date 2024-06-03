@@ -48,9 +48,6 @@
     <ClInclude Include="..\CVVK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\DepthSensor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DisplacementVK.cpp">

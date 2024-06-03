@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{3fdebe85-d45b-47f1-a168-d8c56e0d0446}</ProjectGuid>
-    <RootNamespace>DisplacementDX</RootNamespace>
+    <ProjectGuid>{e69803fb-3748-44e3-995e-ef3cd1805057}</ProjectGuid>
+    <RootNamespace>StereoDX</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -65,17 +65,19 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Prop\HOLO.props" />
-    <Import Project="..\Prop\DX_TEX.props" />
-    <Import Project="..\Prop\HLSL_DEBUG.props" />
     <Import Project="..\Prop\CV.props" />
+    <Import Project="..\Prop\DX_TEX.props" />
+    <Import Project="..\Prop\HOLO.props" />
+    <Import Project="..\Prop\HLSL_DEBUG.props" />
+    <Import Project="..\Prop\LEAP.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Prop\HOLO.props" />
-    <Import Project="..\Prop\HLSL.props" />
-    <Import Project="..\Prop\DX_TEX.props" />
     <Import Project="..\Prop\CV.props" />
+    <Import Project="..\Prop\DX_TEX.props" />
+    <Import Project="..\Prop\HLSL.props" />
+    <Import Project="..\Prop\HOLO.props" />
+    <Import Project="..\Prop\LEAP.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -140,28 +142,27 @@
     <ClInclude Include="..\BorderlessWin.h" />
     <ClInclude Include="..\CVDX.h" />
     <ClInclude Include="..\DX.h" />
-    <ClInclude Include="..\DXImage.h" />
     <ClInclude Include="..\Holo.h" />
-    <ClInclude Include="..\HoloDX.h" />
-    <ClInclude Include="DisplacementDX.h" />
+    <ClInclude Include="..\Leap.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="StereoDX.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BorderlessWin.cpp" />
     <ClCompile Include="..\CV.cpp" />
     <ClCompile Include="..\DX.cpp" />
-    <ClCompile Include="..\DXImage.cpp" />
     <ClCompile Include="..\Holo.cpp" />
-    <ClCompile Include="DisplacementDX.cpp" />
+    <ClCompile Include="..\Leap.cpp" />
+    <ClCompile Include="StereoDX.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="DisplacementDX.rc" />
+    <ResourceCompile Include="StereoDX.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="DisplacementDX.ico" />
     <Image Include="small.ico" />
+    <Image Include="StereoDX.ico" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Shaders\DisplacementDX.ds.hlsl">

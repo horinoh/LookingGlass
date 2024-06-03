@@ -66,6 +66,9 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 		vkDestroySampler(Device, i, GetAllocationCallbacks());
 	}
 
+	for (auto& i : AnimatedTextures) {
+		i.Destroy(Device);
+	}
 	for (auto& i : RenderTextures) { 
 		i.Destroy(Device);
 	}

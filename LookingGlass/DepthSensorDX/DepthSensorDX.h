@@ -29,24 +29,22 @@ public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
-		Textures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM);
+		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM);
 	}
 
-	virtual const Texture& GetColorMap() const override { return Textures[0]; };
-	virtual const Texture& GetDepthMap() const override { return Textures[0]; };
+	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
+	virtual const Texture& GetDepthMap() const override { return AnimatedTextures[0]; };
 	virtual bool DrawGrayScale() const override { return true; }
 
 	virtual void DrawFrame(const UINT i) override {
-		//Update();
-		//UpdateCV();
+		constexpr auto Bpp = 1;
+		constexpr auto Layers = 1;
+		AnimatedTextures[0].UpdateUploadBuffer(Frame.Header.Cols, Frame.Header.Rows, Bpp, std::data(Frame.Payload), Layers);
 	}
-
-	virtual void PopulateBundleCommandList_Pass0() {
-		Mutex.lock(); {
-			DX::UpdateTexture(Textures[0], 1, std::data(Frame.Payload), D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-		} Mutex.unlock();
-
-		Super::PopulateBundleCommandList_Pass0();
+	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
+		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+		constexpr auto Bpp = 1;
+		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	}
 };
 #endif

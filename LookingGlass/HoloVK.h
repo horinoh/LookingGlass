@@ -476,6 +476,7 @@ public:
 			PopulateSecondaryCommandBuffer_Pass1();
 		}
 	}
+	virtual void PopulateAnimatedTextureCommand(const size_t i) {}
 	virtual void PopulateCommandBuffer(const size_t i) override {
 		const auto CB = CommandBuffers[i];
 
@@ -486,6 +487,8 @@ public:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
+			PopulateAnimatedTextureCommand(i);
+
 			//!<yPass0z
 			{
 				const auto RP = RenderPasses[0];
