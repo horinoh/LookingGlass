@@ -52,6 +52,7 @@ public:
 	virtual void UpdateAsyncStart() {
 		if (!Thread.joinable()) {
 			Thread = std::thread([&]() {
+				//!< スレッドは外から終了させない、フラグだけ立ててスレッド自身に終了してもらう
 				while (!IsExitThread) {
 					Update();
 					UpdateCV();
@@ -107,7 +108,7 @@ protected:
 #endif
 };
 
-//!< 震度センサ MaixSense A010
+//!< 深度センサ MaixSense A010
 //!<	(Debug ビルドはログを出している関係上ちらつく為) Release ビルド推奨 
 class DepthSensorA010 : public DepthSensor
 {
