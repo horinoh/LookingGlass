@@ -18,7 +18,7 @@ private:
 	using Super = DisplacementDX;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//!< デプスセンサーオープン
+		//!< 震度センサオープン (COM番号は調べて、適切に指定する必要がある)
 		Open(COM::COM3);
 
 		//!< 非同期更新開始
@@ -33,6 +33,7 @@ public:
 	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
+
 		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	}
 

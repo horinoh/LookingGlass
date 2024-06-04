@@ -18,7 +18,7 @@ private:
 	using Super = DisplacementVK;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//!< デプスセンサーオープン
+		//!< 震度センサオープン (COM番号は調べて、適切に指定する必要がある)
 		Open(COM::COM3);
 
 		//!< 非同期更新開始

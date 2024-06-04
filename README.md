@@ -53,7 +53,7 @@
 - サブモジュールとして追加した (Add as submodule)
 
 ### [LeapMotion]()
-- - インストール先を環境変数 LEAP_SDK_PATH へセット (Create install folder as environment variable LEAP_SDK_PATH)
+- インストール先を環境変数 LEAP_SDK_PATH へセット (Create install folder as environment variable LEAP_SDK_PATH)
 
 ## アセット (Assets)
 - アセットは LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)
@@ -78,3 +78,7 @@
     - デプスマップで板メッシュをディスプレースメントする
     - 複数視点描画しキルト画像を作成
     - LKG へ表示
+- DepthSensorVK, DepthSensorDX
+    - 基本的には Displacement と同じ
+    - 震度センサ (MaixSense A010) の出力をデプスマップとして使用している
+    - ディスプレースメント値を極端にした方が効果が分かりやすい

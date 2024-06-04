@@ -107,7 +107,8 @@ protected:
 #endif
 };
 
-//!< MaixSense A010
+//!< 震度センサ MaixSense A010
+//!<	(Debug ビルドはログを出している関係上ちらつく為) Release ビルド推奨 
 class DepthSensorA010 : public DepthSensor
 {
 private:
@@ -195,7 +196,6 @@ public:
 	}
 	virtual void UpdateCV() override {
 #if defined(USE_CV) && defined(_DEBUG)
-		//DepthCV = ~DepthCV;
 		//!< 複数画像をまとめて表示したい場合は cv::hconcat() や cv::vconcat() を使う
 		cv::resize(DepthCV, DepthCV, PreviewCV.size());
 		DepthCV.copyTo(PreviewCV);
