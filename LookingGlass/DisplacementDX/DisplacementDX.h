@@ -5,7 +5,7 @@
 #define USE_TEXTURE
 #include "../HoloDX.h"
 
-#define USE_CV
+//#define USE_CV
 #include "../CVDX.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース

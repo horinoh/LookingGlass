@@ -312,6 +312,23 @@ protected:
 			} Resource->Unmap(0, nullptr);
 		}
 	}
+	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const UINT Bpp, const D3D12_RESOURCE_STATES RS, const UINT Layers = 1) {
+		const auto RD = Dst->GetDesc();
+		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> PSFs;
+		for (UINT i = 0; i < Layers; ++i) {
+			PSFs.emplace_back(
+				D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
+					.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
+					.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
+						.Format = RD.Format,
+						.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
+						.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
+					})
+				})
+			);
+		}
+		PopulateCopyTextureRegionCommand(GCL, Src, Dst, PSFs, RS);
+	}
 	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& PSFs, const D3D12_RESOURCE_STATES RS) {
 		for (UINT i = 0; i < std::size(PSFs); ++i) {
 			const D3D12_TEXTURE_COPY_LOCATION TCL_Dst = {
@@ -711,32 +728,18 @@ protected:
 		void PopulateUploadToTextureCommand(ID3D12GraphicsCommandList* CL, const UINT Bpp) {
 			//!< コピー先リソースステートへ変更する
 			ResourceBarrier(CL, COM_PTR_GET(Resource), ResourceState, D3D12_RESOURCE_STATE_COPY_DEST);
-
-			const auto RD = Resource->GetDesc();
-			constexpr UINT64 i = 0; //!< Layers == 1
-			const std::vector PSFs = {
-				D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
-					.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
-					.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
-						.Format = RD.Format,
-						.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
-						.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
-					})
-				})
-			};
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), PSFs, ResourceState);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), Bpp, ResourceState);
 		}
 	protected:
 		ResourceBase UploadBuffer;
 		D3D12_RESOURCE_STATES ResourceState = D3D12_RESOURCE_STATE_COPY_DEST;
 	};
 
-	void UpdateTexture(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES State) {
+	void UpdateTexture(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES RS) {
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
 		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
 
 		constexpr auto Layers = 1;
-
 		ResourceBase Upload;
 		{
 			const auto RD = Tex.Resource->GetDesc();
@@ -744,30 +747,16 @@ protected:
 		}
 
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
-			const auto RD = Tex.Resource->GetDesc();
-
-			constexpr UINT64 i = 0; //!< Layers == 1
-			const std::vector PSFs = {
-				D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
-					.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
-					.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
-						.Format = RD.Format,
-						.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
-						.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
-					})
-				})
-			};
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), PSFs, State);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), Bpp, RS);
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(COM_PTR_GET(GraphicsCommandQueue), CL, COM_PTR_GET(GraphicsFence));
 	}
-	void UpdateTexture2(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES State,
-		Texture& Tex1, const uint32_t Bpp1, const void* Data1, const D3D12_RESOURCE_STATES State1) {
+	void UpdateTexture2(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES RS,
+		Texture& Tex1, const uint32_t Bpp1, const void* Data1, const D3D12_RESOURCE_STATES RS1) {
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
 		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
 
 		constexpr auto Layers = 1;
-
 		ResourceBase Upload;
 		{
 			const auto RD = Tex.Resource->GetDesc();
@@ -781,38 +770,8 @@ protected:
 		}
 		
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
-			{
-				const auto RD = Tex.Resource->GetDesc();
-
-				constexpr UINT64 i = 0; //!< Layers == 1
-				const std::vector PSFs = {
-					D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
-						.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
-						.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
-							.Format = RD.Format,
-							.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
-							.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
-						})
-					})
-				};
-				PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), PSFs, State);
-			}
-			{
-				const auto RD = Tex1.Resource->GetDesc();
-
-				constexpr UINT64 i = 0; //!< Layers == 1
-				const std::vector PSFs = {
-					D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
-						.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
-						.Footprint = D3D12_SUBRESOURCE_FOOTPRINT({
-							.Format = RD.Format,
-							.Width = static_cast<UINT>(RD.Width), .Height = RD.Height, .Depth = 1,
-							.RowPitch = static_cast<UINT>(RoundUp(RD.Width * Bpp1, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT))
-						})
-					})
-				};
-				PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload1.Resource), COM_PTR_GET(Tex1.Resource), PSFs, State1);
-			}
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), Bpp, RS);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload1.Resource), COM_PTR_GET(Tex1.Resource), Bpp1, RS1);
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(COM_PTR_GET(GraphicsCommandQueue), CL, COM_PTR_GET(GraphicsFence));
 	}

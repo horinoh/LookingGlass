@@ -162,7 +162,7 @@ public:
 					Offset += static_cast<const VkDeviceSize>(GliTexture.size(j));
 				}
 			}
-			VK::PopulateCopyBufferToImageCommand(CB, Staging, Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, PSF, BICs, Levels, Layers);
+			VK::PopulateCopyBufferToImageCommand(CB, Staging, Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, PSF, BICs);
 		}
 		void SubmitCopyCommand(const VkDevice Dev, const VkPhysicalDeviceMemoryProperties PDMP, const VkCommandBuffer CB, const VkQueue Queue, const VkPipelineStageFlags PSF) {
 			VK::Scoped<StagingBuffer> Staging(Dev);

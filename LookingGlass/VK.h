@@ -430,8 +430,21 @@ protected:
 			0, nullptr,
 			static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 	}
-
-	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs, const uint32_t Levels, const uint32_t Layers) {
+	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const uint32_t Width, const uint32_t Height, const VkPipelineStageFlags PSF, const uint32_t Layers = 1) {
+		std::vector<VkBufferImageCopy> BICs;
+		for (uint32_t i = 0; i < Layers; ++i) {
+			BICs.emplace_back(
+				VkBufferImageCopy({
+					.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
+					.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
+					.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
+					.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
+				})
+			);
+		}
+		PopulateCopyBufferToImageCommand(CB, Src, Dst, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, PSF, BICs);
+	}
+	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs) {
 		assert(!empty(BICs) && "BufferImageCopy is empty");
 		ImageMemoryBarrier(CB,
 			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -1030,18 +1043,8 @@ protected:
 		void UpdateStagingBuffer(const VkDevice Device, const size_t Size, const void* Src) {
 			CopyToDeviceMemory(&StagingBuffer.DeviceMemory, Device, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Src);
 		}
-		void PopulateStagingToImageCommand(VkCommandBuffer CB, const uint32_t Width, const uint32_t Height, const VkPipelineStageFlags Stage) {
-			constexpr uint32_t Layers = 1;
-			constexpr uint32_t i = 0;
-			const std::vector BICs = {
-				VkBufferImageCopy({
-					.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
-					.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
-					.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
-					.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
-				}),
-			};
-			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage, BICs, 1, Layers);
+		void PopulateStagingToImageCommand(VkCommandBuffer CB, const uint32_t Width, const uint32_t Height, const VkPipelineStageFlags PSF) {
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Image, Width, Height, PSF);
 		}
 		virtual void Destroy(const VkDevice Device) override {
 			Super::Destroy(Device);
@@ -1051,7 +1054,7 @@ protected:
 		BufferMemory StagingBuffer;
 	};
 
-	void UpdateTexture(Texture& Tex, const uint32_t Width, const uint32_t Height, const uint32_t Bpp, const void* Data, const VkPipelineStageFlags Stage) {
+	void UpdateTexture(Texture& Tex, const uint32_t Width, const uint32_t Height, const uint32_t Bpp, const void* Data, const VkPipelineStageFlags PSF) {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
 
@@ -1065,22 +1068,12 @@ protected:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			constexpr uint32_t Layers = 1;
-			constexpr uint32_t i = 0;
-			const std::vector BICs = {
-				VkBufferImageCopy({
-					.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
-					.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
-					.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
-					.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
-				}),
-			};
-			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage, BICs, 1, Layers);
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, Width, Height, PSF);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
 	}
-	void UpdateTexture2(Texture& Tex, const uint32_t Width, const uint32_t Height, const uint32_t Bpp, const void* Data, const VkPipelineStageFlags Stage,
-		Texture& Tex1, const uint32_t Width1, const uint32_t Height1, const uint32_t Bpp1, const void* Data1, const VkPipelineStageFlags Stage1) {
+	void UpdateTexture2(Texture& Tex, const uint32_t Width, const uint32_t Height, const uint32_t Bpp, const void* Data, const VkPipelineStageFlags PSF,
+		Texture& Tex1, const uint32_t Width1, const uint32_t Height1, const uint32_t Bpp1, const void* Data1, const VkPipelineStageFlags PSF1) {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
 		const auto CB = CommandBuffers[0];
 
@@ -1097,32 +1090,8 @@ protected:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			{
-				constexpr uint32_t Layers = 1;
-				constexpr uint32_t i = 0;
-				const std::vector BICs = {
-					VkBufferImageCopy({
-						.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
-						.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
-						.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
-						.imageExtent = VkExtent3D({.width = Width, .height = Height, .depth = 1 })
-					}),
-				};
-				PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage, BICs, 1, Layers);
-			}
-			{
-				constexpr uint32_t Layers = 1;
-				constexpr uint32_t i = 0;
-				const std::vector BICs = {
-					VkBufferImageCopy({
-						.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
-						.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
-						.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
-						.imageExtent = VkExtent3D({.width = Width1, .height = Height1, .depth = 1 })
-					}),
-				};
-				PopulateCopyBufferToImageCommand(CB, StagingBuffer1.Buffer, Tex1.Image, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Stage1, BICs, 1, Layers);
-			}
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, Width, Height, PSF);
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer1.Buffer, Tex1.Image, Width1, Height1, PSF1);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
 	}
