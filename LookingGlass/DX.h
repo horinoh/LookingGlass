@@ -626,8 +626,8 @@ protected:
 	private:
 		using Super = ResourceBase;
 	public:
-		void Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format) {
-			DX::CreateTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, Format, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST);
+		void Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format, const D3D12_RESOURCE_STATES RS = D3D12_RESOURCE_STATE_COPY_DEST) {
+			DX::CreateTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, Format, D3D12_RESOURCE_FLAG_NONE, RS);
 		}
 	};
 	class Texture : public TextureBase
@@ -636,8 +636,8 @@ protected:
 		using Super = TextureBase;
 	public:
 		D3D12_SHADER_RESOURCE_VIEW_DESC SRV;
-		Texture& Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format) {
-			DX::CreateTextureResource(COM_PTR_PUT(Resource), Device, Width, Height, DepthOrArraySize, 1, Format, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST);
+		Texture& Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format, const D3D12_RESOURCE_STATES RS = D3D12_RESOURCE_STATE_COPY_DEST) {
+			Super::Create(Device, Width, Height, DepthOrArraySize, Format, RS);
 			SRV = DepthOrArraySize == 1 ?
 				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2D = D3D12_TEX2D_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) }) :
 				D3D12_SHADER_RESOURCE_VIEW_DESC({ .Format = Format, .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY, .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING, .Texture2DArray = D3D12_TEX2D_ARRAY_SRV({.MostDetailedMip = 0, .MipLevels = Resource->GetDesc().MipLevels, .FirstArraySlice = 0, .ArraySize = DepthOrArraySize, .PlaneSlice = 0, .ResourceMinLODClamp = 0.0f }) });
@@ -680,8 +680,9 @@ protected:
 	private:
 		using Super = Texture;
 	public:
-		AnimatedTexture Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format) {
-			Super::Create(Device, Width, Height, DepthOrArraySize, Format);
+		AnimatedTexture Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT16 DepthOrArraySize, const DXGI_FORMAT Format, const D3D12_RESOURCE_STATES RS) {
+			//!< 最終リソースステートを引数で受け取り ResourceState へ覚えておく
+			Super::Create(Device, Width, Height, DepthOrArraySize, Format, (ResourceState = RS));
 
 			//!< アップロードバッファを作る
 			const auto RD = Resource->GetDesc();
@@ -707,7 +708,10 @@ protected:
 				std::memcpy(Dst, std::data(AlignedData), std::size(AlignedData));
 			} UploadBuffer.Resource->Unmap(0, nullptr);
 		}
-		void PopulateUploadToTextureCommand(ID3D12GraphicsCommandList* CL, const UINT Bpp, const D3D12_RESOURCE_STATES RS) {
+		void PopulateUploadToTextureCommand(ID3D12GraphicsCommandList* CL, const UINT Bpp) {
+			//!< コピー先リソースステートへ変更する
+			ResourceBarrier(CL, COM_PTR_GET(Resource), ResourceState, D3D12_RESOURCE_STATE_COPY_DEST);
+
 			const auto RD = Resource->GetDesc();
 			constexpr UINT64 i = 0; //!< Layers == 1
 			const std::vector PSFs = {
@@ -720,10 +724,11 @@ protected:
 					})
 				})
 			};
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), PSFs, RS);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), PSFs, ResourceState);
 		}
 	protected:
 		ResourceBase UploadBuffer;
+		D3D12_RESOURCE_STATES ResourceState = D3D12_RESOURCE_STATE_COPY_DEST;
 	};
 
 	void UpdateTexture(Texture& Tex, const uint32_t Bpp, const void* Data, const D3D12_RESOURCE_STATES State) {

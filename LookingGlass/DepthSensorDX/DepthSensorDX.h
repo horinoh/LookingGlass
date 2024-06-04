@@ -28,8 +28,7 @@ public:
 	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
-
-		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM);
+		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	}
 
 	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
@@ -46,7 +45,7 @@ public:
 	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
 		constexpr auto Bpp = 1;
-		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp);
 	}
 };
 #endif
