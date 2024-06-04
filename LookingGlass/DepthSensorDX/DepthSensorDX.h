@@ -26,6 +26,11 @@ public:
 
 		Super::OnCreate(hWnd, hInstance, Title);
 	}
+	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
+		Super::OnDestroy(hWnd, hInstance);
+
+		Exit();
+	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);

@@ -26,6 +26,11 @@ public:
 
 		Super::OnCreate(hWnd, hInstance, Title);
 	}
+	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
+		Super::OnDestroy(hWnd, hInstance);
+		
+		Exit();
+	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 

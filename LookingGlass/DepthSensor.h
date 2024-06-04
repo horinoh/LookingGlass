@@ -32,11 +32,7 @@ public:
 #endif
 	}
 	virtual ~DepthSensor() {
-		ExitThread();
-
-		if (SerialPort.is_open()) {
-			SerialPort.close();
-		}
+		Exit();
 	}
 
 	virtual bool Open(const COM Com) {
@@ -64,11 +60,21 @@ public:
 			});
 		}
 	}
+	
 	void ExitThread() {
 		IsExitThread = true;
 		if (Thread.joinable()) {
 			Thread.join();
 		}
+	}
+	void ExitSerialPort() {
+		if (SerialPort.is_open()) {
+			SerialPort.close();
+		}
+	}
+	virtual void Exit() {
+		ExitThread();
+		ExitSerialPort();
 	}
 
 	virtual void UpdateCV() {
@@ -210,6 +216,14 @@ public:
 		LOG(std::data(std::format("[A010]\tReserved3 = {:#x}\n", Frame.Header.Reserved3)));
 
 		LOG(std::data(std::format("[A010]\t\tPayload = {}, {}, {}, {},...\n", Frame.Payload[0], Frame.Payload[1], Frame.Payload[2], Frame.Payload[3])));
+	}
+
+	virtual void Exit() override {
+		ExitThread();
+
+		SetCmdISP(ISP::Off);
+		
+		ExitSerialPort();
 	}
 
 	enum class FRAME_FLAG : uint16_t {
