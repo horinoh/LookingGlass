@@ -14,7 +14,7 @@ void main()
 	const float X = 6.0f * 0.65f, Y = 8.0f * 0.65f;
 #else
 	//!< Standard
-	const float X = 9.0f * 0.65f, Y = 5.0f * 0.65f;
+	const float X = 9.0f * 1.0f, Y = 5.0f * 1.0f;
 #endif
 	const mat4 World = mat4(X, 0.0f, 0.0f, 0.0f,
 						0.0f, Y, 0.0f, 0.0f,

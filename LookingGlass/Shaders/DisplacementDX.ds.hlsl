@@ -26,7 +26,7 @@ OUT main(const TESS_FACTOR tess, const float2 uv : SV_DomainLocation, const Outp
 	const float X = 6.0f * 0.65f, Y = 8.0f * 0.65f;
 #else
 	//!< Standard
-	const float X = 9.0f * 0.65f, Y = 5.0f * 0.65f;
+	const float X = 9.0f * 1.0f, Y = 5.0f * 1.0f;
 #endif
 	const float4x4 World = float4x4(X, 0.0f, 0.0f, 0.0f,
 		0.0f, Y, 0.0f, 0.0f,
