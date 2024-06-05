@@ -87,12 +87,12 @@ public:
 		//SendMessage(hWnd, WM_PAINT, 0, 0);
 	}
 	virtual void OnTimer(HWND hWnd, HINSTANCE hInstance) { SendMessage(hWnd, WM_PAINT, 0, 0); }
-	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance)  { Draw(); }
+	virtual void OnPaint(HWND hWnd, HINSTANCE hInstance) { Draw(); }
 	//!< 解放前に、終了を待たなくてはならないものをここで待つ
 	virtual void OnPreDestroy() {
 		WaitForFence(COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence));
 	}
-	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance)  { }
+	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) { }
 
 public:
 	virtual void CreateDevice([[maybe_unused]] HWND hWnd);
@@ -100,7 +100,7 @@ public:
 	virtual void CreateFence() {
 		VERIFY_SUCCEEDED(Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, COM_PTR_UUIDOF_PUTVOID(GraphicsFence)));
 	}
-	
+
 	virtual void CreateSwapChain(HWND hWnd, const DXGI_FORMAT ColorFormat, const UINT Width, const UINT Height);
 	virtual void GetSwapChainResource();
 	virtual void CreateSwapChain(HWND hWnd, const DXGI_FORMAT ColorFormat) {
@@ -121,7 +121,7 @@ public:
 	virtual void CreateConstantBuffer() {}
 	virtual void CreateTexture() {}
 	virtual void CreateStaticSampler() {}
-	
+
 	template<typename T = D3D12_ROOT_PARAMETER1> void SerializeRootSignature(COM_PTR<ID3DBlob>& Blob, const std::vector<T>& RPs, const std::vector<D3D12_STATIC_SAMPLER_DESC>& SSDs, const D3D12_ROOT_SIGNATURE_FLAGS Flags);
 	virtual void CreateRootSignature() {}
 
@@ -136,7 +136,7 @@ public:
 		const std::vector<DXGI_FORMAT>& RTVFormats,
 		LPCWSTR Name = nullptr);
 	virtual void CreatePipelineState() {}
-	
+
 	virtual void CreateDescriptor() {}
 
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f);
@@ -156,7 +156,7 @@ protected:
 		const D3D12_RESOURCE_DESC RD = {
 			.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
 			.Alignment = 0,
-			.Width = Size, .Height = 1, 
+			.Width = Size, .Height = 1,
 			.DepthOrArraySize = 1, .MipLevels = 1,
 			.Format = DXGI_FORMAT_UNKNOWN,
 			.SampleDesc = DXGI_SAMPLE_DESC({.Count = 1, .Quality = 0 }),
@@ -167,8 +167,8 @@ protected:
 			.Type = HT,
 			.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
 			.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
-			.CreationNodeMask = 0, 
-			.VisibleNodeMask = 0 
+			.CreationNodeMask = 0,
+			.VisibleNodeMask = 0
 		};
 		VERIFY_SUCCEEDED(Device->CreateCommittedResource(&HP, D3D12_HEAP_FLAG_NONE, &RD, RS, nullptr, IID_PPV_ARGS(Resource)));
 		if (nullptr != Source) {
@@ -264,7 +264,7 @@ protected:
 		CQ->ExecuteCommandLists(static_cast<UINT>(std::size(CLs)), std::data(CLs));
 		WaitForFence(CQ, Fence);
 	}
-	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL, 
+	static void ResourceBarrier(ID3D12GraphicsCommandList* GCL,
 		ID3D12Resource* Resource, const D3D12_RESOURCE_STATES Before, const D3D12_RESOURCE_STATES After) {
 		const std::array RBs = {
 			D3D12_RESOURCE_BARRIER({
@@ -279,7 +279,7 @@ protected:
 		};
 		GCL->ResourceBarrier(static_cast<UINT>(std::size(RBs)), std::data(RBs));
 	}
-	static void ResourceBarrier2(ID3D12GraphicsCommandList* GCL, 
+	static void ResourceBarrier2(ID3D12GraphicsCommandList* GCL,
 		ID3D12Resource* Resource0, const D3D12_RESOURCE_STATES Before0, const D3D12_RESOURCE_STATES After0,
 		ID3D12Resource* Resource1, const D3D12_RESOURCE_STATES Before1, const D3D12_RESOURCE_STATES After1) {
 		const std::array RBs = {
@@ -303,6 +303,21 @@ protected:
 			})
 		};
 		GCL->ResourceBarrier(static_cast<UINT>(std::size(RBs)), std::data(RBs));
+	}
+	static void CreateUploadTextureData(std::vector<std::byte>& AlignedData, const UINT64 Width, const UINT Height, const UINT Bpp, const UINT16 DepthOrArraySize, const void* Source = nullptr) {
+		const auto PitchSize = Width * Bpp;
+		const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+		const auto LayerSize = Height * PitchSizeA;
+		const auto SizeA = RoundUp((DepthOrArraySize - 1) * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
+		AlignedData.resize(SizeA);
+		if (nullptr != Source) {
+			for (UINT32 i = 0; i < DepthOrArraySize; ++i) {
+				for (UINT j = 0; j < Height; ++j) {
+					const auto Ptr = reinterpret_cast<const std::byte*>(Source) + j * PitchSize;
+					std::copy(Ptr, Ptr + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
+				}
+			}
+		}
 	}
 	static void CopyToUploadResource(ID3D12Resource* Resource, const size_t Size, const void* Source, const D3D12_RANGE* Range = nullptr) {
 		if (nullptr != Resource && Size && nullptr != Source) [[likely]] {
@@ -520,24 +535,10 @@ protected:
 			return *this;
 		}
 		//!< テクスチャアップロード用
-		ResourceBase& Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT Bpp, const UINT Layers, const D3D12_HEAP_TYPE HT, const void* Source = nullptr) {
-			const auto PitchSize = Width * Bpp;
-			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-			const auto LayerSize = Height * PitchSizeA;
-			const auto SizeA = RoundUp((Layers - 1) * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
-			if (nullptr != Source) {
-				std::vector AlignedData(SizeA, std::byte());
-				for (UINT32 i = 0; i < Layers; ++i) {
-					for (UINT j = 0; j < Height; ++j) {
-						const auto Src = reinterpret_cast<const std::byte*>(Source) + j * PitchSize;
-						std::copy(Src, Src + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
-					}
-				}
-				return Create(Device, SizeA, HT, std::data(AlignedData));
-			}
-			else {
-				return Create(Device, SizeA, HT, nullptr);
-			}
+		ResourceBase& Create(ID3D12Device* Device, const UINT64 Width, const UINT Height, const UINT Bpp, const UINT DepthOrArraySize, const D3D12_HEAP_TYPE HT, const void* Source = nullptr) {
+			std::vector<std::byte> AlignedData;
+			CreateUploadTextureData(AlignedData, Width, Height, Bpp, DepthOrArraySize, Source);
+			return Create(Device, std::size(AlignedData), HT, nullptr != Source ? std::data(AlignedData) : nullptr);
 		}
 
 		void PopulateCopyCommand(ID3D12GraphicsCommandList* GCL, const size_t Size, ID3D12Resource* Upload, const D3D12_RESOURCE_STATES RS = D3D12_RESOURCE_STATE_GENERIC_READ) {
@@ -708,22 +709,10 @@ protected:
 
 			return *this;
 		}
-		void UpdateUploadBuffer(const UINT64 Width, const UINT Height, const UINT Bpp, const void* Src, const UINT Layers = 1) {
-			const auto PitchSize = Width * Bpp;
-			const auto PitchSizeA = RoundUp(PitchSize, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-			const auto LayerSize = Height * PitchSizeA;
-			const auto SizeA = RoundUp((Layers - 1) * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + LayerSize;
-			std::vector AlignedData(SizeA, std::byte());
-			for (UINT32 i = 0; i < Layers; ++i) {
-				for (UINT j = 0; j < Height; ++j) {
-					const auto Ptr = reinterpret_cast<const std::byte*>(Src) + j * PitchSize;
-					std::copy(Ptr, Ptr + PitchSize - 1, &AlignedData[RoundUp(i * LayerSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT) + j * PitchSizeA]);
-				}
-			}
-			BYTE* Dst;
-			VERIFY_SUCCEEDED(UploadBuffer.Resource->Map(0, nullptr, reinterpret_cast<void**>(&Dst))); {
-				std::memcpy(Dst, std::data(AlignedData), std::size(AlignedData));
-			} UploadBuffer.Resource->Unmap(0, nullptr);
+		void UpdateUploadBuffer(const UINT64 Width, const UINT Height, const UINT Bpp, const UINT DepthOrArraySize, const void* Source) {
+			std::vector<std::byte> AlignedData;
+			CreateUploadTextureData(AlignedData, Width, Height, Bpp, DepthOrArraySize, Source);
+			CopyToUploadResource(COM_PTR_GET(UploadBuffer.Resource), std::size(AlignedData), std::data(AlignedData));
 		}
 		void PopulateUploadToTextureCommand(ID3D12GraphicsCommandList* CL, const UINT Bpp) {
 			//!< コピー先リソースステートへ変更する

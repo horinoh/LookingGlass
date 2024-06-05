@@ -288,7 +288,7 @@ public:
 	bool SetCmdDISP(const DISP Arg) { return SetCmd("DISP", static_cast<const uint8_t>(Arg)); }
 	//!< ボーレート (UART時) (Baudrate)
 	bool SetCmdBAUD(const BAUD Arg) { return SetCmd("BAUD", static_cast<const uint8_t>(Arg)); }
-	//!< 量子化ユニット (Quantization unit) 小さな値程、近距離が詳細になり、遠距離
+	//!< 量子化ユニット (Quantization unit) 小さな値程、近距離が詳細になり、遠距離範囲が狭くなる
 	bool SetCmdUNIT(const uint8_t Arg) { return SetCmd("UNIT", (std::clamp)(Arg, static_cast<uint8_t>(UNIT::Min), static_cast<uint8_t>(UNIT::Max))); }
 	bool SetCmdUNIT(const UNIT Arg) { return SetCmdUNIT(static_cast<const uint8_t>(Arg)); }
 	//!< フレームレート (Frame per second)

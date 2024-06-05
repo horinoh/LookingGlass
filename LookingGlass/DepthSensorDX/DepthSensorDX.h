@@ -34,6 +34,7 @@ public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
+		constexpr auto Layers = 1;
 		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	}
 
@@ -45,11 +46,12 @@ public:
 		if (0 == i) {
 			constexpr auto Bpp = 1;
 			constexpr auto Layers = 1;
-			AnimatedTextures[0].UpdateUploadBuffer(Frame.Header.Cols, Frame.Header.Rows, Bpp, std::data(Frame.Payload), Layers);
+			AnimatedTextures[0].UpdateUploadBuffer(Frame.Header.Cols, Frame.Header.Rows, Bpp, Layers, std::data(Frame.Payload));
 		}
 	}
 	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
 		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+
 		constexpr auto Bpp = 1;
 		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp);
 	}

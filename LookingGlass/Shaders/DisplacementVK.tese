@@ -16,13 +16,13 @@ void main()
 	//!< Standard
 	const float X = 9.0f * 1.0f, Y = 5.0f * 1.0f;
 #endif
+	const float Z = 1.0f;
 	const mat4 World = mat4(X, 0.0f, 0.0f, 0.0f,
 						0.0f, Y, 0.0f, 0.0f,
-						0.0f, 0.0f, 1.0f, 0.0f,
+						0.0f, 0.0f, Z, 0.0f,
 						0.0f, 0.0f, 0.0f, 1.0f);
-	const float Displacement = 1.0f;
 
 	OutTexcoord = vec2(gl_TessCoord.x, 1.0f - gl_TessCoord.y);
-	gl_Position = World * vec4(2.0f * gl_TessCoord.xy - 1.0f, Displacement * (textureLod(DisplacementMap, OutTexcoord, 0.0f).r * 2.0f - 1.0f), 1.0f);
+	gl_Position = World * vec4(2.0f * gl_TessCoord.xy - 1.0f, textureLod(DisplacementMap, OutTexcoord, 0.0f).r * 2.0f - 1.0f, 1.0f);
 }
 
