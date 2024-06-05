@@ -327,10 +327,10 @@ protected:
 			} Resource->Unmap(0, nullptr);
 		}
 	}
-	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const UINT Bpp, const D3D12_RESOURCE_STATES RS, const UINT Layers = 1) {
+	static void PopulateCopyTextureRegionCommand(ID3D12GraphicsCommandList* GCL, ID3D12Resource* Src, ID3D12Resource* Dst, const UINT Bpp, const UINT16 DepthOrArraySize, const D3D12_RESOURCE_STATES RS) {
 		const auto RD = Dst->GetDesc();
 		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> PSFs;
-		for (UINT i = 0; i < Layers; ++i) {
+		for (UINT i = 0; i < DepthOrArraySize; ++i) {
 			PSFs.emplace_back(
 				D3D12_PLACED_SUBRESOURCE_FOOTPRINT({
 					.Offset = RoundUp(i, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT),
@@ -717,7 +717,7 @@ protected:
 		void PopulateUploadToTextureCommand(ID3D12GraphicsCommandList* CL, const UINT Bpp) {
 			//!< コピー先リソースステートへ変更する
 			ResourceBarrier(CL, COM_PTR_GET(Resource), ResourceState, D3D12_RESOURCE_STATE_COPY_DEST);
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), Bpp, ResourceState);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(UploadBuffer.Resource), COM_PTR_GET(Resource), Bpp, 1, ResourceState);
 		}
 	protected:
 		ResourceBase UploadBuffer;
@@ -736,7 +736,7 @@ protected:
 		}
 
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), Bpp, RS);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), Bpp, 1, RS);
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(COM_PTR_GET(GraphicsCommandQueue), CL, COM_PTR_GET(GraphicsFence));
 	}
@@ -759,8 +759,8 @@ protected:
 		}
 		
 		VERIFY_SUCCEEDED(CL->Reset(CA, nullptr)); {
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), Bpp, RS);
-			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload1.Resource), COM_PTR_GET(Tex1.Resource), Bpp1, RS1);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload.Resource), COM_PTR_GET(Tex.Resource), Bpp, 1, RS);
+			PopulateCopyTextureRegionCommand(CL, COM_PTR_GET(Upload1.Resource), COM_PTR_GET(Tex1.Resource), Bpp1, 1, RS1);
 		} VERIFY_SUCCEEDED(CL->Close());
 		DX::ExecuteAndWait(COM_PTR_GET(GraphicsCommandQueue), CL, COM_PTR_GET(GraphicsFence));
 	}

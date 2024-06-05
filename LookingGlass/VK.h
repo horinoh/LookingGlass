@@ -430,7 +430,7 @@ protected:
 			0, nullptr,
 			static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
 	}
-	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const uint32_t Width, const uint32_t Height, const VkPipelineStageFlags PSF, const uint32_t Layers = 1) {
+	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const uint32_t Width, const uint32_t Height, const uint32_t Layers, const VkPipelineStageFlags PSF) {
 		std::vector<VkBufferImageCopy> BICs;
 		for (uint32_t i = 0; i < Layers; ++i) {
 			BICs.emplace_back(
@@ -1044,7 +1044,7 @@ protected:
 			CopyToDeviceMemory(&StagingBuffer.DeviceMemory, Device, Size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Src);
 		}
 		void PopulateStagingToImageCommand(VkCommandBuffer CB, const uint32_t Width, const uint32_t Height, const VkPipelineStageFlags PSF) {
-			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Image, Width, Height, PSF);
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Image, Width, Height, 1, PSF);
 		}
 		virtual void Destroy(const VkDevice Device) override {
 			Super::Destroy(Device);
@@ -1068,7 +1068,7 @@ protected:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, Width, Height, PSF);
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, Width, Height, 1, PSF);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
 	}
@@ -1090,8 +1090,8 @@ protected:
 			.pInheritanceInfo = nullptr
 		};
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(CB, &CBBI)); {
-			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, Width, Height, PSF);
-			PopulateCopyBufferToImageCommand(CB, StagingBuffer1.Buffer, Tex1.Image, Width1, Height1, PSF1);
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer.Buffer, Tex.Image, Width, Height, 1, PSF);
+			PopulateCopyBufferToImageCommand(CB, StagingBuffer1.Buffer, Tex1.Image, Width1, Height1, 1, PSF1);
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 		VK::SubmitAndWait(GraphicsQueue, CB);
 	}
