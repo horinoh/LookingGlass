@@ -5,7 +5,6 @@
 #include <format>
 #include <algorithm>
 #include <thread>
-#include <thread>
 #include <random>
 
 #include <asio.hpp>

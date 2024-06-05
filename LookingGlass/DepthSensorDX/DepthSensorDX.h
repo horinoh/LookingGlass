@@ -35,7 +35,7 @@ public:
 		Super::CreateTexture();
 
 		constexpr auto Layers = 1;
-		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, 1, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), Frame.Header.Cols, Frame.Header.Rows, Layers, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	}
 
 	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
