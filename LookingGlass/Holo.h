@@ -13,6 +13,9 @@
 #include "Common.h"
 
 //#define DISPLAY_QUILT
+#ifdef DISPLAY_QUILT
+#define DISPLAY_MOST_LR_QUILT
+#endif
 
 class Holo
 {
@@ -193,10 +196,10 @@ protected:
 		int Ri = 0;
 		int Bi = 2;
 
-#if 1
-		int TileX = 8, TileY = 6;
-#else
+#ifdef DISPLAY_MOST_LR_QUILT
 		int TileX = 2, TileY = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
+#else
+		int TileX = 8, TileY = 6;
 #endif
 		float QuiltAspect = static_cast<float>(TileX) / TileY;
 		float Padding;

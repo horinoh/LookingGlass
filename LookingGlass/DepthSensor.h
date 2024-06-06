@@ -11,6 +11,9 @@
 
 #include "Common.h"
 
+//!< (DEBUG ビルド時) 冗長にログを出力する、ログ出力の影響で画面がちらつく事がある
+//#define LOG_VERBOSE
+
 class DepthSensor
 {
 public:
@@ -108,7 +111,6 @@ protected:
 };
 
 //!< 深度センサ MaixSense A010
-//!<	(Debug ビルドはログを出している関係上ちらつく為) Release ビルド推奨 
 class DepthSensorA010 : public DepthSensor
 {
 private:
@@ -149,13 +151,15 @@ public:
 				SerialPort.read_some(asio::buffer(&FrameBegin, sizeof(FrameBegin)), ErrorCode); VerifyError();
 				if (static_cast<uint16_t>(FRAME_FLAG::Begin) == FrameBegin) {
 					//!< フレーム開始のヘッダ発見
+#ifdef LOG_VERBOSE
 					LOG(std::data(std::format("[A010] Frame hader = {:#x}\n", FrameBegin)));
-
+#endif
 					//!< データサイズ取得
 					uint16_t FrameDataLen;
 					SerialPort.read_some(asio::buffer(&FrameDataLen, sizeof(FrameDataLen)), ErrorCode); VerifyError();
+#ifdef LOG_VERBOSE
 					LOG(std::data(std::format("[A010] Fame data length = {}\n", FrameDataLen)));
-
+#endif
 					//!< フレームデータ取得
 					Mutex.lock(); {
 						SerialPort.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
@@ -177,7 +181,9 @@ public:
 
 						uint8_t CheckSum;
 						SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
+#ifdef LOG_VERBOSE
 						LOG(std::data(std::format("[A010] CheckSum = {} = {}\n", CheckSum, Sum)));
+#endif
 					}
 #else
 					uint8_t CheckSum;
@@ -187,8 +193,9 @@ public:
 					//!< エンドオブパケット
 					uint8_t EOP;
 					SerialPort.read_some(asio::buffer(&EOP, sizeof(EOP)), ErrorCode); VerifyError();
+#ifdef LOG_VERBOSE
 					LOG(std::data(std::format("[A010] EndOfPacket = {:#x} = {:#x}\n\n", static_cast<uint8_t>(FRAME_FLAG::End), EOP)));
-
+#endif
 					break;
 				}
 			}
@@ -204,6 +211,7 @@ public:
 	}
 
 	virtual void OnFrame() {
+#ifdef LOG_VERBOSE
 		LOG(std::data(std::format("[A010]\tReserved1 = {:#x}\n", Frame.Header.Reserved1)));
 		LOG(std::data(std::format("[A010]\tOutputMode = {}\n", 0 == Frame.Header.OutputMode ? "Depth" :"Depth + IR")));
 		LOG(std::data(std::format("[A010]\tSensorTemp = {}, DriverTemp = {}\n", Frame.Header.SensorTemp, Frame.Header.DriverTemp)));
@@ -216,6 +224,7 @@ public:
 		LOG(std::data(std::format("[A010]\tReserved3 = {:#x}\n", Frame.Header.Reserved3)));
 
 		LOG(std::data(std::format("[A010]\t\tPayload = {}, {}, {}, {},...\n", Frame.Payload[0], Frame.Payload[1], Frame.Payload[2], Frame.Payload[3])));
+#endif
 	}
 
 	virtual void Exit() override {
