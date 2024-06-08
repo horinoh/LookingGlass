@@ -8,13 +8,120 @@
 #include <random>
 
 #include <asio.hpp>
+#include <asio/use_awaitable.hpp>
 
 #include "Common.h"
 
 //!< (DEBUG ビルド時) 冗長にログを出力する、ログ出力の影響で画面がちらつく事がある
 //#define LOG_VERBOSE
 
-class DepthSensor
+class Http 
+{
+public:
+	Http(asio::io_context& Context, std::string_view Server, std::string_view Path) 
+		: Resolver(Context), Socket(Context)
+	{
+		asio::ip::tcp::resolver::query Query(std::string(Server), "http");
+		Resolver.async_resolve(Query, [&](const asio::error_code EC, const asio::ip::tcp::resolver::iterator& EndPoint) {
+			if (!EC) {
+				LOG(std::data(std::format("Resolve [OK]\n")));
+
+				//!< 接続
+				asio::async_connect(Socket, EndPoint, [&](const asio::error_code EC_Cnt, const asio::ip::tcp::resolver::iterator&) {
+					if (!EC_Cnt) {
+						LOG(std::data(std::format("Connect [OK]\n")));
+
+						//!< リクエスト書込
+						std::ostream RequestStream(&Request);
+						RequestStream << "GET " << Path << " HTTP/1.0\r\n";
+						RequestStream << "Host: " << Server << "\r\n";
+						RequestStream << "Accept: */*\r\n";
+						RequestStream << "Connection: close\r\n\r\n";
+						asio::async_write(Socket, Request, [&](const asio::error_code EC_Req, const size_t ReqSize) {
+							if (!EC_Req) {
+								LOG(std::data(std::format("Write Request ({}Bytes) [OK]\n", ReqSize)));
+
+								//!< レスポンス読込
+								asio::async_read_until(Socket, Response, "\r\n", [&](const asio::error_code EC_Res, const size_t ResSize) {
+									if (!EC_Res) {
+										LOG(std::data(std::format("Read Response ({}Bytes) [OK]\n", ResSize)));
+
+										//!< レスポンスが OK かどうか
+										std::istream ResponseStream(&Response);
+										std::string HttpVersion;
+										ResponseStream >> HttpVersion;
+										unsigned int StatusCode;
+										ResponseStream >> StatusCode;
+										std::string StatusMessage;
+										std::getline(ResponseStream, StatusMessage);
+										if (ResponseStream && HttpVersion.substr(0, 5) == "HTTP/" && 200 == StatusCode) {
+											LOG(std::data(std::format("Response (StatusCode = {}, StatusMessage = {}) [OK]\n", StatusCode, StatusMessage)));
+											//!< ヘッダ読込 (空行まで読み込む)
+											asio::async_read_until(Socket, Response, "\r\n\r\n", [&](const asio::error_code EC_Hd, const size_t HdSize) {
+												if (!EC_Hd) {
+													LOG(std::data(std::format("Read Header ({}Bytes) [OK]\n", HdSize)));
+
+													//!< レスポンスヘッダを処理
+													LOG("Header\n");
+													std::istream ResponseHeaderStream(&Response);
+													std::string Header;
+													while (std::getline(ResponseHeaderStream, Header) && Header != "\r") {
+														LOG(std::data(std::format("\t{}\n", Header)));
+													}
+													LOG(std::data(std::format("\n")));
+
+													//!< コンテンツ出力
+													LOG("Contents\n");
+													if (Response.size() > 0) {
+														LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
+													}
+
+													//!< 残りのデータを EOF まで読み込む
+													LOG("Remains\n");
+													asio::error_code ErrorCode;
+													int count = 0;
+													while (asio::read(Socket, Response, asio::transfer_at_least(1), ErrorCode)) {
+														LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
+														++count;
+													}
+													if (asio::error::eof == ErrorCode) {
+														LOG(std::data(std::format("[EOF]\n")));
+													}
+													//asio::async_read(Socket, Response, asio::transfer_at_least(1), asio::use_awaitable);
+												}
+											});
+										}
+									}
+								});
+							}
+						});
+					}
+				});
+			}
+		});
+	}
+
+	//asio::awaitable<void> OnContent(const asio::error_code EC, const size_t Size)
+	//{
+	//	if (!EC) {
+	//		LOG(std::data(std::format("Read Rest {} [OK]\n", Size)));
+	//		LOG(std::data(std::format("Response {}\n", reinterpret_cast<const char*>(Response.data().data()))));
+
+	//		asio::async_read(Socket, Response, asio::transfer_at_least(1), asio::use_awaitable);
+	//	}
+	//	else if (asio::error::eof == EC) {
+	//		LOG(std::data(std::format("[EOF]\n")));
+	//	}
+	//}
+
+protected:
+	asio::ip::tcp::resolver Resolver;
+	asio::ip::tcp::socket Socket;
+	asio::streambuf Request;
+	asio::streambuf Response;
+};
+
+class SerialPort
 {
 public:
 	enum class COM : uint8_t {
@@ -26,64 +133,30 @@ public:
 		//....
 	};
 	
-	DepthSensor() : Context(), SerialPort(Context) {
-#if defined(USE_CV) && defined(_DEBUG)
-		cv::imshow(WinNameCV, PreviewCV);
-		//cv::createTrackbar("X", WinNameCV, &X, XMax, [](int Value, void* Userdata) { static_cast<XXX*>(Userdata)->Xxx(Value); }, this);
-		//cv::createTrackbar("Y", WinNameCV, &Y, YMax, [](int Value, void* Userdata) { static_cast<YYY*>(Userdata)->Yyy(Value); }, this);
-#endif
-	}
-	virtual ~DepthSensor() {
-		Exit();
-	}
+	SerialPort() : Context(), Port(Context) {}
 
 	virtual bool Open(const COM Com) {
-		SerialPort.open(std::format("COM{}", static_cast<uint8_t>(Com)), ErrorCode);
+		Port.open(std::format("COM{}", static_cast<uint8_t>(Com)), ErrorCode);
 		if (!VerifyError()) {
-			SerialPort.set_option(asio::serial_port::baud_rate(115200));
-			SerialPort.set_option(asio::serial_port::character_size(8));
-			SerialPort.set_option(asio::serial_port::parity(asio::serial_port::parity::none));
-			SerialPort.set_option(asio::serial_port::stop_bits(asio::serial_port::stop_bits::one));
-			SerialPort.set_option(asio::serial_port::flow_control(asio::serial_port::flow_control::none));
+			Port.set_option(asio::serial_port::baud_rate(115200));
+			Port.set_option(asio::serial_port::character_size(8));
+			Port.set_option(asio::serial_port::parity(asio::serial_port::parity::none));
+			Port.set_option(asio::serial_port::stop_bits(asio::serial_port::stop_bits::one));
+			Port.set_option(asio::serial_port::flow_control(asio::serial_port::flow_control::none));
 			return true;
 		}
 		return false;
 	}
 
 	virtual void Update() {}
-	virtual void UpdateAsyncStart() {
-		if (!Thread.joinable()) {
-			Thread = std::thread([&]() {
-				//!< スレッドは外から終了させない、フラグだけ立ててスレッド自身に終了してもらう
-				while (!IsExitThread) {
-					Update();
-					UpdateCV();
-					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
-				}
-			});
-		}
-	}
 	
-	void ExitThread() {
-		IsExitThread = true;
-		if (Thread.joinable()) {
-			Thread.join();
-		}
-	}
 	void ExitSerialPort() {
-		if (SerialPort.is_open()) {
-			SerialPort.close();
+		if (Port.is_open()) {
+			Port.close();
 		}
 	}
 	virtual void Exit() {
-		ExitThread();
 		ExitSerialPort();
-	}
-
-	virtual void UpdateCV() {
-#if defined(USE_CV) && defined(_DEBUG)
-		cv::imshow(WinNameCV, PreviewCV);
-#endif
 	}
 
 	virtual bool VerifyError() {
@@ -96,9 +169,55 @@ public:
 
 protected:
 	asio::io_context Context;
-	asio::serial_port SerialPort;
+	asio::serial_port Port;
 	asio::error_code ErrorCode;
+};
 
+class DepthSensorSerialPort : public SerialPort
+{
+private:
+	using Super = SerialPort;
+
+public:
+	DepthSensorSerialPort() {
+#if defined(USE_CV) && defined(_DEBUG)
+		cv::imshow(WinNameCV, PreviewCV);
+		//cv::createTrackbar("X", WinNameCV, &X, XMax, [](int Value, void* Userdata) { static_cast<XXX*>(Userdata)->Xxx(Value); }, this);
+		//cv::createTrackbar("Y", WinNameCV, &Y, YMax, [](int Value, void* Userdata) { static_cast<YYY*>(Userdata)->Yyy(Value); }, this);
+#endif
+	}
+
+	virtual void UpdateAsyncStart() {
+		if (!Thread.joinable()) {
+			Thread = std::thread([&]() {
+				//!< スレッドは外から終了させない、フラグだけ立ててスレッド自身に終了してもらう
+				while (!IsExitThread) {
+					Update();
+					UpdateCV();
+					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
+				}
+				});
+		}
+	}
+
+	void ExitThread() {
+		IsExitThread = true;
+		if (Thread.joinable()) {
+			Thread.join();
+		}
+	}
+	virtual void Exit() override {
+		ExitThread();
+		ExitSerialPort();
+	}
+
+	virtual void UpdateCV() {
+#if defined(USE_CV) && defined(_DEBUG)
+		cv::imshow(WinNameCV, PreviewCV);
+#endif
+	}
+
+protected:
 	std::thread Thread;
 	std::mutex Mutex;
 	bool IsExitThread = false;
@@ -111,16 +230,16 @@ protected:
 };
 
 //!< 深度センサ MaixSense A010
-class DepthSensorA010 : public DepthSensor
+class DepthSensorA010 : public DepthSensorSerialPort
 {
 private:
-	using Super = DepthSensor;
+	using Super = DepthSensorSerialPort;
 
 public:
 	DepthSensorA010() {}
 	virtual ~DepthSensorA010() {}
 	
-	virtual bool Open(const DepthSensor::COM Com) override {
+	virtual bool Open(const SerialPort::COM Com) override {
 		if (Super::Open(Com)) {
 			SetCmdISP(ISP::Off);
 			SetCmdDISP(DISP::LCD_USB);
@@ -134,7 +253,7 @@ public:
 	}
 
 	virtual void Update() override {
-		if (!SerialPort.is_open()) {
+		if (!Port.is_open()) {
 			std::random_device RndDev;
 			Mutex.lock(); {
 				std::ranges::generate(Frame.Payload, [&]() { return RndDev(); });
@@ -145,10 +264,10 @@ public:
 		}
 		else {
 			while (!IsExitThread) {
-				if (!SerialPort.is_open()) { break; }
+				if (!Port.is_open()) { break; }
 
 				uint16_t FrameBegin;
-				SerialPort.read_some(asio::buffer(&FrameBegin, sizeof(FrameBegin)), ErrorCode); VerifyError();
+				Port.read_some(asio::buffer(&FrameBegin, sizeof(FrameBegin)), ErrorCode); VerifyError();
 				if (static_cast<uint16_t>(FRAME_FLAG::Begin) == FrameBegin) {
 					//!< フレーム開始のヘッダ発見
 #ifdef LOG_VERBOSE
@@ -156,13 +275,13 @@ public:
 #endif
 					//!< データサイズ取得
 					uint16_t FrameDataLen;
-					SerialPort.read_some(asio::buffer(&FrameDataLen, sizeof(FrameDataLen)), ErrorCode); VerifyError();
+					Port.read_some(asio::buffer(&FrameDataLen, sizeof(FrameDataLen)), ErrorCode); VerifyError();
 #ifdef LOG_VERBOSE
 					LOG(std::data(std::format("[A010] Fame data length = {}\n", FrameDataLen)));
 #endif
 					//!< フレームデータ取得
 					Mutex.lock(); {
-						SerialPort.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
+						Port.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
 						//!< 黒白が凹凸となるように反転
 						std::ranges::transform(Frame.Payload, std::begin(Frame.Payload), [](const uint8_t i) { return 0xff - i; });
 #if defined(USE_CV) && defined(_DEBUG)
@@ -180,19 +299,19 @@ public:
 						const auto Sum = std::accumulate(P, P + FrameDataLen, SumInit) & 0xff;
 
 						uint8_t CheckSum;
-						SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
+						Port.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
 #ifdef LOG_VERBOSE
 						LOG(std::data(std::format("[A010] CheckSum = {} = {}\n", CheckSum, Sum)));
 #endif
 					}
 #else
 					uint8_t CheckSum;
-					SerialPort.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
+					Port.read_some(asio::buffer(&CheckSum, sizeof(CheckSum)), ErrorCode); VerifyError();
 #endif
 
 					//!< エンドオブパケット
 					uint8_t EOP;
-					SerialPort.read_some(asio::buffer(&EOP, sizeof(EOP)), ErrorCode); VerifyError();
+					Port.read_some(asio::buffer(&EOP, sizeof(EOP)), ErrorCode); VerifyError();
 #ifdef LOG_VERBOSE
 					LOG(std::data(std::format("[A010] EndOfPacket = {:#x} = {:#x}\n\n", static_cast<uint8_t>(FRAME_FLAG::End), EOP)));
 #endif
@@ -279,10 +398,10 @@ public:
 		Max = 19,
 	};
 	bool SetCmd(std::string_view Cmd, const uint8_t Arg) {
-		if (SerialPort.is_open()) {
+		if (Port.is_open()) {
 			const auto CmdStr = std::format("AT+{}={}\r", std::data(Cmd), Arg);
 			LOG(std::data(std::format("[A010] {}\n", CmdStr)));
-			SerialPort.write_some(asio::buffer(CmdStr)); VerifyError();
+			Port.write_some(asio::buffer(CmdStr)); VerifyError();
 
 			WaitOK();
 		}
@@ -304,14 +423,14 @@ public:
 	bool SetCmdFPS(const FPS Arg) { return SetCmdFPS(static_cast<const uint8_t>(Arg)); }
 
 	bool WaitOK() {
-		if (SerialPort.is_open()) {
+		if (Port.is_open()) {
 			while (true) {
 				char Res;
-				SerialPort.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
+				Port.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
 				if ('O' == Res) {
-					SerialPort.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
+					Port.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
 					if ('K' == Res) {
-						SerialPort.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
+						Port.read_some(asio::buffer(&Res, sizeof(Res)), ErrorCode); VerifyError();
 						if ('\r' == Res) {
 							LOG(std::data(std::format("[A010]\tOK\n")));
 							return true;
