@@ -114,11 +114,100 @@ public:
 	//	}
 	//}
 
+	virtual void Update() {}
+	virtual void Exit() {}
+
+	static void RunTest() {
+		asio::io_context Context;
+		Http http(Context, "www.google.com", "/");
+		auto Thread = std::thread([&]() { Context.run(); });
+		Thread.join();
+	}
+
 protected:
 	asio::ip::tcp::resolver Resolver;
 	asio::ip::tcp::socket Socket;
 	asio::streambuf Request;
 	asio::streambuf Response;
+};
+
+class DepthSensorA075 : public Http
+{
+private:
+	using Super = Http;
+
+public:
+	virtual void UpdateAsyncStart() {
+		if (!Thread.joinable()) {
+			Thread = std::thread([&]() {
+				//!< スレッドは外から終了させない、フラグだけ立ててスレッド自身に終了してもらう
+				while (!IsExitThread) {
+					Update();
+					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
+				}
+			});
+		}
+	}
+
+	void ExitThread() {
+		IsExitThread = true;
+		if (Thread.joinable()) {
+			Thread.join();
+		}
+	}
+	virtual void Exit() override {
+		ExitThread();
+	}
+
+	typedef struct {
+		uint8_t TriggerMode;//(1)
+		uint8_t	DeepMode; //!< (1) 0:16Bit, 1:8Bit
+		uint8_t DeepShift; //(255)
+		uint8_t IRMode; //!< (1) 0:16Bit, 1:8Bit
+		uint8_t StatusMode; //!< (2) 0:2, 1:1/4, 2:1, 3:1/8
+		uint8_t StatusMask; // (7)
+		uint8_t RGBMode; // (1) 0:Raw, 1:Jpg
+		uint8_t RGBRes;// (0)
+		uint8_t ExposureTime[4]; //(0)
+	} CONFIG;
+
+	typedef struct {
+		uint64_t FrameId;
+		uint64_t StampMsec;
+		CONFIG Config;
+		uint32_t DeepDataSize;
+		uint32_t RGBDataSize;
+	} FRAME_HEADER;
+
+	typedef struct {
+		FRAME_HEADER Header;
+		
+		//std::array<uint8_t or uint16_t, 320 * 240> Depth;
+		//std::array<uint8_t or uint16_t, 320 * 240> IR;
+		//std::array<uint8_t or uint16_t, 320 * 240> Status;
+		//std::array<uint8_t, 320 * 240 * 3> RGB;
+
+	} FRAME;
+
+	static const uint32_t Resolution = 320 * 240;
+	static uint32_t GetSizeDeep(const CONFIG& Conf) { return Conf.DeepMode ? Resolution : (Resolution << 1); }
+	static uint32_t GetSizeIR(const CONFIG& Conf) { return Conf.IRMode ? Resolution : (Resolution << 1); }
+	static uint32_t GetSizeStatus(const CONFIG& Conf) {
+		switch (Conf.StatusMode) {
+		case 0: return  (Resolution << 1);
+		case 1: return (Resolution >> 2);
+		case 2: return Resolution;
+		default: return (Resolution >> 3);
+		}
+	}
+
+protected:
+	std::string_view Server = "192.168.233.1:80";
+	std::string_view Path = "/getdeep";
+
+	std::thread Thread;
+	std::mutex Mutex;
+	bool IsExitThread = false;
 };
 
 class SerialPort
@@ -173,19 +262,20 @@ protected:
 	asio::error_code ErrorCode;
 };
 
-class DepthSensorSerialPort : public SerialPort
+//!< 深度センサ MaixSense A010
+class DepthSensorA010 : public SerialPort
 {
 private:
 	using Super = SerialPort;
 
 public:
-	DepthSensorSerialPort() {
+	DepthSensorA010() {
 #if defined(USE_CV) && defined(_DEBUG)
 		cv::imshow(WinNameCV, PreviewCV);
 		//cv::createTrackbar("X", WinNameCV, &X, XMax, [](int Value, void* Userdata) { static_cast<XXX*>(Userdata)->Xxx(Value); }, this);
 		//cv::createTrackbar("Y", WinNameCV, &Y, YMax, [](int Value, void* Userdata) { static_cast<YYY*>(Userdata)->Yyy(Value); }, this);
 #endif
-	}
+	}	
 
 	virtual void UpdateAsyncStart() {
 		if (!Thread.joinable()) {
@@ -206,39 +296,7 @@ public:
 			Thread.join();
 		}
 	}
-	virtual void Exit() override {
-		ExitThread();
-		ExitSerialPort();
-	}
 
-	virtual void UpdateCV() {
-#if defined(USE_CV) && defined(_DEBUG)
-		cv::imshow(WinNameCV, PreviewCV);
-#endif
-	}
-
-protected:
-	std::thread Thread;
-	std::mutex Mutex;
-	bool IsExitThread = false;
-
-#if defined(USE_CV) && defined(_DEBUG)
-	const cv::String WinNameCV = "Show";
-	cv::Mat PreviewCV = cv::Mat(cv::Size(800, 800), CV_8UC3);
-	cv::Mat DepthCV;
-#endif
-};
-
-//!< 深度センサ MaixSense A010
-class DepthSensorA010 : public DepthSensorSerialPort
-{
-private:
-	using Super = DepthSensorSerialPort;
-
-public:
-	DepthSensorA010() {}
-	virtual ~DepthSensorA010() {}
-	
 	virtual bool Open(const SerialPort::COM Com) override {
 		if (Super::Open(Com)) {
 			SetCmdISP(ISP::Off);
@@ -320,13 +378,14 @@ public:
 			}
 		}
 	}
-	virtual void UpdateCV() override {
+	virtual void UpdateCV() {
 #if defined(USE_CV) && defined(_DEBUG)
 		//!< 複数画像をまとめて表示したい場合は cv::hconcat() や cv::vconcat() を使う
 		cv::resize(DepthCV, DepthCV, PreviewCV.size());
 		DepthCV.copyTo(PreviewCV);
+
+		cv::imshow(WinNameCV, PreviewCV);
 #endif
-		Super::UpdateCV();
 	}
 
 	virtual void OnFrame() {
@@ -465,4 +524,14 @@ public:
 
 protected:
 	FRAME Frame = { .Header = { .Rows = 100, .Cols = 100 } };
+
+	std::thread Thread;
+	std::mutex Mutex;
+	bool IsExitThread = false;
+
+#if defined(USE_CV) && defined(_DEBUG)
+	const cv::String WinNameCV = "Show";
+	cv::Mat PreviewCV = cv::Mat(cv::Size(800, 800), CV_8UC3);
+	cv::Mat DepthCV;
+#endif
 };
