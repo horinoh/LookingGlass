@@ -173,26 +173,27 @@ public:
 		//!< 【Pass1】
 		CreateImmutableSampler_LinearRepeat();
 	}
-	virtual void CreatePipelineLayout() override {
+	virtual void CreatePipelineLayout_Pass0() {
 		const std::array ISs = { Samplers[0] };
-
-		//!<【Pass0】ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用 [Using dynamic offset (UNIFORM_BUFFER_DYNAMIC)]
-		{
-			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
-				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
-				VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
-				VkDescriptorSetLayoutBinding({.binding = 2, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, .pImmutableSamplers = std::data(ISs) }),
-				});
-			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
-		}
-		//!<【Pass1】
-		{
-			CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
-				VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
-				VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr }),
-				});
-			VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[1] }, {});
-		}
+		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用 [Using dynamic offset (UNIFORM_BUFFER_DYNAMIC)]
+		CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
+			VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
+			VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
+			VkDescriptorSetLayoutBinding({.binding = 2, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, .pImmutableSamplers = std::data(ISs) }),
+			});
+		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
+	}
+	virtual void CreatePipelineLayout_Pass1() {
+		const std::array ISs = { Samplers[0] };
+		CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
+			VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
+			VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr }),
+			});
+		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[1] }, {});
+	}
+	virtual void CreatePipelineLayout() override {
+		CreatePipelineLayout_Pass0();
+		CreatePipelineLayout_Pass1();
 	}
 	virtual void CreateRenderPass() override {
 		//!< 【Pass0】
@@ -221,7 +222,7 @@ public:
 		const std::array SMs_Pass0 = {
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.vert.spv"),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / (DrawGrayScale() ? "DisplacementGrayScaleVK.frag.spv" : "DisplacementVK.frag.spv")),
-			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.tese.spv"),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / (UseDisplacementWorldMatrix() ? "Displacement2VK.tese.spv" : "DisplacementVK.tese.spv")),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.tesc.spv"),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.geom.spv"),
 		};
@@ -255,7 +256,7 @@ public:
 		for (auto i : SMs_Pass0) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 		for (auto i : SMs_Pass1) { vkDestroyShaderModule(Device, i, GetAllocationCallbacks()); }
 	}
-	void CreateDescriptor_Pass0() {
+	virtual void CreateDescriptor_Pass0() {
 		//!<【Pass0】ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用 [Using dynamic offset (UNIFORM_BUFFER_DYNAMIC)]
 		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
 			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1 }),
@@ -319,7 +320,7 @@ public:
 		}
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
-	void CreateDescriptor_Pass1() {
+	virtual void CreateDescriptor_Pass1() {
 		const auto DescCount = 1;
 
 		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
@@ -550,12 +551,136 @@ public:
 	virtual const Texture& GetColorMap() const = 0;
 	virtual const Texture& GetDepthMap() const = 0;
 	virtual bool DrawGrayScale() const { return false; }
+	virtual bool UseDisplacementWorldMatrix() const { return false; }
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {
 		glm::mat4 ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
+};
+class Displacement2VK : public DisplacementVK 
+{
+private:
+	using Super = DisplacementVK;
+public:
+	virtual void CreateUniformBuffer() override {
+		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		Super::CreateUniformBuffer();
+		
+		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(WorldBuffer));
+		UpdateWorldBuffer();
+		CopyToHostVisibleDeviceMemory(Device, UniformBuffers.back().DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
+	}
+	virtual void CreatePipelineLayout_Pass0() override {
+		const std::array ISs = { Samplers[0] };
+		CreateDescriptorSetLayout(DescriptorSetLayouts.emplace_back(), 0, {
+			VkDescriptorSetLayoutBinding({.binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT, .pImmutableSamplers = nullptr }),
+			VkDescriptorSetLayoutBinding({.binding = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = std::data(ISs) }),
+			VkDescriptorSetLayoutBinding({.binding = 2, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = static_cast<uint32_t>(std::size(ISs)), .stageFlags = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, .pImmutableSamplers = std::data(ISs) }),
+			VkDescriptorSetLayoutBinding({.binding = 3, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, .pImmutableSamplers = nullptr }),
+		});
+		VK::CreatePipelineLayout(PipelineLayouts.emplace_back(), { DescriptorSetLayouts[0] }, {});
+	}
+	virtual void CreateDescriptor_Pass0() override {
+		VK::CreateDescriptorPool(DescriptorPools.emplace_back(), 0, {
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1 }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 2 }),
+			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1 }),
+		});
+
+		auto DSL = DescriptorSetLayouts[0];
+		auto DP = DescriptorPools[0];
+		const std::array DSLs = { DSL };
+		{
+			const VkDescriptorSetAllocateInfo DSAI = {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.pNext = nullptr,
+				.descriptorPool = DP,
+				.descriptorSetCount = static_cast<uint32_t>(std::size(DSLs)), .pSetLayouts = std::data(DSLs)
+			};
+			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
+		}
+
+		struct DescriptorUpdateInfo
+		{
+			VkDescriptorBufferInfo DBI0;
+			VkDescriptorImageInfo DII0;
+			VkDescriptorImageInfo DII1;
+			VkDescriptorBufferInfo DBI1;
+		};
+		VkDescriptorUpdateTemplate DUT;
+		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 0, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DescriptorUpdateInfo, DBI0), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 1, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII0), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 2, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII1), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 3, .dstArrayElement = 0,
+				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DescriptorUpdateInfo)
+			}),
+			}, DSL);
+
+		const auto UB0Index = 0;
+		const auto DSIndex = 0;
+		const auto UB1Index = 2;
+
+		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		{
+			const auto& ColorMap = GetColorMap();
+			const auto& DepthMap = GetDepthMap();
+			const DescriptorUpdateInfo DUI = {
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + 0].Buffer, .offset = 0, .range = DynamicOffset }),
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = ColorMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Depth
+				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = DepthMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Color
+				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB1Index + 0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
+			};
+			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + 0], DUT, &DUI);
+		}
+		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
+	}
+	virtual void UpdateWorldBuffer() {
+		float X = 1.0f, Y = 1.0f, Z = 1.0f;
+		if (-1 != DeviceIndex) {
+			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
+			hpc_GetDeviceType(DeviceIndex, std::data(Buf), std::size(Buf));
+			if (0 == strncmp(std::data(Buf), "standard", std::size(Buf))) {
+				X = 8.0f; Y = 4.0f;
+			}
+			else if (0 == strncmp(std::data(Buf), "portrait", std::size(Buf))) {
+				X = 6.0f; Y = 8.0f;
+				X *= 0.65f; Y *= 0.65f;
+			}
+			else if (0 == strncmp(std::data(Buf), "8k", std::size(Buf))) {
+				X = 9.0f; Y = 5.0f;
+			}
+		}
+		else {
+			X = 6.0f; Y = 8.0f;
+			X *= 0.65f; Y *= 0.65f;
+		}
+
+		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, Z));
+	}
+	virtual bool UseDisplacementWorldMatrix() const override { return true; }
+
+protected:
+	struct WORLD_BUFFER {
+		glm::mat4 World[1];
+	};
+	WORLD_BUFFER WorldBuffer;
 };
 #endif
 

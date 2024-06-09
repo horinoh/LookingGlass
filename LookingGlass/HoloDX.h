@@ -165,97 +165,99 @@ public:
 		CreateStaticSampler_LinearWrap(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 		CreateStaticSampler_LinearWrap(1, 0, D3D12_SHADER_VISIBILITY_DOMAIN);
 	}
-	virtual void CreateRootSignature() override {
+	
+	virtual void CreateRootSignature_Pass0() {
 		//!<yPass0z
-		{
-			COM_PTR<ID3DBlob> Blob;
-			constexpr std::array DRs_CBV = {
-				D3D12_DESCRIPTOR_RANGE1({
-					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
-					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
-					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-				})
-			};
-			constexpr std::array DRs_SRV0 = {
-				D3D12_DESCRIPTOR_RANGE1({
-					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
-					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
-					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-				})
-			};
-			constexpr std::array DRs_SRV1 = {
-				D3D12_DESCRIPTOR_RANGE1({
-					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-					.NumDescriptors = 1, .BaseShaderRegister = 1, .RegisterSpace = 0,
-					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
-					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-				})
-			};
-			DX::SerializeRootSignature(Blob,
-				{
-					D3D12_ROOT_PARAMETER1({
-						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
-					}),
-					D3D12_ROOT_PARAMETER1({
-						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV0)), .pDescriptorRanges = std::data(DRs_SRV0)}),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-					}),
-					D3D12_ROOT_PARAMETER1({
-						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV1)), .pDescriptorRanges = std::data(DRs_SRV1) }),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
-					}),
-				},
+		COM_PTR<ID3DBlob> Blob;
+		constexpr std::array DRs_CBV = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		constexpr std::array DRs_SRV0 = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		constexpr std::array DRs_SRV1 = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+				.NumDescriptors = 1, .BaseShaderRegister = 1, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		DX::SerializeRootSignature(Blob,
+			{
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
+				}),
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV0)), .pDescriptorRanges = std::data(DRs_SRV0)}),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+				}),
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV1)), .pDescriptorRanges = std::data(DRs_SRV1) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
+				}),
+			},
 				{
 					StaticSamplerDescs[0], //!< SHADER_VISIBILITY_PIXEL
 					StaticSamplerDescs[1], //!< SHADER_VISIBILITY_DOMAIN
 				},
 				SHADER_ROOT_ACCESS_DS_GS_PS);
-			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
-		}
-		//!<yPass1z
-		{
-			COM_PTR<ID3DBlob> Blob;
-			constexpr std::array DRs_SRV = {
-				D3D12_DESCRIPTOR_RANGE1({
-					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
-					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
-					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-				})
-			};
-			constexpr std::array DRs_CBV = {
-				D3D12_DESCRIPTOR_RANGE1({
-					.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-					.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
-					.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
-					.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
-				})
-			};
-			DX::SerializeRootSignature(Blob,
-				{
-					D3D12_ROOT_PARAMETER1({
-						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<uint32_t>(std::size(DRs_SRV)), .pDescriptorRanges = std::data(DRs_SRV) }),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-					}),
-					D3D12_ROOT_PARAMETER1({
-						.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-						.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
-						.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
-					}),
-				},
+		VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
+	}
+	virtual void CreateRootSignature_Pass1() {
+		COM_PTR<ID3DBlob> Blob;
+		constexpr std::array DRs_SRV = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		constexpr std::array DRs_CBV = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		DX::SerializeRootSignature(Blob,
+			{
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<uint32_t>(std::size(DRs_SRV)), .pDescriptorRanges = std::data(DRs_SRV) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+				}),
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV)), .pDescriptorRanges = std::data(DRs_CBV) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+				}),
+			},
 				{
 					StaticSamplerDescs[0], //!< SHADER_VISIBILITY_PIXEL
 				},
 				SHADER_ROOT_ACCESS_PS);
-			VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
-		}
+		VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
+	}
+	virtual void CreateRootSignature() override {
+		CreateRootSignature_Pass0();
+		CreateRootSignature_Pass1();
 	}
 	virtual void CreatePipelineState() override {
 		PipelineStates.emplace_back();
@@ -274,7 +276,7 @@ public:
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass0;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / (DrawGrayScale() ? "DisplacementGrayScaleDX.ps.cso" : "DisplacementDX.ps.cso")).wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.ds.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / (UseDisplacementWorldMatrix() ? "Displacement2DX.ds.cso" : "DisplacementDX.ds.cso")).wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		const std::array SBCsPass0 = {
@@ -303,7 +305,7 @@ public:
 		for (auto& i : Threads) { i.join(); }
 		Threads.clear();
 	}
-	void CreateDescriptor_Pass0() {
+	virtual void CreateDescriptor_Pass0() {
 		{
 			const auto DescCount = 1;
 
@@ -398,7 +400,7 @@ public:
 			}
 		}
 	}
-	void CreateDescriptor_Pass1() {
+	virtual void CreateDescriptor_Pass1() {
 		auto& Desc = CbvSrvUavDescs.emplace_back();
 		auto& Heap = Desc.first;
 		auto& Handle = Desc.second;
@@ -454,7 +456,7 @@ public:
 		}
 		VERIFY_SUCCEEDED(BCL->Close());
 	}
-	void PopulateBundleCommandList_Pass1() {
+	virtual void PopulateBundleCommandList_Pass1() {
 		const auto BCA = COM_PTR_GET(BundleCommandAllocators[0]);
 		const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
 		const auto PS = COM_PTR_GET(PipelineStates[1]);
@@ -590,12 +592,306 @@ public:
 	virtual const Texture& GetColorMap() const = 0;
 	virtual const Texture& GetDepthMap() const = 0;
 	virtual bool DrawGrayScale() const { return false; }
+	virtual bool UseDisplacementWorldMatrix() const { return false; }
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {
 		DirectX::XMFLOAT4X4 ViewProjection[64];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
+};
+class Displacement2DX : public DisplacementDX
+{
+private:
+	using Super = DisplacementDX;
+public:
+	virtual void CreateConstantBuffer() override {
+		Super::CreateConstantBuffer();
+		
+		ConstantBuffers.emplace_back().Create(COM_PTR_GET(Device), sizeof(WorldBuffer));
+		UpdateWorldBuffer();
+		CopyToUploadResource(COM_PTR_GET(ConstantBuffers.back().Resource), RoundUp256(sizeof(WorldBuffer)), &WorldBuffer);
+	}
+	virtual void CreateRootSignature_Pass0() override {
+		COM_PTR<ID3DBlob> Blob;
+		constexpr std::array DRs_CBV0 = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		constexpr std::array DRs_SRV0 = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+				.NumDescriptors = 1, .BaseShaderRegister = 0, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		constexpr std::array DRs_SRV1 = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+				.NumDescriptors = 1, .BaseShaderRegister = 1, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		constexpr std::array DRs_CBV1 = {
+			D3D12_DESCRIPTOR_RANGE1({
+				.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+				.NumDescriptors = 1, .BaseShaderRegister = 1, .RegisterSpace = 0,
+				.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE,
+				.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+			})
+		};
+		DX::SerializeRootSignature(Blob,
+			{
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV0)), .pDescriptorRanges = std::data(DRs_CBV0) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY
+				}),
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV0)), .pDescriptorRanges = std::data(DRs_SRV0)}),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL
+				}),
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_SRV1)), .pDescriptorRanges = std::data(DRs_SRV1) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
+				}),
+				D3D12_ROOT_PARAMETER1({
+					.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+					.DescriptorTable = D3D12_ROOT_DESCRIPTOR_TABLE1({.NumDescriptorRanges = static_cast<UINT>(std::size(DRs_CBV1)), .pDescriptorRanges = std::data(DRs_CBV1) }),
+					.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN
+				}),
+			},
+			{
+				StaticSamplerDescs[0],
+				StaticSamplerDescs[1],
+			},
+			SHADER_ROOT_ACCESS_DS_GS_PS);
+		VERIFY_SUCCEEDED(Device->CreateRootSignature(0, Blob->GetBufferPointer(), Blob->GetBufferSize(), COM_PTR_UUIDOF_PUTVOID(RootSignatures.emplace_back())));
+	}
+	virtual void CreateDescriptor_Pass0() override {
+		{
+			const auto DescCount = 1;
+
+			{
+				auto& Desc = RtvDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+					.NumDescriptors = DescCount,
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+					.NodeMask = 0
+				};
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				const auto& Tex = RenderTextures[0];
+				Device->CreateRenderTargetView(COM_PTR_GET(Tex.Resource), &Tex.RTV, CDH);
+				Handle.emplace_back(CDH);
+				CDH.ptr += IncSize;
+			}
+			{
+				auto& Desc = DsvDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+					.NumDescriptors = DescCount,
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+					.NodeMask = 0
+				};
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				const auto& Tex = DepthTextures[0];
+				Device->CreateDepthStencilView(COM_PTR_GET(Tex.Resource), &Tex.DSV, CDH);
+				Handle.emplace_back(CDH);
+				CDH.ptr += IncSize;
+			}
+		}
+		{
+			const auto DescCount = GetViewportDrawCount() + 3;
+
+			{
+				auto& Desc = CbvSrvUavDescs.emplace_back();
+				auto& Heap = Desc.first;
+				auto& Handle = Desc.second;
+				const D3D12_DESCRIPTOR_HEAP_DESC DHD = {
+					.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+					.NumDescriptors = DescCount,
+					.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+					.NodeMask = 0
+				};
+				VERIFY_SUCCEEDED(Device->CreateDescriptorHeap(&DHD, COM_PTR_UUIDOF_PUTVOID(Heap)));
+				auto CDH = Heap->GetCPUDescriptorHandleForHeapStart();
+				auto GDH = Heap->GetGPUDescriptorHandleForHeapStart();
+				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
+
+				const auto& CB = ConstantBuffers[0];
+				const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+				for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
+					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
+						.SizeInBytes = static_cast<UINT>(DynamicOffset)
+					};
+					Device->CreateConstantBufferView(&CBVD, CDH);
+					Handle.emplace_back(GDH);
+					CDH.ptr += IncSize;
+					GDH.ptr += IncSize;
+				}
+				const auto& ColorMap = GetColorMap();
+				Device->CreateShaderResourceView(COM_PTR_GET(ColorMap.Resource), &ColorMap.SRV, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+				const auto& DepthMap = GetDepthMap();
+				Device->CreateShaderResourceView(COM_PTR_GET(DepthMap.Resource), &DepthMap.SRV, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+
+				const auto& CB1 = ConstantBuffers[2];
+				const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
+					.BufferLocation = CB1.Resource->GetGPUVirtualAddress(),
+					.SizeInBytes = static_cast<UINT>(CB1.Resource->GetDesc().Width)
+				};
+				Device->CreateConstantBufferView(&CBVD, CDH);
+				Handle.emplace_back(GDH);
+				CDH.ptr += IncSize;
+				GDH.ptr += IncSize;
+			}
+		}
+	}
+	virtual void PopulateCommandList(const size_t i) override {
+		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+		const auto DCA = COM_PTR_GET(DirectCommandAllocators[0]);
+		VERIFY_SUCCEEDED(DCL->Reset(DCA, nullptr));
+		{
+			PopulateAnimatedTextureCommand(i);
+
+			{
+				const auto RS = COM_PTR_GET(RootSignatures[0]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[0]);
+
+				DCL->SetGraphicsRootSignature(RS);
+
+				{
+					const auto& HandleRTV = RtvDescs[0].second[0];
+					const auto& HandleDSV = DsvDescs[0].second[0];
+
+					constexpr std::array<D3D12_RECT, 0> Rects = {};
+					DCL->ClearRenderTargetView(HandleRTV, DirectX::Colors::SkyBlue, static_cast<UINT>(std::size(Rects)), std::data(Rects));
+					DCL->ClearDepthStencilView(HandleDSV, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, static_cast<UINT>(std::size(Rects)), std::data(Rects));
+
+					const std::array CHs = { HandleRTV };
+					DCL->OMSetRenderTargets(static_cast<UINT>(std::size(CHs)), std::data(CHs), FALSE, &HandleDSV);
+				}
+
+				{
+					const auto& Desc = CbvSrvUavDescs[0];
+					const auto& Heap = Desc.first;
+					const auto& Handle = Desc.second;
+					const std::array DHs = { COM_PTR_GET(Heap) };
+					DCL->SetDescriptorHeaps(static_cast<UINT>(std::size(DHs)), std::data(DHs));
+
+					const auto DrawCount = GetViewportDrawCount();
+					DCL->SetGraphicsRootDescriptorTable(1, Handle[DrawCount]);
+					DCL->SetGraphicsRootDescriptorTable(2, Handle[DrawCount + 1]);
+					DCL->SetGraphicsRootDescriptorTable(3, Handle[DrawCount + 2]);
+
+					for (uint32_t j = 0; j < DrawCount; ++j) {
+						const auto Offset = GetViewportSetOffset(j);
+						const auto Count = GetViewportSetCount(j);
+
+						DCL->RSSetViewports(Count, &QuiltViewports[Offset]);
+						DCL->RSSetScissorRects(Count, &QuiltScissorRects[Offset]);
+
+						DCL->SetGraphicsRootDescriptorTable(0, Handle[j]);
+
+						DCL->ExecuteBundle(BCL);
+					}
+				}
+			}
+
+			const auto SCR = COM_PTR_GET(SwapChainBackBuffers[i].Resource);
+			const auto RT = COM_PTR_GET(RenderTextures[0].Resource);
+
+			ResourceBarrier2(DCL,
+				SCR, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				RT, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+			{
+				const auto RS = COM_PTR_GET(RootSignatures[1]);
+				const auto BCL = COM_PTR_GET(BundleCommandLists[1]);
+
+				DCL->SetGraphicsRootSignature(RS);
+
+				DCL->RSSetViewports(static_cast<UINT>(std::size(Viewports)), std::data(Viewports));
+				DCL->RSSetScissorRects(static_cast<UINT>(std::size(ScissorRects)), std::data(ScissorRects));
+
+				const std::array CHs = { SwapChainBackBuffers[i].Handle };
+				DCL->OMSetRenderTargets(static_cast<UINT>(std::size(CHs)), std::data(CHs), FALSE, nullptr);
+
+				{
+					const auto& Desc = CbvSrvUavDescs[1];
+					const auto& Heap = Desc.first;
+					const auto& Handle = Desc.second;
+
+					const std::array DHs = { COM_PTR_GET(Heap) };
+					DCL->SetDescriptorHeaps(static_cast<UINT>(std::size(DHs)), std::data(DHs));
+					DCL->SetGraphicsRootDescriptorTable(0, Handle[0]);
+					DCL->SetGraphicsRootDescriptorTable(1, Handle[1]);
+				}
+
+				DCL->ExecuteBundle(BCL);
+			}
+
+			ResourceBarrier2(DCL,
+				SCR, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT,
+				RT, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		}
+		VERIFY_SUCCEEDED(DCL->Close());
+	}
+	virtual void UpdateWorldBuffer() {
+		float X = 1.0f, Y = 1.0f, Z = 1.0f;
+		if (-1 != DeviceIndex) {
+			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
+			hpc_GetDeviceType(DeviceIndex, std::data(Buf), std::size(Buf));
+			if (0 == strncmp(std::data(Buf), "standard", std::size(Buf))) {
+				X = 8.0f; Y = 4.0f;
+			}
+			else if (0 == strncmp(std::data(Buf), "portrait", std::size(Buf))) {
+				X = 6.0f; Y = 8.0f;
+				X *= 0.65f; Y *= 0.65f;
+			}
+			else if (0 == strncmp(std::data(Buf), "8k", std::size(Buf))) {
+				X = 9.0f; Y = 5.0f;
+			}
+		}
+		else {
+			X = 6.0f; Y = 8.0f;
+			X *= 0.65f; Y *= 0.65f;
+		}
+
+		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, Z));
+	}
+	virtual bool UseDisplacementWorldMatrix() const override { return true; }
+
+protected:
+	struct WORLD_BUFFER {
+		DirectX::XMFLOAT4X4 World[1];
+	};
+	WORLD_BUFFER WorldBuffer;
 };
 #endif
 

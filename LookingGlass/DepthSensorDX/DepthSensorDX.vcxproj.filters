@@ -107,5 +107,8 @@
     <FxCompile Include="..\Shaders\DisplacementGrayScaleDX.ps.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="..\Shaders\Displacement2DX.ds.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
