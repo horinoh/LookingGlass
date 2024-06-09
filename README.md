@@ -80,5 +80,5 @@
     - LKG へ表示
 - DepthSensorVK, DepthSensorDX
     - 基本的には Displacement と同じ
-    - 震度センサ (MaixSense A010) の出力をデプスマップとして使用している
+    - 要深度センサ (MaixSense A010) 、センサの出力をデプスマップとして使用している
     - ディスプレースメント値を極端にした方が効果が分かりやすい

@@ -222,7 +222,7 @@ public:
 		const std::array SMs_Pass0 = {
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.vert.spv"),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / (DrawGrayScale() ? "DisplacementGrayScaleVK.frag.spv" : "DisplacementVK.frag.spv")),
-			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / (UseDisplacementWorldMatrix() ? "Displacement2VK.tese.spv" : "DisplacementVK.tese.spv")),
+			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / (UseDisplacementWorldMatrix() ? "DisplacementWldVK.tese.spv" : "DisplacementVK.tese.spv")),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.tesc.spv"),
 			VK::CreateShaderModule(std::filesystem::path("..") / "Shaders" / "DisplacementVK.geom.spv"),
 		};
@@ -559,7 +559,9 @@ protected:
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };
-class Displacement2VK : public DisplacementVK 
+
+//!< ディスプレースメント平面用にワールドマトリクスを追加したもの (Add world matrix for displacement plane)
+class DisplacementWldVK : public DisplacementVK 
 {
 private:
 	using Super = DisplacementVK;
@@ -652,27 +654,9 @@ public:
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
 	virtual void UpdateWorldBuffer() {
-		float X = 1.0f, Y = 1.0f, Z = 1.0f;
-		if (-1 != DeviceIndex) {
-			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
-			hpc_GetDeviceType(DeviceIndex, std::data(Buf), std::size(Buf));
-			if (0 == strncmp(std::data(Buf), "standard", std::size(Buf))) {
-				X = 8.0f; Y = 4.0f;
-			}
-			else if (0 == strncmp(std::data(Buf), "portrait", std::size(Buf))) {
-				X = 6.0f; Y = 8.0f;
-				X *= 0.65f; Y *= 0.65f;
-			}
-			else if (0 == strncmp(std::data(Buf), "8k", std::size(Buf))) {
-				X = 9.0f; Y = 5.0f;
-			}
-		}
-		else {
-			X = 6.0f; Y = 8.0f;
-			X *= 0.65f; Y *= 0.65f;
-		}
-
-		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, Z));
+		float X, Y;
+		GetXYScaleForDevice(X, Y);
+		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, 1.0f));
 	}
 	virtual bool UseDisplacementWorldMatrix() const override { return true; }
 

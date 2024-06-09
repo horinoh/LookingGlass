@@ -262,7 +262,7 @@ protected:
 	asio::error_code ErrorCode;
 };
 
-//!< 深度センサ MaixSense A010
+//!< 要深度センサ MaixSense A010 (Need depth sensor MaixSense A010)
 class DepthSensorA010 : public SerialPort
 {
 private:

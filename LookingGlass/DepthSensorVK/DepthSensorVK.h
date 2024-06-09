@@ -12,16 +12,17 @@
 #include "../DepthSensor.h"
 
 #ifdef USE_DEPTH_SENSOR
-class DepthSensorVK : public DisplacementVK, public DepthSensorA010
+//!< 要深度センサ MaixSense A010 (Need depth sensor MaixSense A010)
+class DepthSensorVK : public DisplacementWldVK, public DepthSensorA010
 {
 private:
-	using Super = DisplacementVK;
+	using Super = DisplacementWldVK;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//!< 深度センサオープン (COM番号は調べて、適切に指定する必要がある)
+		//!< 深度センサオープン (COM番号は調べて、適切に指定する必要がある) (Select appropriate com no)
 		Open(COM::COM3);
 
-		//!< 非同期更新開始
+		//!< 非同期更新開始 (Start async update)
 		UpdateAsyncStart();
 
 		Super::OnCreate(hWnd, hInstance, Title);
@@ -50,6 +51,12 @@ public:
 	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
 		const auto CB = CommandBuffers[i];
 		AnimatedTextures[0].PopulateStagingToImageCommand(CB, Frame.Header.Cols, Frame.Header.Rows, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+	}
+	virtual void UpdateWorldBuffer() override {
+		float X, Y;
+		GetXYScaleForDevice(X, Y);
+		//!< ディスプレースメント (Z) を顕著にしてみる (More remarkable displacement Z)
+		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, 5.0f));
 	}
 };
 #endif

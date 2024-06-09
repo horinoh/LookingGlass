@@ -9,10 +9,10 @@
 #include "../CVDX.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
-class DisplacementRGB_DDX : public DisplacementDX
+class DisplacementRGB_DDX : public DisplacementWldDX
 {
 private:
-	using Super = DisplacementDX;
+	using Super = DisplacementWldDX;
 public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();

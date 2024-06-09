@@ -12,16 +12,17 @@
 #include "../DepthSensor.h"
 
 #ifdef USE_DEPTH_SENSOR
-class DepthSensorDX : public DisplacementDX, public DepthSensorA010
+//!< 要深度センサ MaixSense A010 (Need depth sensor MaixSense A010)
+class DepthSensorDX : public DisplacementWldDX, public DepthSensorA010
 {
 private:
-	using Super = DisplacementDX;
+	using Super = DisplacementWldDX;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//!< 深度センサオープン (COM番号は調べて、適切に指定する必要がある)
+		//!< 深度センサオープン (COM番号は調べて、適切に指定する必要がある) (Select appropriate com no)
 		Open(COM::COM3);
 
-		//!< 非同期更新開始
+		//!< 非同期更新開始 (Start async update)
 		UpdateAsyncStart();
 
 		Super::OnCreate(hWnd, hInstance, Title);
@@ -55,6 +56,12 @@ public:
 
 		constexpr auto Bpp = 1;
 		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp);
+	}
+	virtual void UpdateWorldBuffer() override {
+		float X, Y;
+		GetXYScaleForDevice(X, Y);
+		//!< ディスプレースメント (Z) を顕著にしてみる (More remarkable displacement Z)
+		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 5.0f));
 	}
 };
 #endif

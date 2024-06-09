@@ -276,7 +276,7 @@ public:
 		std::vector<COM_PTR<ID3DBlob>> SBs_Pass0;
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.vs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / (DrawGrayScale() ? "DisplacementGrayScaleDX.ps.cso" : "DisplacementDX.ps.cso")).wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
-		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / (UseDisplacementWorldMatrix() ? "Displacement2DX.ds.cso" : "DisplacementDX.ds.cso")).wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
+		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / (UseDisplacementWorldMatrix() ? "DisplacementWldDX.ds.cso" : "DisplacementDX.ds.cso")).wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.hs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		VERIFY_SUCCEEDED(D3DReadFileToBlob(std::data((std::filesystem::path(".") / "DisplacementDX.gs.cso").wstring()), COM_PTR_PUT(SBs_Pass0.emplace_back())));
 		const std::array SBCsPass0 = {
@@ -600,7 +600,9 @@ protected:
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };
-class Displacement2DX : public DisplacementDX
+
+//!< ディスプレースメント平面用にワールドマトリクスを追加したもの (Add world matrix for displacement plane)
+class DisplacementWldDX : public DisplacementDX
 {
 private:
 	using Super = DisplacementDX;
@@ -863,27 +865,9 @@ public:
 		VERIFY_SUCCEEDED(DCL->Close());
 	}
 	virtual void UpdateWorldBuffer() {
-		float X = 1.0f, Y = 1.0f, Z = 1.0f;
-		if (-1 != DeviceIndex) {
-			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
-			hpc_GetDeviceType(DeviceIndex, std::data(Buf), std::size(Buf));
-			if (0 == strncmp(std::data(Buf), "standard", std::size(Buf))) {
-				X = 8.0f; Y = 4.0f;
-			}
-			else if (0 == strncmp(std::data(Buf), "portrait", std::size(Buf))) {
-				X = 6.0f; Y = 8.0f;
-				X *= 0.65f; Y *= 0.65f;
-			}
-			else if (0 == strncmp(std::data(Buf), "8k", std::size(Buf))) {
-				X = 9.0f; Y = 5.0f;
-			}
-		}
-		else {
-			X = 6.0f; Y = 8.0f;
-			X *= 0.65f; Y *= 0.65f;
-		}
-
-		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, Z));
+		float X, Y;
+		GetXYScaleForDevice(X, Y);
+		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 1.0f));
 	}
 	virtual bool UseDisplacementWorldMatrix() const override { return true; }
 

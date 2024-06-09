@@ -104,7 +104,7 @@
     <CustomBuild Include="..\Shaders\DisplacementVK.vert">
       <Filter>Shader Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="..\Shaders\Displacement2VK.tese">
+    <CustomBuild Include="..\Shaders\DisplacementWldVK.tese">
       <Filter>Shader Files</Filter>
     </CustomBuild>
   </ItemGroup>

@@ -9,10 +9,10 @@
 #include "../CVVK.h"
 
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
-class DisplacementRGB_DVK : public DisplacementVK
+class DisplacementRGB_DVK : public DisplacementWldVK
 {
 private:
-	using Super = DisplacementVK;
+	using Super = DisplacementWldVK;
 public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();

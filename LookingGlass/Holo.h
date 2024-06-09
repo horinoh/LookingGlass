@@ -14,6 +14,7 @@
 
 //#define DISPLAY_QUILT
 #ifdef DISPLAY_QUILT
+//!< キルトを自前でレンダリングしている場合、最左右のみを表示する (Display most left, right quilt, only in case self rendering quilt)
 #define DISPLAY_MOST_LR_QUILT
 #endif
 
@@ -104,7 +105,7 @@ public:
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する [Get window position, size from Looking Glass and apply]
 		if (-1 != DeviceIndex) {
 			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex))));
-			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);	
+			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);
 		} else {
 			::SetWindowPos(hWnd, nullptr, 0, 0, 1536, 2048, SWP_FRAMECHANGED);
 		}
@@ -152,6 +153,30 @@ public:
 		}
 	}
 	virtual void UpdateViewProjectionBuffer() {}
+
+	virtual bool GetXYScaleForDevice(float& X, float& Y) {
+		X = 6.0f * 0.65f; Y = 8.0f * 0.65f;
+		if (-1 != DeviceIndex) {
+			std::vector<char> Buf(hpc_GetDeviceType(DeviceIndex, nullptr, 0));
+			hpc_GetDeviceType(DeviceIndex, std::data(Buf), std::size(Buf));
+			if (0 == strncmp(std::data(Buf), "standard", std::size(Buf))) {
+				X = 8.0f; Y = 4.0f;
+			}
+			else if (0 == strncmp(std::data(Buf), "portrait", std::size(Buf))) {
+				X = 6.0f * 0.65f; Y = 8.0f * 0.65f;
+			}
+			else if (0 == strncmp(std::data(Buf), "8k", std::size(Buf))) {
+				X = 9.0f; Y = 5.0f;
+			}
+			else {
+				LOG(std::data(std::format("{} is not supported\n", std::data(Buf))));
+				//!< #TODO Add support
+				__debugbreak();
+			}
+			return true;
+		}
+		return false;
+	}
 
 protected:
 	int DeviceIndex = -1;
