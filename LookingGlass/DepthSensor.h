@@ -68,26 +68,31 @@ public:
 													while (std::getline(ResponseHeaderStream, Header) && Header != "\r") {
 														LOG(std::data(std::format("\t{}\n", Header)));
 													}
-													LOG(std::data(std::format("\n")));
+													LOG("\n");
 
+													asio::error_code ErrorCode;
+#if true
+													//!< 残りのデータを読み込む
+													if (asio::read(Socket, Response, asio::transfer_all(), ErrorCode)) {
+														LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
+													}
+#else
 													//!< コンテンツ出力
 													LOG("Contents\n");
 													if (Response.size() > 0) {
 														LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
 													}
-
-													//!< 残りのデータを EOF まで読み込む
+													//!< 残りのデータを読み込む
 													LOG("Remains\n");
-													asio::error_code ErrorCode;
 													int count = 0;
 													while (asio::read(Socket, Response, asio::transfer_at_least(1), ErrorCode)) {
 														LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
 														++count;
 													}
+#endif
 													if (asio::error::eof == ErrorCode) {
-														LOG(std::data(std::format("[EOF]\n")));
+														LOG("[EOF]\n");
 													}
-													//asio::async_read(Socket, Response, asio::transfer_at_least(1), asio::use_awaitable);
 												}
 											});
 										}
@@ -101,28 +106,17 @@ public:
 		});
 	}
 
-	//asio::awaitable<void> OnContent(const asio::error_code EC, const size_t Size)
-	//{
-	//	if (!EC) {
-	//		LOG(std::data(std::format("Read Rest {} [OK]\n", Size)));
-	//		LOG(std::data(std::format("Response {}\n", reinterpret_cast<const char*>(Response.data().data()))));
-
-	//		asio::async_read(Socket, Response, asio::transfer_at_least(1), asio::use_awaitable);
-	//	}
-	//	else if (asio::error::eof == EC) {
-	//		LOG(std::data(std::format("[EOF]\n")));
-	//	}
-	//}
-
 	virtual void Update() {}
 	virtual void Exit() {}
 
+#ifdef _DEBUG
 	static void RunTest() {
 		asio::io_context Context;
 		Http http(Context, "www.google.com", "/");
 		auto Thread = std::thread([&]() { Context.run(); });
 		Thread.join();
 	}
+#endif
 
 protected:
 	asio::ip::tcp::resolver Resolver;
@@ -164,7 +158,7 @@ public:
 		uint8_t	DeepMode; //!< (1) 0:16Bit, 1:8Bit
 		uint8_t DeepShift; //(255)
 		uint8_t IRMode; //!< (1) 0:16Bit, 1:8Bit
-		uint8_t StatusMode; //!< (2) 0:2, 1:1/4, 2:1, 3:1/8
+		uint8_t StatusMode; //!< (2) 0:16Bit, 0:2, 1:1/4, 2:1, 3:1/8
 		uint8_t StatusMask; // (7)
 		uint8_t RGBMode; // (1) 0:Raw, 1:Jpg
 		uint8_t RGBRes;// (0)
@@ -185,13 +179,18 @@ public:
 		//std::array<uint8_t or uint16_t, 320 * 240> Depth;
 		//std::array<uint8_t or uint16_t, 320 * 240> IR;
 		//std::array<uint8_t or uint16_t, 320 * 240> Status;
-		//std::array<uint8_t, 320 * 240 * 3> RGB;
-
+		//std::array<uint8_t, 640 * 480 * 3> RGB;
 	} FRAME;
 
 	static const uint32_t Resolution = 320 * 240;
-	static uint32_t GetSizeDeep(const CONFIG& Conf) { return Conf.DeepMode ? Resolution : (Resolution << 1); }
-	static uint32_t GetSizeIR(const CONFIG& Conf) { return Conf.IRMode ? Resolution : (Resolution << 1); }
+	static const uint32_t ResolutionRGB = 640 * 480;
+
+	static bool IsU16Deep(const CONFIG& Conf) { return 0 == Conf.DeepMode; }
+	static bool IsU16IR(const CONFIG& Conf) { return 0 == Conf.IRMode; }
+	static bool IsU16Status(const CONFIG& Conf) { return 0 == Conf.StatusMode; }
+
+	static uint32_t GetSizeDeep(const CONFIG& Conf) { return IsU16Deep(Conf) ? (Resolution << 1) : Resolution; }
+	static uint32_t GetSizeIR(const CONFIG& Conf) { return IsU16IR(Conf) ? (Resolution << 1) : Resolution; }
 	static uint32_t GetSizeStatus(const CONFIG& Conf) {
 		switch (Conf.StatusMode) {
 		case 0: return  (Resolution << 1);
@@ -200,6 +199,17 @@ public:
 		default: return (Resolution >> 3);
 		}
 	}
+	static uint32_t GetSizeRGB(const FRAME_HEADER& FH) { return FH.RGBDataSize; }
+
+	static uint32_t GetOffsetDeep() { return sizeof(FRAME_HEADER); }
+	static uint32_t GetOffsetIR(const CONFIG& Conf) { return GetOffsetDeep() + GetSizeDeep(Conf); }
+	static uint32_t GetOffsetStatus(const CONFIG& Conf) { return GetOffsetIR(Conf) + GetSizeIR(Conf); }
+	static uint32_t GetOffsetRGB(const CONFIG& Conf) { return GetOffsetStatus(Conf) + GetSizeStatus(Conf); }
+
+	static const std::byte* GetPtrDeep(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetDeep(); }
+	static const std::byte* GetPtrIR(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetIR(Frame.Header.Config); }
+	static const std::byte* GetPtrStatus(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetStatus(Frame.Header.Config); }
+	static const std::byte* GetPtrRGB(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetRGB(Frame.Header.Config); }
 
 protected:
 	std::string_view Server = "192.168.233.1:80";
