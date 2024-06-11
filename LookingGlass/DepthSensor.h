@@ -175,28 +175,28 @@ public:
 
 	typedef struct {
 		FRAME_HEADER Header;
-		
-		//std::array<uint8_t or uint16_t, 320 * 240> Depth;
-		//std::array<uint8_t or uint16_t, 320 * 240> IR;
-		//std::array<uint8_t or uint16_t, 320 * 240> Status;
-		//std::array<uint8_t, 640 * 480 * 3> RGB;
 	} FRAME;
 
-	static const uint32_t Resolution = 320 * 240;
-	static const uint32_t ResolutionRGB = 640 * 480;
+	static const uint32_t ResX = 320, ResY = 240;
+	static const uint32_t ResTotal = ResX * ResY;
+
+	static const uint32_t ResRGBX = 640, ResRGBY = 480;
+	static const uint32_t ResRGBTotal = ResRGBX * ResRGBY;
 
 	static bool IsU16Deep(const CONFIG& Conf) { return 0 == Conf.DeepMode; }
 	static bool IsU16IR(const CONFIG& Conf) { return 0 == Conf.IRMode; }
 	static bool IsU16Status(const CONFIG& Conf) { return 0 == Conf.StatusMode; }
 
-	static uint32_t GetSizeDeep(const CONFIG& Conf) { return IsU16Deep(Conf) ? (Resolution << 1) : Resolution; }
-	static uint32_t GetSizeIR(const CONFIG& Conf) { return IsU16IR(Conf) ? (Resolution << 1) : Resolution; }
+	static bool IsJpgRGB(const CONFIG& Conf) { return 1 == Conf.RGBMode; }
+
+	static uint32_t GetSizeDeep(const CONFIG& Conf) { return IsU16Deep(Conf) ? (ResTotal << 1) : ResTotal; }
+	static uint32_t GetSizeIR(const CONFIG& Conf) { return IsU16IR(Conf) ? (ResTotal << 1) : ResTotal; }
 	static uint32_t GetSizeStatus(const CONFIG& Conf) {
 		switch (Conf.StatusMode) {
-		case 0: return  (Resolution << 1);
-		case 1: return (Resolution >> 2);
-		case 2: return Resolution;
-		default: return (Resolution >> 3);
+		case 0: return  (ResTotal << 1);
+		case 1: return (ResTotal >> 2);
+		case 2: return ResTotal;
+		default: return (ResTotal >> 3);
 		}
 	}
 	static uint32_t GetSizeRGB(const FRAME_HEADER& FH) { return FH.RGBDataSize; }
@@ -209,7 +209,21 @@ public:
 	static const std::byte* GetPtrDeep(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetDeep(); }
 	static const std::byte* GetPtrIR(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetIR(Frame.Header.Config); }
 	static const std::byte* GetPtrStatus(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetStatus(Frame.Header.Config); }
-	static const std::byte* GetPtrRGB(const FRAME& Frame) { return reinterpret_cast<const std::byte*>(&Frame) + GetOffsetRGB(Frame.Header.Config); }
+	static std::byte* GetPtrRGB(FRAME& Frame) { return reinterpret_cast<std::byte*>(&Frame) + GetOffsetRGB(Frame.Header.Config); }
+
+	static std::byte* Decode(FRAME& Frame) {
+		auto Ptr = GetPtrRGB(Frame);
+		if (IsJpgRGB(Frame.Header.Config)) {
+#ifdef USE_CV
+			const auto Decoded = cv::imdecode(cv::Mat(ResRGBX, ResRGBY, CV_8UC1, Ptr), cv::IMREAD_COLOR);
+			std::memcpy(Ptr, Decoded.ptr(), Decoded.total() * Decoded.elemSize());
+#else
+			LOG("Need CV\n");
+			__debugbreak();
+#endif
+		}
+		return Ptr;
+	}
 
 protected:
 	std::string_view Server = "192.168.233.1:80";
@@ -296,7 +310,7 @@ public:
 					UpdateCV();
 					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
 				}
-				});
+			});
 		}
 	}
 
