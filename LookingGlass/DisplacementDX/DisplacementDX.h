@@ -50,10 +50,12 @@ public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
+		bool InvDepth = false;
 #if 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "Bricks076C_1K.png").string());
 #elif 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "kame.jpg").string());
+		InvDepth = true;
 #elif 1
 		const auto RGBD = cv::imread((std::filesystem::path("..") / "Asset" / "RGBD" / "begger_rgbd_s.png").string());
 #elif 1
@@ -80,6 +82,10 @@ public:
 		//!< デプス (左)
 		auto D = cv::Mat(RGBD, cv::Rect(Cols, 0, Cols, RGBD.rows));
 		cv::cvtColor(D, D, cv::COLOR_BGR2GRAY);
+		//!< 黒白凹凸で無い場合は反転
+		if (InvDepth) {
+			D = ~D; 
+		}
 
 		//!< カラー (CVデータをテクスチャへ)
 		Create(Textures.emplace_back(), RGB, DXGI_FORMAT_R8G8B8A8_UNORM);
