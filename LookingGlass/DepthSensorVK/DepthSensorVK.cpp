@@ -149,11 +149,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-            Inst = new DepthSensorVK();
+            Inst = new DepthSensorA010VK();
+            //Inst = new DepthSensorA075VK();
             Inst->OnCreate(hWnd, hInst, TEXT("DepthSensorVK"));
             SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
+        //{
+        //    auto DS = new DepthSensorA075();
+        //    DS->Update(); Sleep(1000);
+        //}
         break;
     case WM_SIZE:
         if (nullptr != Inst) {}

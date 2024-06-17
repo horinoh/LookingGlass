@@ -31,6 +31,7 @@
 #### [FBX](https://aps.autodesk.com/developer/overview/fbx-sdk)
 - SDK をインストールして、環境変数 FBX_SDK_PATH をインストール先に設定しておく (Install SDK, and create environment varibale FBX_SDK_PATH)
 
+<!--
 #### [GLTF](https://www.nuget.org/packages/Microsoft.glTF.CPP)
 - NuGetPackage で Microsoft.glTF.CPP をインストール (Install Microsoft.glTF.CPP from NuGetPackage)
 - min, max 関連でコンパイルエラーになる場合、windows.h より前に NOMINMAX を定義する
@@ -40,20 +41,30 @@
     ~~~
 - リンカエラー 4099 が出る(#pragma では回避できない)ので以下のようにしている
     - Configuration Properties - Linker - CommandLine - AdditionalOptions - /ignore:4099
+-->
 
-### [OpenCV](https://github.com/opencv/opencv)
+### 画像処理 (Image processing)
+#### [OpenCV](https://github.com/opencv/opencv)
 - インストール先を環境変数 OPENCV_SDK_PATH へセット (Create install folder as environment variable OPENCV_SDK_PATH)
 - 環境変数 Path へ `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` を追加 (Add `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` to environment variable Path)
 
-### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)
+### 深度センサ (Depth sensor)
+#### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)
 - デプスセンサーとして使用 (Used as depth sensor)
 - [comtool](https://dl.sipeed.com/shareURL/MaixSense/MaixSense_A010/software_pack/comtool) をインストールしておく (Install comtool)
 
-### [asio](https://github.com/chriskohlhoff/asio.git)
+#### [MaixSenseA075v](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a075v/maixsense-a075v.html)
+- ↑ページを参考にドライバをインストールしておく (Install driver)
+- [192.168.233.1](http://192.168.233.1/) へアクセスして動作確認 (Access 192.168.233.1 to check)
+ 
+#### [asio](https://github.com/chriskohlhoff/asio.git)
+- シリアルポートや Http で使用 (Use to handle serial port, http)
 - サブモジュールとして追加した (Add as submodule)
 
+<!--
 ### [LeapMotion]()
 - インストール先を環境変数 LEAP_SDK_PATH へセット (Create install folder as environment variable LEAP_SDK_PATH)
+-->
 
 ## アセット (Assets)
 - アセットは LookingGlass/Asset/ 以下へ配置しておく (Put assets(dds, fbx) in LookingGlass/Asset/)

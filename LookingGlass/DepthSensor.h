@@ -18,8 +18,48 @@
 class Http 
 {
 public:
-	Http(asio::io_context& Context, std::string_view Server, std::string_view Path) 
-		: Resolver(Context), Socket(Context)
+	Http(const std::string& Server, const std::string& Service) : Context(), Resolver(Context), Socket(Context) {
+#if 1
+		//!< 名前解決、ホスト情報
+		LOG(std::data(std::format("Server={}, Service={}\n", Server, Service)));
+		asio::ip::tcp::resolver::query Query(Server, Service);
+		asio::ip::tcp::endpoint EndPoint(*Resolver.resolve(Query));
+		//!< 接続
+		Socket.connect(EndPoint);
+#else
+		//!< 名前解決、ホスト情報
+		asio::ip::tcp::resolver::query Query(std::data(std::string(Server)), std::data(std::string(Service)));
+		Resolver.async_resolve(Query, [&](const asio::error_code EC, const asio::ip::tcp::resolver::iterator& EndPoint) {
+			if (!EC) {
+				LOG(std::data(std::format("Resolve [OK]\n")));
+				//!< 接続
+				asio::async_connect(Socket, EndPoint, [&](const asio::error_code EC_Cnt, const asio::ip::tcp::resolver::iterator&) {
+					if (!EC_Cnt) {
+						LOG(std::data(std::format("Connect [OK]\n")));
+					}
+				});
+			}
+		});
+#endif
+	}
+
+	void GetRequest(std::string_view Server, std::string_view Path) {
+		if (Socket.is_open()) {
+			//!< リクエスト書込
+			std::ostream RequestStream(&Request);
+			RequestStream << "GET " << Path << " HTTP/1.0\r\n";
+			RequestStream << "Host: " << Server << "\r\n";
+			RequestStream << "Accept: */*\r\n";
+			RequestStream << "Connection: close\r\n\r\n";
+			asio::write(Socket, Request);
+
+			asio::read(Socket, Response, asio::transfer_all(), ErrorCode);
+			if (asio::error::eof == ErrorCode) {
+				LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
+			}
+		}
+	}
+	void GetRequestAsync(std::string_view Server, std::string_view Path)
 	{
 		asio::ip::tcp::resolver::query Query(std::string(Server), "http");
 		Resolver.async_resolve(Query, [&](const asio::error_code EC, const asio::ip::tcp::resolver::iterator& EndPoint) {
@@ -54,8 +94,8 @@ public:
 										ResponseStream >> StatusCode;
 										std::string StatusMessage;
 										std::getline(ResponseStream, StatusMessage);
+										LOG(std::data(std::format("Response (StatusCode = {}, StatusMessage = {}) [OK]\n", StatusCode, StatusMessage)));
 										if (ResponseStream && HttpVersion.substr(0, 5) == "HTTP/" && 200 == StatusCode) {
-											LOG(std::data(std::format("Response (StatusCode = {}, StatusMessage = {}) [OK]\n", StatusCode, StatusMessage)));
 											//!< ヘッダ読込 (空行まで読み込む)
 											asio::async_read_until(Socket, Response, "\r\n\r\n", [&](const asio::error_code EC_Hd, const size_t HdSize) {
 												if (!EC_Hd) {
@@ -106,23 +146,25 @@ public:
 		});
 	}
 
-	virtual void Update() {}
-	virtual void Exit() {}
-
-#ifdef _DEBUG
-	static void RunTest() {
-		asio::io_context Context;
-		Http http(Context, "www.google.com", "/");
-		auto Thread = std::thread([&]() { Context.run(); });
-		Thread.join();
+	virtual void Update() {
+		GetRequest("www.google.com", "/");
 	}
-#endif
+	void ExitSocket() {
+		if (Socket.is_open()) {
+			Socket.close();
+		}
+	}
+	virtual void Exit() {
+		ExitSocket();
+	}
 
 protected:
+	asio::io_context Context;
 	asio::ip::tcp::resolver Resolver;
 	asio::ip::tcp::socket Socket;
 	asio::streambuf Request;
 	asio::streambuf Response;
+	asio::error_code ErrorCode;
 };
 
 class DepthSensorA075 : public Http
@@ -131,13 +173,19 @@ private:
 	using Super = Http;
 
 public:
+	DepthSensorA075() : Super("192.168.233.1", "80") {}
+
+	virtual void Update() override {
+		GetRequest("192.168.233.1", "/getdeep");
+	}
 	virtual void UpdateAsyncStart() {
 		if (!Thread.joinable()) {
 			Thread = std::thread([&]() {
 				//!< スレッドは外から終了させない、フラグだけ立ててスレッド自身に終了してもらう
 				while (!IsExitThread) {
 					Update();
-					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
+//					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
+					std::this_thread::sleep_for(std::chrono::microseconds(1000));
 				}
 			});
 		}
@@ -149,8 +197,9 @@ public:
 			Thread.join();
 		}
 	}
-	virtual void Exit() override {
+	virtual void Exit() override {		
 		ExitThread();
+		Super::Exit();
 	}
 
 	typedef struct {
@@ -226,9 +275,6 @@ public:
 	}
 
 protected:
-	std::string_view Server = "192.168.233.1:80";
-	std::string_view Path = "/getdeep";
-
 	std::thread Thread;
 	std::mutex Mutex;
 	bool IsExitThread = false;
