@@ -156,8 +156,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         //{
-        //    auto DS = new DepthSensorA075();
-        //    DS->Update(); Sleep(1000);
+        //    auto Ht = new Http("www.google.com", "http");
+        //    //auto Ht = new DepthSensorA075();
+        //    Ht->Update();
+        //    Sleep(1000);
         //}
         break;
     case WM_SIZE:

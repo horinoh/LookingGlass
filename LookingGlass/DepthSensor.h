@@ -49,8 +49,9 @@ public:
 			std::ostream RequestStream(&Request);
 			RequestStream << "GET " << Path << " HTTP/1.0\r\n";
 			RequestStream << "Host: " << Server << "\r\n";
-			RequestStream << "Accept: */*\r\n";
-			RequestStream << "Connection: close\r\n\r\n";
+			//RequestStream << "Accept: */*\r\n";
+			//RequestStream << "Connection: close";
+			RequestStream << "\r\n\r\n";
 			asio::write(Socket, Request);
 
 			asio::read(Socket, Response, asio::transfer_all(), ErrorCode);
