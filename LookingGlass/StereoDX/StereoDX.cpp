@@ -4,6 +4,10 @@
 #include "framework.h"
 #include "StereoDX.h"
 
+#include "../BorderlessWin.h"
+
+StereoDX* Inst = nullptr;
+
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -140,6 +144,58 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
+        }
+        break;
+    case WM_CREATE:
+        BorderlessWin::ToggleBorderless(hWnd);
+        if (nullptr == Inst) {
+            Inst = new StereoDX();
+            Inst->OnCreate(hWnd, hInst, TEXT("StereoDX"));
+            SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            //SendMessage(hWnd, WM_PAINT, 0, 0);
+        }
+        break;
+    case WM_SIZE:
+        if (nullptr != Inst) {}
+        break;
+    case WM_EXITSIZEMOVE:
+        if (nullptr != Inst) {
+            Inst->OnExitSizeMove(hWnd, hInst);
+            SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            //SendMessage(hWnd, WM_PAINT, 0, 0);
+        }
+        break;
+    case WM_KEYDOWN:
+        switch (wParam) {
+        case VK_ESCAPE:
+            SendMessage(hWnd, WM_DESTROY, 0, 0);
+            break;
+        case VK_RETURN:
+            BorderlessWin::ToggleBorderless(hWnd);
+            break;
+            //case VK_TAB:
+            //    SendMessage(hWnd, WM_PAINT, 0, 0);
+            //    break;
+        default:
+            break;
+        }
+        break;
+    case WM_NCCALCSIZE:
+        if (wParam && BorderlessWin::IsBorderless(hWnd)) {
+            BorderlessWin::AdjustBorderlessRect(hWnd, reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam)->rgrc[0]);
+        }
+        else {
+            return DefWindowProc(hWnd, message, wParam, lParam);
+        }
+        break;
+    case WM_NCHITTEST:
+        if (BorderlessWin::IsBorderless(hWnd)) {
+            return BorderlessWin::GetBorderlessHit(hWnd, POINT({ .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) }), true, false);
+        }
+        break;
+    case WM_TIMER:
+        if (nullptr != Inst) {
+            Inst->OnTimer(hWnd, hInst);
         }
         break;
     case WM_PAINT:

@@ -48,6 +48,73 @@
 - インストール先を環境変数 OPENCV_SDK_PATH へセット (Create install folder as environment variable OPENCV_SDK_PATH)
 - 環境変数 Path へ `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` を追加 (Add `$(OPENCV_SDK_PATH)\build\x64\vc16\bin` to environment variable Path)
 
+#### [OpenCV](https://github.com/opencv/opencv) (ビルドする場合)
+- [CMake](https://cmake.org/)
+    - "Where is the source code" に [opencv](https://github.com/opencv/opencv) をクローンしたレポジトリを指定
+    - "Where to build the binaries" に適当なフォルダ (**CVPATH** とする) を指定する 
+    - オプション
+        - 静的ライブラリにする場合 
+            - BUILD_SHARED_LIBS のチェックを外す
+        - ライブラリが大量にできて使用時に大変なのでまとめる場合
+            - BUILD_opencv_world にチェックを入れる
+        - CUDA を使用する場合
+            - CUDA は予めインストールしておく
+            - OPENCV_EXTRA_MODULES_PATH に クローンした [contrib](https://github.com/opencv/opencv_contrib) 以下の mudules フォルダを指定する
+            - WITH_CUDA にチェックを入れる
+- ビルド
+    - ALL_BUILD (Debug, Release) を行う
+    - INSTALL (Debug, Release) を行う
+        - CMake で出先に指定した **CVPATH**\install\ 以下へインストールされる
+- 使用s
+    - Visutal Studio プロパティの指定
+        - 追加のインクルードディレクトリ
+            - **CVPATH**\install\include
+        - 追加のライブラリディレクトリ (OpenCV を Staticライブラリでビルドした場合)
+            - **CVPATH**\install\x64\vc17\staticlib
+        - **CVPATH**\install\x64\vc17\staticlib\以下にある 全ての lib を追加する
+            ~~~
+            #ifdef _DEBUG
+            #pragma comment(lib, "aded.lib")
+            #pragma comment(lib, "IlmImfd.lib")
+            #pragma comment(lib, "ippicvmt.lib") //!< これだけ d が作られなかった?
+            #pragma comment(lib, "ippiwd.lib")
+            #pragma comment(lib, "ittnotifyd.lib")
+            #pragma comment(lib, "libjpeg-turbod.lib")
+            #pragma comment(lib, "libopenjp2d.lib")
+            #pragma comment(lib, "libpngd.lib")
+            #pragma comment(lib, "libprotobufd.lib")
+            #pragma comment(lib, "libtiffd.lib")
+            #pragma comment(lib, "libwebpd.lib")
+            #pragma comment(lib, "opencv_img_hash4100d.lib")
+            #pragma comment(lib, "opencv_world4100d.lib")
+            #pragma comment(lib, "zlibd.lib")
+            #else
+            #pragma comment(lib, "ade.lib")
+            #pragma comment(lib, "IlmImf.lib")
+            #pragma comment(lib, "ippicvmt.lib")
+            #pragma comment(lib, "ippiw.lib")
+            #pragma comment(lib, "ittnotify.lib")
+            #pragma comment(lib, "libjpeg-turbo.lib")
+            #pragma comment(lib, "libopenjp2.lib")
+            #pragma comment(lib, "libpng.lib")
+            #pragma comment(lib, "libprotobuf.lib")
+            #pragma comment(lib, "libtiff.lib")
+            #pragma comment(lib, "libwebp.lib")
+            #pragma comment(lib, "opencv_img_hash4100.lib")
+            #pragma comment(lib, "opencv_world4100.lib")
+            #pragma comment(lib, "zlib.lib")
+            #endif
+            ~~~
+    - CUDA 使用時
+        - 追加のライブラリディレクトリ
+            - $(CUDA_PATH)\lib\x64
+        - cudart_static.lib を追加する
+            ~~~
+            #pragma comment(lib, "cudart_static.lib")
+            ~~~
+    - OpenCV を static ビルドした場合
+        - C/C++ - Code Generation - Runtime Libarry を /MT, /MTd にする必要がある
+
 ### 深度センサ (Depth sensor)
 #### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)
 - デプスセンサーとして使用 (Used as depth sensor)

@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef USE_CV
+//#define USE_CUDA
 #include "CV.h"
 
 class DisplacementCVVK : public DisplacementWldVK, public CV
