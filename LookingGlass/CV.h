@@ -7,6 +7,9 @@
 #pragma warning(disable : 4819)
 #include <opencv2/opencv.hpp>
 #pragma warning(pop)
+#ifdef USE_CUDA
+#include <opencv2/cudastereo.hpp>
+#endif
 
 #include "Common.h"
 
@@ -36,10 +39,13 @@ public:
 		}
 		return std::filesystem::path();
 	}
+};
 
+class StereoCV : public CV
+{
+public:
 	static void StereoMatching(const cv::Mat& Left, const cv::Mat& Right, cv::Mat& Disparity)
 	{
-		//!<
 		constexpr int MinDisp = 0;
 		constexpr int NumDisp = 16; //!< 16 の倍数
 		constexpr int BlockSize = 3; //!< マッチングブロックサイズ [3, 11] の奇数

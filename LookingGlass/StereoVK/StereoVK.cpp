@@ -6,7 +6,7 @@
 
 #include "../BorderlessWin.h"
 
-StereoVK* Inst = nullptr;
+DisplacementLeapVK* Inst = nullptr;
 
 #define MAX_LOADSTRING 100
 
@@ -149,9 +149,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-            Inst = new StereoVK();
-            Inst->OnCreate(hWnd, hInst, TEXT("StereoVK"));
-            //Inst->UpdateAsyncStart();
+            Inst = new DisplacementLeapVK();
+            Inst->OnCreate(hWnd, hInst, TEXT("DisplacementLeapVK"));
+            Inst->UpdateAsyncStart();
             SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }

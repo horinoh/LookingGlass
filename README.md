@@ -53,8 +53,10 @@
     - "Where is the source code" に [opencv](https://github.com/opencv/opencv) をクローンしたレポジトリを指定
     - "Where to build the binaries" に適当なフォルダ (**CVPATH** とする) を指定する 
     - オプション
+        <!--
         - 静的ライブラリにする場合 
             - BUILD_SHARED_LIBS のチェックを外す
+        -->
         - ライブラリが大量にできて使用時に大変なのでまとめる場合
             - BUILD_opencv_world にチェックを入れる
         - CUDA を使用する場合
@@ -65,13 +67,29 @@
     - ALL_BUILD (Debug, Release) を行う
     - INSTALL (Debug, Release) を行う
         - CMake で出先に指定した **CVPATH**\install\ 以下へインストールされる
-- 使用s
+- 使用
     - Visutal Studio プロパティの指定
         - 追加のインクルードディレクトリ
             - **CVPATH**\install\include
-        - 追加のライブラリディレクトリ (OpenCV を Staticライブラリでビルドした場合)
+        - 追加のライブラリディレクトリ
+            - **CVPATH**\install\x64\vc17\lib
+            <!--
             - **CVPATH**\install\x64\vc17\staticlib
-        - **CVPATH**\install\x64\vc17\staticlib\以下にある 全ての lib を追加する
+            -->
+        - 以下の .lib を追加する
+            ~~~
+            #ifdef _DEBUG           
+            #pragma comment(lib, "opencv_img_hash4100d.lib")
+            #pragma comment(lib, "opencv_world4100d.lib")
+            #else           
+            #pragma comment(lib, "opencv_img_hash4100.lib")
+            #pragma comment(lib, "opencv_world4100.lib")
+            #endif
+            ~~~
+        - 環境変数 PATH に通しておく
+            - **CVPATH**\install\x64\vc17\bin
+
+            <!--
             ~~~
             #ifdef _DEBUG
             #pragma comment(lib, "aded.lib")
@@ -105,6 +123,7 @@
             #pragma comment(lib, "zlib.lib")
             #endif
             ~~~
+            -->
     - CUDA 使用時
         - 追加のライブラリディレクトリ
             - $(CUDA_PATH)\lib\x64
@@ -112,8 +131,10 @@
             ~~~
             #pragma comment(lib, "cudart_static.lib")
             ~~~
+    <!--
     - OpenCV を static ビルドした場合
         - C/C++ - Code Generation - Runtime Libarry を /MT, /MTd にする必要がある
+    -->
 
 ### 深度センサ (Depth sensor)
 #### [MaixSenseA010](https://wiki.sipeed.com/hardware/en/maixsense/maixsense-a010/maixsense-a010.html)

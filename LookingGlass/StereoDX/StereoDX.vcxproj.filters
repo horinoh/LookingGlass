@@ -45,6 +45,9 @@
     <ClInclude Include="..\CVDX.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\CV.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="StereoDX.cpp">
