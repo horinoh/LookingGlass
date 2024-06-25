@@ -17,6 +17,14 @@ class DisplacementLeapVK : public DisplacementStereoCVVK, public Leap
 private:
 	using Super = DisplacementStereoCVVK;
 public:
+	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
+		//UpdateAsyncStart();
+		Super::OnCreate(hWnd, hInstance, Title);
+	}
+	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
+		Super::OnDestroy(hWnd, hInstance);
+		ExitThread();
+	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
@@ -25,8 +33,8 @@ public:
 		auto R = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
 
 		//!< d‚¢‚Ì‚Åk¬‚µ‚Äs‚¤
-		//cv::resize(L, L, cv::Size(320, 240));
-		//cv::resize(R, R, cv::Size(320, 240));
+		cv::resize(L, L, cv::Size(320, 240));
+		cv::resize(R, R, cv::Size(320, 240));
 		//cv::imshow("L", L);
 		//cv::imshow("R", R);
 

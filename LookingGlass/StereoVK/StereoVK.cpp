@@ -151,7 +151,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (nullptr == Inst) {
             Inst = new DisplacementLeapVK();
             Inst->OnCreate(hWnd, hInst, TEXT("DisplacementLeapVK"));
-            //Inst->UpdateAsyncStart();
             SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
