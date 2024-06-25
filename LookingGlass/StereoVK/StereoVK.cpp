@@ -151,7 +151,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (nullptr == Inst) {
             Inst = new DisplacementLeapVK();
             Inst->OnCreate(hWnd, hInst, TEXT("DisplacementLeapVK"));
-            Inst->UpdateAsyncStart();
+            //Inst->UpdateAsyncStart();
             SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
@@ -203,11 +203,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
+            if (nullptr != Inst) {
+                Inst->OnPaint(hWnd, hInst);
+            }
             // TODO: Add any drawing code that uses hdc here...
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+        if (nullptr != Inst) {
+            Inst->OnPreDestroy();
+            Inst->OnDestroy(hWnd, hInst);
+            delete Inst;
+        }
         PostQuitMessage(0);
         break;
     default:

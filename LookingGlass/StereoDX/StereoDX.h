@@ -25,15 +25,15 @@ public:
 		auto R = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
 
 		//!< 重いので縮小して行う
-		cv::resize(L, L, cv::Size(320, 240));
-		cv::resize(R, R, cv::Size(320, 240));
+		//cv::resize(L, L, cv::Size(320, 240));
+		//cv::resize(R, R, cv::Size(320, 240));
 		//cv::imshow("L", L);
 		//cv::imshow("R", R);
 
 		//!< ステレオマッチング
 		cv::Mat Disparity;
 		StereoCV::StereoMatching(L, R, Disparity);
-		//cv::imshow("Disparity", Disparity);
+		cv::imshow("Disparity", Disparity);
 
 		cv::cvtColor(L, L, cv::COLOR_BGR2RGBA);
 

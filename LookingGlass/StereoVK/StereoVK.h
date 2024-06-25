@@ -25,8 +25,8 @@ public:
 		auto R = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
 
 		//!< d‚¢‚Ì‚Åk¬‚µ‚Äs‚¤
-		cv::resize(L, L, cv::Size(320, 240));
-		cv::resize(R, R, cv::Size(320, 240));
+		//cv::resize(L, L, cv::Size(320, 240));
+		//cv::resize(R, R, cv::Size(320, 240));
 		//cv::imshow("L", L);
 		//cv::imshow("R", R);
 

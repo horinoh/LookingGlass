@@ -60,8 +60,8 @@ public:
 		//!< [0, 255] にしてグレースケール表示
 		double MinVal, MaxVal;
 		cv::minMaxLoc(Disparity, &MinVal, &MaxVal);
-		const auto A = 255.0 / (MaxVal - MinVal);
-		Disparity.convertTo(Disparity, CV_8UC1, A, -A * MinVal);
+		const auto Tmp = 255.0 / (MaxVal - MinVal);
+		Disparity.convertTo(Disparity, CV_8UC1, Tmp, -Tmp * MinVal);
 		//!< 黒が凹、白が凸になるように反転
 		Disparity = ~Disparity;
 	}

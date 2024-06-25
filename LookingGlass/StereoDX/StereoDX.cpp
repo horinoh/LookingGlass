@@ -203,10 +203,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: Add any drawing code that uses hdc here...
+            if (nullptr != Inst) {
+                Inst->OnPaint(hWnd, hInst);
+            }
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+        if (nullptr != Inst) {
+            Inst->OnPreDestroy();
+            Inst->OnDestroy(hWnd, hInst);
+            delete Inst;
+        }
         PostQuitMessage(0);
         break;
     default:

@@ -122,8 +122,8 @@ public:
 		}
 
 #ifdef USE_CV
-		cv::hconcat(LRCV[0], LRCV[1], PreviewCV);
-		cv::imshow(WinNameCV, PreviewCV);
+		//cv::hconcat(LRCV[0], LRCV[1], PreviewCV);
+		//cv::imshow(WinNameCV, PreviewCV);
 #endif
 	}
 
