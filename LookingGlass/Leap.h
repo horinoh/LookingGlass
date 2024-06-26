@@ -1,8 +1,8 @@
 #pragma once
 
-//#define USE_LEAP
-//#define USE_CV
-//#include "CV.h"
+#define USE_LEAP
+#define USE_CV
+#include "CV.h"
 
 #ifdef USE_LEAP
 #include <limits>
@@ -30,9 +30,6 @@ public:
 			
 				UpdateRebase();
 			}
-#ifdef USE_CV
-			cv::imshow(WinNameCV, PreviewCV);
-#endif
 		}
 	}
 	virtual ~Leap() {
@@ -101,18 +98,9 @@ public:
 		}
 
 		for (uint32_t i = 0; i < _countof(IE->image); ++i) {
+			OnImage(i, IE);
+			
 			const auto& Image = IE->image[i];
-			const auto& Prop = Image.properties;
-			Prop.width;
-			Prop.height;
-			Prop.bpp;
-			Prop.format;
-			Prop.type;
-
-#ifdef USE_CV
-			LRCV[i] = cv::Mat(cv::Size(Prop.width, Prop.height), CV_8UC1, reinterpret_cast<std::byte*>(Image.data) + Image.offset, cv::Mat::AUTO_STEP);
-#endif
-
 			for (uint32_t j = 0; j < LEAP_DISTORTION_MATRIX_N; ++j) {
 				for (uint32_t k = 0; k < LEAP_DISTORTION_MATRIX_N; ++k) {
 					const auto& Dist = Image.distortion_matrix->matrix[j][k];
@@ -120,12 +108,8 @@ public:
 				}
 			}
 		}
-
-#ifdef USE_CV
-		//cv::hconcat(LRCV[0], LRCV[1], PreviewCV);
-		//cv::imshow(WinNameCV, PreviewCV);
-#endif
 	}
+	virtual void OnImage(const uint32_t i, const LEAP_IMAGE_EVENT* IE) {}
 
 protected:
 	LEAP_CONNECTION LeapConnection = nullptr;
@@ -135,14 +119,28 @@ protected:
 	std::thread Thread;
 	//std::mutex Mutex;
 	bool IsExitThread = false;
-
-#ifdef USE_CV
-	const cv::String WinNameCV = "LR";
-	cv::Mat PreviewCV = cv::Mat(cv::Size(640 + 640, 240), CV_8UC1);
-	std::array<cv::Mat, 2> LRCV;
-#endif
 };
 
+class LeapCV : public Leap, public StereoCV
+{
+public:
+	virtual void OnImage(const uint32_t i, const LEAP_IMAGE_EVENT* IE) override {
+		const auto& Image = IE->image[i];
+		const auto& Prop = Image.properties;
+		StereoImages[i] = cv::Mat(cv::Size(Prop.width, Prop.height), CV_8UC1, reinterpret_cast<std::byte*>(Image.data) + Image.offset, cv::Mat::AUTO_STEP);
 
+#ifdef _DEBUG
+		if (1 == i) {
+			cv::Mat Concat;
+			cv::hconcat(StereoImages[0], StereoImages[1], Concat);
+			cv::imshow(WinNameStereo, Concat);
+		}
+#endif
+	}
+
+#ifdef _DEBUG
+	const cv::String WinNameStereo = "Stereo";
+#endif
+};
 
 #endif

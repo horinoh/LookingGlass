@@ -12,50 +12,46 @@
 #define USE_LEAP
 #include "../Leap.h"
 
-class DisplacementLeapDX : public DisplacementStereoCVDX, public Leap
+class DisplacementLeapDX : public DisplacementWldDX, public LeapCV
 {
 private:
-	using Super = DisplacementStereoCVDX;
+	using Super = DisplacementWldDX;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//UpdateAsyncStart();
+		UpdateAsyncStart();
 		Super::OnCreate(hWnd, hInstance, Title);
 	}
 	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
 		Super::OnDestroy(hWnd, hInstance);
 		ExitThread();
 	}
+
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
-		const auto CVPath = CV::GetOpenCVPath();
-		auto L = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
-		auto R = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
-
-		//!< 重いので縮小して行う
-		cv::resize(L, L, cv::Size(320, 240));
-		cv::resize(R, R, cv::Size(320, 240));
-		//cv::imshow("L", L);
-		//cv::imshow("R", R);
-
-		//!< ステレオマッチング
-		cv::Mat Disparity;
-		StereoCV::StereoMatching(L, R, Disparity);
-		cv::imshow("Disparity", Disparity);
-
-		cv::cvtColor(L, L, cv::COLOR_BGR2RGBA);
-
-		//!< カラー (CVデータをテクスチャへ)
-		Create(Textures.emplace_back(), L, DXGI_FORMAT_R8G8B8A8_UNORM);
-
-		//!< デプス (CVデータをテクスチャへ)
-		Create(Textures.emplace_back(), Disparity, DXGI_FORMAT_R8_UNORM);
-
-		//!< テクスチャ更新
-		Update2(Textures[0], L, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			Textures[1], Disparity, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		constexpr auto Layers = 1;
+		AnimatedTextures.emplace_back().Create(COM_PTR_GET(Device), DisparityImage.cols, DisparityImage.rows, static_cast<UINT>(DisparityImage.elemSize()), Layers, DXGI_FORMAT_R8_UNORM, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	}
 
-	virtual const Texture& GetColorMap() const override { return Textures[0]; };
-	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
+	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
+	virtual const Texture& GetDepthMap() const override { return AnimatedTextures[0]; };
+	virtual bool DrawGrayScale() const override { return true; }
+
+	virtual void DrawFrame(const UINT i) override {
+		if (0 == i) {
+			constexpr auto Layers = 1;
+			AnimatedTextures[0].UpdateUploadBuffer(DisparityImage.cols, DisparityImage.rows, static_cast<UINT>(DisparityImage.elemSize()), Layers, DisparityImage.ptr());
+		}
+	}
+	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
+		const auto DCL = COM_PTR_GET(DirectCommandLists[i]);
+
+		constexpr auto Bpp = 1;
+		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp);
+	}
+	virtual void UpdateWorldBuffer() override {
+		float X, Y;
+		GetXYScaleForDevice(X, Y);
+		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 5.0f));
+	}
 };

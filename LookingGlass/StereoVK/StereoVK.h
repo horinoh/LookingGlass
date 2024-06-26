@@ -12,13 +12,13 @@
 #define USE_LEAP
 #include "../Leap.h"
 
-class DisplacementLeapVK : public DisplacementStereoCVVK, public Leap
+class DisplacementLeapVK : public DisplacementWldVK, public LeapCV
 {
 private:
-	using Super = DisplacementStereoCVVK;
+	using Super = DisplacementWldVK;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
-		//UpdateAsyncStart();
+		UpdateAsyncStart();
 		Super::OnCreate(hWnd, hInstance, Title);
 	}
 	virtual void OnDestroy(HWND hWnd, HINSTANCE hInstance) override {
@@ -27,33 +27,25 @@ public:
 	}
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
-
-		const auto CVPath = CV::GetOpenCVPath();
-		auto L = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
-		auto R = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
-
-		//!< 重いので縮小して行う
-		cv::resize(L, L, cv::Size(320, 240));
-		cv::resize(R, R, cv::Size(320, 240));
-		//cv::imshow("L", L);
-		//cv::imshow("R", R);
-
-		//!< ステレオマッチング
-		cv::Mat Disparity;
-		StereoCV::StereoMatching(L, R, Disparity);
-		cv::imshow("Disparity", Disparity);
-
-		//!< カラー (CVデータをテクスチャへ)
-		cv::cvtColor(L, L, cv::COLOR_BGR2RGBA);
-		Create(Textures.emplace_back(), L, VK_FORMAT_R8G8B8A8_UNORM);
-
-		//!< デプス (CVデータをテクスチャへ)
-		Create(Textures.emplace_back(), Disparity, VK_FORMAT_R8_UNORM);
-
-		//!< テクスチャ更新
-		Update2(Textures[0], L, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-			Textures[1], Disparity, VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+		
+		AnimatedTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, VK_FORMAT_R8_UNORM, static_cast<uint32_t>(DisparityImage.elemSize()), VkExtent3D({.width = static_cast<uint32_t>(DisparityImage.cols), .height = static_cast<uint32_t>(DisparityImage.rows), .depth = 1}));
 	}
-	virtual const Texture& GetColorMap() const override { return Textures[0]; };
-	virtual const Texture& GetDepthMap() const override { return Textures[1]; };
+	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
+	virtual const Texture& GetDepthMap() const override { return AnimatedTextures[0]; };
+	virtual bool DrawGrayScale() const override { return true; }
+
+	virtual void DrawFrame(const UINT i) override {
+		if (0 == i) {
+			AnimatedTextures[0].UpdateStagingBuffer(Device, DisparityImage.total() * DisparityImage.elemSize(), DisparityImage.ptr());
+		}
+	}
+	virtual void PopulateAnimatedTextureCommand(const size_t i) override {
+		const auto CB = CommandBuffers[i];
+		AnimatedTextures[0].PopulateStagingToImageCommand(CB, DisparityImage.cols, DisparityImage.rows, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+	}
+	virtual void UpdateWorldBuffer() override {
+		float X, Y;
+		GetXYScaleForDevice(X, Y);
+		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, 5.0f));
+	}
 };
