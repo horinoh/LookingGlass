@@ -185,8 +185,7 @@ public:
 				//!< スレッドは外から終了させない、フラグだけ立ててスレッド自身に終了してもらう
 				while (!IsExitThread) {
 					Update();
-//					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
-					std::this_thread::sleep_for(std::chrono::microseconds(1000));
+					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 20));
 				}
 			});
 		}

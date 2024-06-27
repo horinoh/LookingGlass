@@ -48,8 +48,12 @@ public:
 
 	virtual void DrawFrame(const UINT i) override {
 		if (0 == i) {
-			constexpr auto Bpp = 1;
-			AnimatedTextures[0].UpdateStagingBuffer(Device, Frame.Header.Cols * Frame.Header.Rows * Bpp, std::data(Frame.Payload));
+			Mutex.lock(); 
+			{
+				constexpr auto Bpp = 1;
+				AnimatedTextures[0].UpdateStagingBuffer(Device, Frame.Header.Cols * Frame.Header.Rows * Bpp, std::data(Frame.Payload));
+			}
+			Mutex.unlock();
 		}
 	}
 	virtual void PopulateAnimatedTextureCommand(const size_t i) override {

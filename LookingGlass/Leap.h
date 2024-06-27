@@ -52,14 +52,29 @@ public:
 				while (!IsExitThread) {
 					LEAP_CONNECTION_MESSAGE Msg;
 					if (eLeapRS_Success == LeapPollConnection(LeapConnection, 1000, &Msg)) {
+					//LeapPollConnection(LeapConnection, 1000, &Msg); {
 						switch (Msg.type) {
 						default: break;
+						case eLeapEventType_Connection:
+							LOG("[Leap] Connection\n");
+							break;
+						case eLeapEventType_ConnectionLost:
+							LOG("[Leap] Connection lost\n");
+							IsExitThread = true;
+							break;
+
 						case eLeapEventType_Image:
+							//LOG("[Leap] Image\n");
 							OnImageEvent(Msg.image_event);
+							break;
+						
+						case eLeapEventType_Tracking:
+							//LOG("[Leap] Tracking\n");
 							break;
 						}
 					}
-					std::this_thread::sleep_for(std::chrono::microseconds(1000));
+					//std::this_thread::sleep_for(std::chrono::microseconds(1000));
+					std::this_thread::sleep_for(std::chrono::microseconds(1000 / 60));
 				}
 			});
 		}
@@ -94,7 +109,7 @@ public:
 		if (CurrentMatrixVersion != IE->image[0].matrix_version) {
 			CurrentMatrixVersion = IE->image[0].matrix_version;
 			//!< (回転等により) ディストーションマップが変化した
-			LOG(std::data(std::format("Distortion map changed. MatrixVersion = {}\n", CurrentMatrixVersion)));
+			LOG(std::data(std::format("[Leap] Distortion map changed. MatrixVersion = {}\n", CurrentMatrixVersion)));
 		}
 
 		for (uint32_t i = 0; i < _countof(IE->image); ++i) {
@@ -117,7 +132,7 @@ protected:
 	uint64_t CurrentMatrixVersion = (std::numeric_limits<uint64_t>::max)();
 
 	std::thread Thread;
-	//std::mutex Mutex;
+	std::mutex Mutex;
 	bool IsExitThread = false;
 };
 
@@ -133,14 +148,11 @@ public:
 		if (1 == i) {
 			cv::Mat Concat;
 			cv::hconcat(StereoImages[0], StereoImages[1], Concat);
-			cv::imshow(WinNameStereo, Concat);
+			cv::imshow("Stereo", Concat);
+			cv::pollKey();
 		}
 #endif
 	}
-
-#ifdef _DEBUG
-	const cv::String WinNameStereo = "Stereo";
-#endif
 };
 
 #endif

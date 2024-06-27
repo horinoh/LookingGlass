@@ -152,7 +152,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             Inst = new DepthSensorA010VK();
             //Inst = new DepthSensorA075VK();
             Inst->OnCreate(hWnd, hInst, TEXT("DepthSensorVK"));
-            SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            SetTimer(hWnd, TIMER_ID, 1000 / 20, nullptr);
+            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         //{
@@ -168,7 +169,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_EXITSIZEMOVE:
         if (nullptr != Inst) {
             Inst->OnExitSizeMove(hWnd, hInst);
-            SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
+            SetTimer(hWnd, TIMER_ID, 1000 / 20, nullptr);
+            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
             //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         break;
