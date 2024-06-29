@@ -2,6 +2,7 @@
 
 #define USE_LEAP
 #define USE_CV
+#define USE_CUDA
 #include "CV.h"
 
 #ifdef USE_LEAP
@@ -113,7 +114,7 @@ public:
 		}
 
 		for (uint32_t i = 0; i < _countof(IE->image); ++i) {
-			OnImage(i, IE);
+			OnImage(i, IE->image[i]);
 			
 			const auto& Image = IE->image[i];
 			for (uint32_t j = 0; j < LEAP_DISTORTION_MATRIX_N; ++j) {
@@ -124,7 +125,7 @@ public:
 			}
 		}
 	}
-	virtual void OnImage(const uint32_t i, const LEAP_IMAGE_EVENT* IE) {}
+	virtual void OnImage(const uint32_t i, const LEAP_IMAGE& LI) {}
 
 protected:
 	LEAP_CONNECTION LeapConnection = nullptr;
@@ -136,22 +137,28 @@ protected:
 	bool IsExitThread = false;
 };
 
-class LeapCV : public Leap, public StereoCV
+class LeapCV : public Leap
+#ifdef USE_CUDA
+	, public StereoGPUCV
+#else
+	, public StereoCV
+#endif
 {
 public:
-	virtual void OnImage(const uint32_t i, const LEAP_IMAGE_EVENT* IE) override {
-		const auto& Image = IE->image[i];
-		const auto& Prop = Image.properties;
-		StereoImages[i] = cv::Mat(cv::Size(Prop.width, Prop.height), CV_8UC1, reinterpret_cast<std::byte*>(Image.data) + Image.offset, cv::Mat::AUTO_STEP);
+	virtual void OnImageEvent(const LEAP_IMAGE_EVENT* IE) override {
+		Leap::OnImageEvent(IE);
 
-#ifdef _DEBUG
-		if (1 == i) {
-			cv::Mat Concat;
-			cv::hconcat(StereoImages[0], StereoImages[1], Concat);
-			cv::imshow("Stereo", Concat);
-			cv::pollKey();
+		Mutex.lock(); 
+		{
+			Compute();
 		}
-#endif
+		Mutex.unlock();
+
+		ShowStereo();
+	}
+	virtual void OnImage(const uint32_t i, const LEAP_IMAGE& LI) override {
+		const auto& Prop = LI.properties;
+		StereoImages[i] = cv::Mat(cv::Size(Prop.width, Prop.height), CV_8UC1, reinterpret_cast<std::byte*>(LI.data) + LI.offset, cv::Mat::AUTO_STEP);
 	}
 };
 

@@ -41,73 +41,199 @@ class StereoCV : public CV
 private:
 	using Super = CV;
 public:
-	static void StereoMatching(const cv::Mat& Left, const cv::Mat& Right, cv::Mat& Disparity)
-	{
-		if (HasCuda()) {
-			cv::cuda::GpuMat LeftGPU, RightGPU;
-			cv::cuda::GpuMat DisparityGPU(Left.size(), CV_8U);
-			LeftGPU.upload(Left);
-			RightGPU.upload(Right);
-			{
-				//BM->compute(LeftGPU, RightGPU, DisparityGPU);
-				//BP->compute(LeftGPU, RightGPU, DisparityGPU);
-				//CSBP->compute(LeftGPU, RightGPU, DisparityGPU);
-			}
-			DisparityGPU.download(Disparity);
-		}
-		else {
-			constexpr int MinDisp = 0;
-			constexpr int NumDisp = 16; //!< 16 の倍数
-			constexpr int BlockSize = 3; //!< マッチングブロックサイズ [3, 11] の奇数
-			constexpr int P1 = 0;// 8 * 3 * BlockSize * BlockSize;
-			constexpr int P2 = 0;// 32 * 3 * BlockSize * BlockSize;
-			constexpr int Disp12MaxDiff = 0; //!< 視差チェックで許容される最大差 (0は無効)
-			constexpr int PreFilterCap = 0;
-			auto Stereo = cv::StereoSGBM::create(MinDisp, NumDisp, BlockSize, P1, P2, Disp12MaxDiff, PreFilterCap);
-			Stereo->compute(Left, Right, Disparity);
-		}
+	StereoCV() : Super(), Matcher(cv::StereoSGBM::create()) {
+#ifdef _DEBUG	
+		//!< [ cv::StereoMatcher ]
+		//MinMinDisparity = GetMatcher()->getMinDisparity();
+		NumDisparities = GetMatcher()->getNumDisparities(); //!< 16 の倍数
+		BlockSize = GetMatcher()->getBlockSize(); //!< [3, 11] の奇数
+		//SpeckleWindowSize = GetMatcher()->getSpeckleWindowSize();
+		//SpeckleRange = GetMatcher()->getSpeckleRange();
+		//Disp12MaxDiff = GetMatcher()->getDisp12MaxDiff();
+	   
+		//!< [ cv::StereoSGBM ]
+		//, PreFilterCap(SGBM->getPreFilterCap())
+		//, UniquenessRatio(SGBM->getUniquenessRatio())
+		//, P1(SGBM->getP1()) //!< 8 * 3 * BlockSize * BlockSize
+		//, P2(SGBM->getP2()) //!< 32 * 3 * BlockSize * BlockSize
+		//, Mode(SGBM->getMode())
+#endif
 
-		//!< 計算結果は CV_16S で格納されるのでグレースケールへ変換
-		ToGrayScale(Disparity);
+		//!< とりあえずデフォルト動作としてサンプルの左右画像を読み込んでおく
+		const auto CVPath = CV::GetOpenCVPath();
+		StereoImages[0] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
+		StereoImages[1] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
+		cv::resize(StereoImages[0], StereoImages[0], cv::Size(640, 240));
+		cv::resize(StereoImages[1], StereoImages[1], cv::Size(640, 240));
+		cv::cvtColor(StereoImages[0], StereoImages[0], cv::COLOR_BGR2GRAY);
+		cv::cvtColor(StereoImages[1], StereoImages[1], cv::COLOR_BGR2GRAY);
+		ShowStereo();
 	}
+
+	virtual void Compute() {
+		Matcher->compute(StereoImages[0], StereoImages[1], DisparityImage);
+		//!< 計算結果は CV_16S で格納されるのでグレースケールへ変換
+		ToGrayScale(DisparityImage);
+
+		ShowDisparity();
+	}
+
+	virtual void CreateUI() {
+#ifdef _DEBUG
+		const cv::String WinUI = "UI";
+		cv::namedWindow(WinUI, cv::WINDOW_AUTOSIZE);
+		{
+			cv::createTrackbar("NumDisparities", WinUI, &NumDisparities, 10, [](int Pos, void* Userdata) {
+				auto This = reinterpret_cast<StereoCV*>(Userdata);
+				//!< 16 の倍数
+				This->GetMatcher()->setNumDisparities((std::max)(Pos, 1) << 4);
+				This->Compute();
+				}, this);
+			cv::createTrackbar("BlockSize", WinUI, &BlockSize, 11, [](int Pos, void* Userdata) {
+				auto This = reinterpret_cast<StereoCV*>(Userdata);
+				//!< 奇数
+				This->GetMatcher()->setBlockSize((Pos & 1) ? Pos : (Pos + 1));
+				This->Compute();
+				}, this);
+		}
+		Compute();
+#endif
+	}
+
+	void ShowStereo() {
+#ifdef _DEBUG
+		cv::Mat Concat;
+		cv::hconcat(StereoImages[0], StereoImages[1], Concat);
+		cv::imshow("Stereo", Concat);
+		cv::pollKey();
+#endif
+	}
+	void ShowDisparity() {
+#ifdef _DEBUG
+		cv::imshow("Disparity", DisparityImage);
+#endif
+	}
+
 	static cv::Mat& ToGrayScale(cv::Mat& Disparity) {
 		//!< [0, 255] にしてグレースケール表示
 		double MinVal, MaxVal;
 		cv::minMaxLoc(Disparity, &MinVal, &MaxVal);
 		const auto Tmp = 255.0 / (MaxVal - MinVal);
 		Disparity.convertTo(Disparity, CV_8UC1, Tmp, -Tmp * MinVal);
+		
 		//!< 黒が凹、白が凸になるように反転
-		Disparity = ~Disparity;
+		//Disparity = ~Disparity;
+		
 		return Disparity;
 	}
 
-	StereoCV() : Super()
-	{
+	cv::Ptr <cv::StereoMatcher> GetMatcher() { return Matcher; }
+
+protected:
 #ifdef _DEBUG
-		const cv::String WinUI = "UI";
-		cv::namedWindow(WinUI, cv::WINDOW_AUTOSIZE);
-		{
-			cv::createTrackbar("NumDisparity", WinUI, &NumDisparity, 100, [](int Pos, void* Userdata) {});
-			cv::createTrackbar("BlockSize", WinUI, &BlockSize, 51, [](int Pos, void* Userdata) {});
-			cv::createTrackbar("PreFilter", WinUI, &PreFilter, static_cast<int>(cv::StereoBM::PREFILTER_XSOBEL), [](int Pos, void* Userdata) {});
-			cv::createTrackbar("NumIters", WinUI, &NumIters, 100, [](int Pos, void* Userdata) {});
-			cv::createTrackbar("NumLevels", WinUI, &NumLevels, 100, [](int Pos, void* Userdata) {});
+	int NumDisparities, BlockSize;
+#endif
+
+	cv::Ptr<cv::StereoMatcher> Matcher;
+
+	std::array<cv::Mat, 2> StereoImages;
+	cv::Mat DisparityImage = cv::Mat(cv::Size(640, 240), CV_8UC1);
+};
+
+#ifdef USE_CUDA
+class StereoGPUCV : public StereoCV
+{
+private:
+	using Super = StereoCV;
+public:
+	StereoGPUCV() : Super() {
+		//!< [ StereoBM ]
+		Matcher = cv::cuda::createStereoBM();
+
+		//!< [ StereoBeliefPropagation ]
+#ifndef _DEBUG
+		int NumDisparities, NumIters, NumLevels;
+#endif
+		cv::cuda::StereoBeliefPropagation::estimateRecommendedParams(640, 240, NumDisparities, NumIters, NumLevels);
+		Matcher = cv::cuda::createStereoBeliefPropagation(NumDisparities, NumIters, NumLevels);
+
+		//!< [ StereoConstantSpaceBP ]
+#ifndef _DEBUG
+		int NrPlane;
+#endif
+		cv::cuda::StereoConstantSpaceBP::estimateRecommendedParams(640, 240, NumDisparities, NumIters, NumLevels, NrPlane);
+		Matcher = cv::cuda::createStereoConstantSpaceBP(NumDisparities, NumIters, NumLevels, NrPlane);
+	}
+
+	virtual void Compute() {
+		if (HasCuda()) {
+			cv::cuda::GpuMat LG, RG;
+			cv::cuda::GpuMat DG(StereoImages[0].size(), CV_8U);
+
+			LG.upload(StereoImages[0]);
+			RG.upload(StereoImages[1]);
+			{
+				Matcher->compute(LG, RG, DG);
+			}
+			DG.download(DisparityImage);
+
+			ToGrayScale(DisparityImage);
+
+			ShowDisparity();
+		}
+		else {
+			Super::Compute();
+		}
+	}
+
+	virtual void CreateUI() {
+#ifdef _DEBUG
+		if (HasCuda()) {
+			const cv::String WinUI = "UI";
+			cv::namedWindow(WinUI, cv::WINDOW_AUTOSIZE);
+			{
+				cv::createTrackbar("NumDisparities", WinUI, &NumDisparities, 300, [](int Pos, void* Userdata) {
+					auto This = reinterpret_cast<StereoGPUCV*>(Userdata);
+					This->GetMatcher()->setNumDisparities((std::max)(Pos, 5));
+					This->Compute();
+					}, this);
+				cv::createTrackbar("BlockSize", WinUI, &BlockSize, 20, [](int Pos, void* Userdata) {
+					auto This = reinterpret_cast<StereoGPUCV*>(Userdata);
+					This->GetMatcher()->setBlockSize(Pos);
+					This->Compute();
+					}, this);
+
+				if (nullptr != static_cast<cv::cuda::StereoBeliefPropagation*>(GetMatcher().get())) {
+					cv::createTrackbar("NumIters", WinUI, &NumIters, 20, [](int Pos, void* Userdata) {
+						auto This = reinterpret_cast<StereoGPUCV*>(Userdata);
+						static_cast<cv::cuda::StereoBeliefPropagation*>(This->GetMatcher().get())->setNumIters(Pos);
+						This->Compute();
+						}, this);
+					cv::createTrackbar("NumLevels", WinUI, &NumLevels, 8, [](int Pos, void* Userdata) {
+						auto This = reinterpret_cast<StereoGPUCV*>(Userdata);
+						static_cast<cv::cuda::StereoBeliefPropagation*>(This->GetMatcher().get())->setNumLevels(Pos);
+						This->Compute();
+						}, this);
+				}
+				if (nullptr != static_cast<cv::cuda::StereoConstantSpaceBP*>(GetMatcher().get())) {
+					cv::createTrackbar("NrPlane", WinUI, &NrPlane, 10, [](int Pos, void* Userdata) {
+						auto This = reinterpret_cast<StereoGPUCV*>(Userdata);
+						static_cast<cv::cuda::StereoConstantSpaceBP*>(This->GetMatcher().get())->setNrPlane(Pos);
+						This->Compute();
+						}, this);
+				}
+			}
+			Compute();
+		}
+		else {
+			Super::CreateUI();
 		}
 #endif
 	}
 
 protected:
-	//auto SGBM = cv::StereoSGBM::create(0, NumDisparity, 3, 0, 0, 0, 0);
-	//auto BM = cv::cuda::createStereoBM(NumDisparity);
-	//auto BP = cv::cuda::createStereoBeliefPropagation(NumDisparity);
-	//auto CSBP = cv::cuda::createStereoConstantSpaceBP(NumDisparity);
 #ifdef _DEBUG
-	int NumDisparity = 64; //!< [16, 64, 64, 128, ]
-	int BlockSize = 19; //!< [1, 51]
-	int PreFilter = static_cast<int>(cv::StereoBM::PREFILTER_NORMALIZED_RESPONSE); //!< [PREFILTER_NORMALIZED_RESPONSE, PREFILTER_XSOBEL]
-	int NumIters = 5; //!< [1, ]
-	int NumLevels = 5;  //!< [1, ]
+	int NumIters, NumLevels, NrPlane;
 #endif
-	std::array<cv::Mat, 2> StereoImages;
-	cv::Mat DisparityImage = cv::Mat(cv::Size(640, 240), CV_8UC1);
 };
+#endif
