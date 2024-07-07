@@ -404,31 +404,38 @@ protected:
 	}
 
 	static void ImageMemoryBarrier(const VkCommandBuffer CB, 
-		const VkPipelineStageFlags SrcStage, const VkPipelineStageFlags DstStage,
-		const VkAccessFlags SrcAccess, const VkAccessFlags DstAccess, 
+		const VkPipelineStageFlags2 SrcStage, const VkPipelineStageFlags2 DstStage,
+		const VkAccessFlags2 SrcAccess, const VkAccessFlags2 DstAccess,
 		const VkImageLayout OldLayout, const VkImageLayout NewLayout,
 		const VkImage Image) {
-		const std::array IMBs = {
-			VkImageMemoryBarrier({
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		constexpr std::array<VkMemoryBarrier2, 0> MB2s = {};
+		constexpr std::array<VkBufferMemoryBarrier2, 0> BMB2s = {};
+		const std::array IMB2s = {
+			VkImageMemoryBarrier2({
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
 				.pNext = nullptr,
-				.srcAccessMask = SrcAccess, .dstAccessMask = DstAccess,
+				.srcStageMask = SrcStage, .srcAccessMask = SrcAccess, .dstStageMask = DstStage, .dstAccessMask = DstAccess,
 				.oldLayout = OldLayout, .newLayout = NewLayout,
 				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 				.image = Image,
 				.subresourceRange = VkImageSubresourceRange({
-					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
-					.baseMipLevel = 0, 
-					.levelCount = 1, 
-					.baseArrayLayer = 0, 
-					.layerCount = 1 
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					.baseMipLevel = 0,
+					.levelCount = 1,
+					.baseArrayLayer = 0,
+					.layerCount = 1
 				})
 			}),
 		};
-		vkCmdPipelineBarrier(CB, SrcStage, DstStage, VK_DEPENDENCY_BY_REGION_BIT, 
-			0, nullptr,
-			0, nullptr,
-			static_cast<uint32_t>(std::size(IMBs)), std::data(IMBs));
+		const VkDependencyInfo DI = {
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.pNext = nullptr,
+			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+			.memoryBarrierCount = static_cast<uint32_t>(std::size(MB2s)), .pMemoryBarriers = std::data(MB2s),
+			.bufferMemoryBarrierCount = static_cast<uint32_t>(std::size(BMB2s)), .pBufferMemoryBarriers = std::data(BMB2s),
+			.imageMemoryBarrierCount = static_cast<uint32_t>(std::size(IMB2s)), .pImageMemoryBarriers = std::data(IMB2s),
+		};
+		vkCmdPipelineBarrier2(CB, &DI);
 	}
 	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const uint32_t Width, const uint32_t Height, const uint32_t Layers, const VkPipelineStageFlags PSF) {
 		std::vector<VkBufferImageCopy> BICs;

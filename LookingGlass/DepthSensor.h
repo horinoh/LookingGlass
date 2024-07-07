@@ -385,10 +385,10 @@ public:
 			std::random_device RndDev;
 			Mutex.lock(); {
 				std::ranges::generate(Frame.Payload, [&]() { return RndDev(); });
-#if defined(USE_CV) && defined(_DEBUG)
-				DepthCV = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
-#endif
 			} Mutex.unlock();
+#if defined(USE_CV) && defined(_DEBUG)
+			DepthCV = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+#endif
 		}
 		else {
 			while (!IsExitThread) {
@@ -412,10 +412,11 @@ public:
 						Port.read_some(asio::buffer(&Frame, FrameDataLen), ErrorCode); VerifyError();
 						//!< 黒白が凹凸となるように反転
 						std::ranges::transform(Frame.Payload, std::begin(Frame.Payload), [](const uint8_t i) { return 0xff - i; });
-#if defined(USE_CV) && defined(_DEBUG)
-						DepthCV = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
-#endif
 					} Mutex.unlock();
+
+#if defined(USE_CV) && defined(_DEBUG)
+					DepthCV = cv::Mat(cv::Size(Frame.Header.Cols, Frame.Header.Rows), CV_8UC1, std::data(Frame.Payload), cv::Mat::AUTO_STEP);
+#endif
 					OnFrame();
 
 					//!< チェックサム
