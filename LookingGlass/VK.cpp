@@ -296,9 +296,14 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 			VkPhysicalDeviceFeatures PDF;
 			vkGetPhysicalDeviceFeatures(PD, &PDF);
 			if (nullptr == pNext) {
+				constexpr VkPhysicalDeviceSynchronization2Features PDS2 = {
+					.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+					.pNext = nullptr,
+					.synchronization2 = VK_TRUE
+				};
 				const VkDeviceCreateInfo DCI = {
 					.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-					.pNext = nullptr,
+					.pNext = &PDS2,
 					.flags = 0,
 					.queueCreateInfoCount = static_cast<uint32_t>(std::size(DQCIs)), .pQueueCreateInfos = std::data(DQCIs),
 					.enabledLayerCount = 0, .ppEnabledLayerNames = nullptr,

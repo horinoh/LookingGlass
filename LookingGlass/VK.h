@@ -438,10 +438,12 @@ protected:
 		vkCmdPipelineBarrier2(CB, &DI);
 	}
 	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const uint32_t Width, const uint32_t Height, const uint32_t Layers, const VkPipelineStageFlags PSF) {
-		std::vector<VkBufferImageCopy> BICs;
+		std::vector<VkBufferImageCopy2> BICs;
 		for (uint32_t i = 0; i < Layers; ++i) {
 			BICs.emplace_back(
-				VkBufferImageCopy({
+				VkBufferImageCopy2({
+					.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+					.pNext = nullptr,
 					.bufferOffset = i * 0, .bufferRowLength = 0, .bufferImageHeight = 0,
 					.imageSubresource = VkImageSubresourceLayers({.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = i, .layerCount = 1 }),
 					.imageOffset = VkOffset3D({.x = 0, .y = 0, .z = 0 }),
@@ -451,7 +453,7 @@ protected:
 		}
 		PopulateCopyBufferToImageCommand(CB, Src, Dst, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, PSF, BICs);
 	}
-	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy>& BICs) {
+	static void PopulateCopyBufferToImageCommand(const VkCommandBuffer CB, const VkBuffer Src, const VkImage Dst, const VkAccessFlags AF, const VkImageLayout IL, const VkPipelineStageFlags PSF, const std::vector<VkBufferImageCopy2>& BICs) {
 		assert(!empty(BICs) && "BufferImageCopy is empty");
 		ImageMemoryBarrier(CB,
 			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -459,7 +461,14 @@ protected:
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			Dst);
 		{
-			vkCmdCopyBufferToImage(CB, Src, Dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(std::size(BICs)), std::data(BICs));
+			const VkCopyBufferToImageInfo2 CBTII2 = {
+				.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2,
+				.pNext = nullptr,
+				.srcBuffer = Src, .dstImage = Dst,
+				.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.regionCount = static_cast<uint32_t>(std::size(BICs)), .pRegions = std::data(BICs)
+			};
+			vkCmdCopyBufferToImage2(CB, &CBTII2);
 		}
 		ImageMemoryBarrier(CB,
 			VK_PIPELINE_STAGE_TRANSFER_BIT, PSF,
