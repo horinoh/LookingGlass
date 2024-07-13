@@ -3,7 +3,7 @@
 #ifdef USE_CV
 #include "CV.h"
 
-class DisplacementCVDX : public DisplacementWldDX, public CV
+class DisplacementCVDX : public DisplacementDX, public CV
 {
 public:
 	virtual Texture& Create(Texture& Tex, const cv::Mat CVImage, const DXGI_FORMAT Format) {

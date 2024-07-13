@@ -4,7 +4,7 @@
 #define USE_CUDA
 #include "CV.h"
 
-class DisplacementCVVK : public DisplacementWldVK, public CV
+class DisplacementCVVK : public DisplacementVK, public CV
 {
 public:
 	virtual Texture& Create(Texture& Tex, const cv::Mat CVImage, const VkFormat Format) {

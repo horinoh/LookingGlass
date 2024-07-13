@@ -2,7 +2,7 @@
 
 #include "Holo.h"
 
-#ifdef USE_TEXTURE
+#ifdef USE_DDS_TEXTURE
 #include "DXImage.h"
 #else
 #include "DX.h"
@@ -62,8 +62,22 @@ protected:
 
 	DirectX::XMMATRIX View;
 };
+class HoloViewsDX : public HoloViews, public DX
+{
+public:
+	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
+		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
+		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
+		assert(D3D12_VIEW_INSTANCING_TIER_1 < FDO3.ViewInstancingTier && "");
 
-#ifdef USE_TEXTURE
+		//!<【Pass0】
+		HoloViews::CreateViewportScissor(MinDepth, MaxDepth);
+		//!<【Pass1】スクリーンを使用 [Using screen]
+		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
+	}
+};
+
+#ifdef USE_DDS_TEXTURE
 class HoloImageDX : public DXImage, public Holo
 {
 public:
@@ -83,7 +97,13 @@ public:
 		DX::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 };
-class DisplacementDX : public HoloViewsImageDX
+#endif
+
+#ifdef USE_DDS_TEXTURE
+class DisplacementBaseDX : public HoloViewsImageDX
+#else
+class DisplacementBaseDX : public HoloViewsDX
+#endif
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -602,10 +622,10 @@ protected:
 };
 
 //!< ディスプレースメント平面用にワールドマトリクスを追加したもの (Add world matrix for displacement plane)
-class DisplacementWldDX : public DisplacementDX
+class DisplacementDX : public DisplacementBaseDX
 {
 private:
-	using Super = DisplacementDX;
+	using Super = DisplacementBaseDX;
 public:
 	virtual void CreateConstantBuffer() override {
 		Super::CreateConstantBuffer();
@@ -877,7 +897,6 @@ protected:
 	};
 	WORLD_BUFFER WorldBuffer;
 };
-#endif
 
 #ifdef USE_GLTF
 class HoloGLTFDX : public DX, public HoloViews, public  Gltf::SDK

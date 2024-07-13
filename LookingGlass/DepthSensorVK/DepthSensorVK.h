@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-#define USE_TEXTURE
+#define USE_DDS_TEXTURE
 #include "../HoloVK.h"
 
 #define USE_CV
@@ -12,7 +12,7 @@
 #include "../DepthSensor.h"
 
 #ifdef USE_DEPTH_SENSOR
-class DepthSensorVK : public DisplacementWldVK
+class DepthSensorVK : public DisplacementVK
 {
 };
 
@@ -48,10 +48,10 @@ public:
 
 	virtual void DrawFrame(const UINT i) override {
 		if (0 == i) {
-			//Mutex.lock(); {
+			Mutex.lock(); {
 				constexpr auto Bpp = 1;
 				AnimatedTextures[0].UpdateStagingBuffer(Device, Frame.Header.Cols * Frame.Header.Rows * Bpp, std::data(Frame.Payload));
-			//} Mutex.unlock();
+			} Mutex.unlock();
 		}
 	}
 	virtual void PopulateAnimatedTextureCommand(const size_t i) override {

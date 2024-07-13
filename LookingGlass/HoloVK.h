@@ -2,7 +2,7 @@
 
 #include "Holo.h"
 
-#ifdef USE_TEXTURE
+#ifdef USE_DDS_TEXTURE
 #include "VKImage.h"
 #else
 #include "VK.h"
@@ -62,8 +62,23 @@ protected:
 
 	glm::mat4 View;
 };
+class HoloViewsVK : public HoloViews, public VK
+{
+public:
+	virtual uint32_t GetViewportMax() const override {
+		VkPhysicalDeviceProperties PDP;
+		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
+		return PDP.limits.maxViewports;
+	}
+	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
+		//!<【Pass0】
+		HoloViews::CreateViewportScissor(MinDepth, MaxDepth);
+		//!<【Pass1】スクリーンを使用 [Using screen]
+		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
+	}
+};
 
-#ifdef USE_TEXTURE
+#ifdef USE_DDS_TEXTURE
 class HoloImageVK : public VKImage, public Holo
 {
 public:
@@ -88,7 +103,13 @@ public:
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
 	}
 };
-class DisplacementVK : public HoloViewsImageVK
+#endif
+
+#ifdef USE_DDS_TEXTURE
+class DisplacementBaseVK : public HoloViewsImageVK
+#else
+class DisplacementBaseVK : public HoloViewsVK
+#endif
 {
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
@@ -561,10 +582,10 @@ protected:
 };
 
 //!< ディスプレースメント平面用にワールドマトリクスを追加したもの (Add world matrix for displacement plane)
-class DisplacementWldVK : public DisplacementVK 
+class DisplacementVK : public DisplacementBaseVK 
 {
 private:
-	using Super = DisplacementVK;
+	using Super = DisplacementBaseVK;
 public:
 	virtual void CreateUniformBuffer() override {
 		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
@@ -666,7 +687,6 @@ protected:
 	};
 	WORLD_BUFFER WorldBuffer;
 };
-#endif
 
 #ifdef USE_GLTF
 class HoloGLTFVK : public VK, public HoloViews, public Gltf::SDK

@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-#define USE_TEXTURE
+#define USE_DDS_TEXTURE
 #include "../HoloDX.h"
 
 #define USE_CV
@@ -12,10 +12,10 @@
 #define USE_LEAP
 #include "../Leap.h"
 
-class DisplacementLeapDX : public DisplacementWldDX, public LeapCV
+class DisplacementLeapDX : public DisplacementDX, public LeapCV
 {
 private:
-	using Super = DisplacementWldDX;
+	using Super = DisplacementDX;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
 		CreateUI();

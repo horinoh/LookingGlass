@@ -153,15 +153,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //Inst = new DepthSensorA075VK();
             Inst->OnCreate(hWnd, hInst, TEXT("DepthSensorVK"));
             SetTimer(hWnd, TIMER_ID, 1000 / 20, nullptr);
-            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
-            //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
-        //{
-        //    auto Ht = new Http("www.google.com", "http");
-        //    //auto Ht = new DepthSensorA075();
-        //    Ht->Update();
-        //    Sleep(1000);
-        //}
         break;
     case WM_SIZE:
         if (nullptr != Inst) {}
@@ -170,8 +162,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (nullptr != Inst) {
             Inst->OnExitSizeMove(hWnd, hInst);
             SetTimer(hWnd, TIMER_ID, 1000 / 20, nullptr);
-            //SetTimer(hWnd, TIMER_ID, 1000 / 60, nullptr);
-            //SendMessage(hWnd, WM_PAINT, 0, 0);
         }
         break;
     case WM_KEYDOWN:

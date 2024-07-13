@@ -6,7 +6,7 @@
 
 #include "../BorderlessWin.h"
 
-DisplacementVK* Inst = nullptr;
+DisplacementBaseVK* Inst = nullptr;
 
 #define MAX_LOADSTRING 100
 
@@ -149,10 +149,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-#ifdef USE_CV
+#if defined(USE_CV)
             Inst = new DisplacementRGBDVK();
-            //Inst = new DisplacementStereoVK();
-#else
+#elif defined(USE_DDS_TEXTURE)
             Inst = new DisplacementRGB_DVK();
 #endif
             Inst->OnCreate(hWnd, hInst, TEXT("DisplacementVK"));

@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-#define USE_TEXTURE
+#define USE_DDS_TEXTURE
 #include "../HoloVK.h"
 
 #define USE_CV
@@ -12,10 +12,10 @@
 #define USE_LEAP
 #include "../Leap.h"
 
-class DisplacementLeapVK : public DisplacementWldVK, public LeapCV
+class DisplacementLeapVK : public DisplacementVK, public LeapCV
 {
 private:
-	using Super = DisplacementWldVK;
+	using Super = DisplacementVK;
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
 		CreateUI();

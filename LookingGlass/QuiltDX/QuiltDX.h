@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-#define USE_TEXTURE
+#define USE_DDS_TEXTURE
 #include "../HoloDX.h"
 
 class QuiltDX : public HoloImageDX

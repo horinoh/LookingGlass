@@ -2,17 +2,18 @@
 
 #include "resource.h"
 
-#define USE_TEXTURE
+#define USE_DDS_TEXTURE
 #include "../HoloDX.h"
 
 #define USE_CV
 #include "../CVDX.h"
 
+#ifdef USE_DDS_TEXTURE
 //!< カラーとデプスにテクスチャ (DDS) が分かれているケース
-class DisplacementRGB_DDX : public DisplacementWldDX
+class DisplacementRGB_DDX : public DisplacementDX
 {
 private:
-	using Super = DisplacementWldDX;
+	using Super = DisplacementDX;
 public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
@@ -39,6 +40,7 @@ public:
 	virtual const Texture& GetColorMap() const override { return XTKTextures[0]; }
 	virtual const Texture& GetDepthMap() const override { return XTKTextures[1]; }
 };
+#endif
 
 #ifdef USE_CV
 //!< 1枚のテクスチャにカラーとデプスが左右に共存してるケース (要 OpenCV)

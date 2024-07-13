@@ -6,7 +6,7 @@
 
 #include "../BorderlessWin.h"
 
-DisplacementDX* Inst = nullptr;
+DisplacementBaseDX* Inst = nullptr;
 
 #define MAX_LOADSTRING 100
 
@@ -149,10 +149,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
-#ifdef USE_CV
+#if defined(USE_CV)
             Inst = new DisplacementRGBDDX();
-            //Inst = new DisplacementStereoDX();
-#else
+#elif defined(USE_DDS_TEXTURE)
             Inst = new DisplacementRGB_DDX();
 #endif
             Inst->OnCreate(hWnd, hInst, TEXT("DisplacementDX"));
