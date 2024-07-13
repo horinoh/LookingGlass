@@ -51,6 +51,12 @@
     <ClInclude Include="..\CV.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Http.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SerialPort.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DepthSensorDX.cpp">

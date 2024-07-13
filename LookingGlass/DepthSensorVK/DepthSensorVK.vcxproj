@@ -145,6 +145,8 @@
     <ClInclude Include="..\DepthSensor.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="..\HoloVK.h" />
+    <ClInclude Include="..\Http.h" />
+    <ClInclude Include="..\SerialPort.h" />
     <ClInclude Include="..\VK.h" />
     <ClInclude Include="DepthSensorVK.h" />
     <ClInclude Include="framework.h" />

@@ -146,6 +146,8 @@
     <ClInclude Include="..\DX.h" />
     <ClInclude Include="..\Holo.h" />
     <ClInclude Include="..\HoloDX.h" />
+    <ClInclude Include="..\Http.h" />
+    <ClInclude Include="..\SerialPort.h" />
     <ClInclude Include="DepthSensorDX.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
