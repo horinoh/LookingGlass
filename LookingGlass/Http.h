@@ -8,8 +8,8 @@
 class Http
 {
 public:
-	//!< auto Ht = new Http("www.google.com", "http");
-	Http(const std::string& Server, const std::string& Service) : Context(), Resolver(Context), Socket(Context), Server_(Server) {
+	//!< Ex) auto Ht = new Http("www.google.com", "http");
+	Http(const std::string& URL, const std::string& Service) : Context(), Resolver(Context), Socket(Context), Server(URL) {
 #if 1
 		//!< 名前解決、ホスト情報
 		LOG(std::data(std::format("Server={}, Service={}\n", Server, Service)));
@@ -35,7 +35,7 @@ public:
 	}
 
 #if 1
-	void GetRequest(std::string_view Server, std::string_view Path) {
+	bool GetRequest(std::string_view Path) {
 		if (Socket.is_open()) {
 			//!< リクエスト書込
 			std::ostream RequestStream(&Request);
@@ -49,12 +49,13 @@ public:
 			asio::read(Socket, Response, asio::transfer_all(), ErrorCode);
 			if (asio::error::eof == ErrorCode) {
 				LOG(std::data(std::format("\t{}\n", asio::buffer_cast<const char*>(Response.data()))));
+				return true;
 			}
 		}
+		return false;
 	}
-	void GetRequest(std::string_view Path) { GetRequest(Server_, Path); }
 #else
-	void GetRequestAsync(std::string_view Server, std::string_view Path) {
+	void GetRequestAsync(std::string_view Path) {
 		asio::ip::tcp::resolver::query Query(std::string(Server), "http");
 		Resolver.async_resolve(Query, [&](const asio::error_code EC, const asio::ip::tcp::resolver::iterator& EndPoint) {
 			if (!EC) {
@@ -139,7 +140,6 @@ public:
 			}
 			});
 	}
-	void GetRequestAsync(std::string_view Path) { GetRequestAsync(Server_, Path); }
 #endif
 
 	virtual void Update() {
@@ -162,5 +162,5 @@ protected:
 	asio::streambuf Response;
 	asio::error_code ErrorCode;
 
-	std::string Server_;
+	std::string Server;
 };

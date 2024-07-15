@@ -24,7 +24,7 @@ private:
 public:
 	virtual void OnCreate(HWND hWnd, HINSTANCE hInstance, LPCWSTR Title) override {
 		//!< 深度センサオープン (COM番号は調べて、適切に指定する必要がある) (Select appropriate com no)
-		Open(COM::COM3);
+		Open(COM_NO::COM3);
 
 		//!< 非同期更新開始 (Start async update)
 		UpdateAsyncStart();

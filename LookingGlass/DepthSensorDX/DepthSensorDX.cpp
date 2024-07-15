@@ -149,8 +149,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         BorderlessWin::ToggleBorderless(hWnd);
         if (nullptr == Inst) {
+#if 1
             Inst = new DepthSensorA010DX();
-            //Inst = new DepthSensorA075DX();
+#else
+            Inst = new DepthSensorA075DX();
+#endif
             Inst->OnCreate(hWnd, hInst, TEXT("DepthSensorDX"));
             SetTimer(hWnd, TIMER_ID, 1000 / 20, nullptr);
         }

@@ -8,7 +8,7 @@
 class SerialPort
 {
 public:
-	enum class COM : uint8_t {
+	enum class COM_NO: uint8_t {
 		COM1 = 1,
 		COM2 = 2,
 		COM3 = 3,
@@ -19,8 +19,8 @@ public:
 
 	SerialPort() : Context(), Port(Context) {}
 
-	virtual bool Open(const COM Com) {
-		Port.open(std::format("COM{}", static_cast<uint8_t>(Com)), ErrorCode);
+	virtual bool Open(const COM_NO ComNo) {
+		Port.open(std::format("COM{}", static_cast<uint8_t>(ComNo)), ErrorCode);
 		if (!VerifyError()) {
 			Port.set_option(asio::serial_port::baud_rate(115200));
 			Port.set_option(asio::serial_port::character_size(8));
