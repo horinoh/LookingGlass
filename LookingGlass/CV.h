@@ -60,9 +60,12 @@ public:
 #endif
 
 		//!< とりあえずデフォルト動作としてサンプルの左右画像を読み込んでおく
-		const auto CVPath = CV::GetOpenCVPath();
-		StereoImages[0] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
-		StereoImages[1] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
+		//const auto CVPath = CV::GetOpenCVPath();
+		//StereoImages[0] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
+		//StereoImages[1] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
+		const auto CVSamplePath = std::filesystem::path("..") / ".." / ".." / "opencv" / "samples" / "data";
+		StereoImages[0] = cv::imread((CVSamplePath / "aloeL.jpg").string());
+		StereoImages[1] = cv::imread((CVSamplePath / "aloeR.jpg").string());
 		cv::resize(StereoImages[0], StereoImages[0], cv::Size(640, 240));
 		cv::resize(StereoImages[1], StereoImages[1], cv::Size(640, 240));
 		cv::cvtColor(StereoImages[0], StereoImages[0], cv::COLOR_BGR2GRAY);
