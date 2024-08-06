@@ -35,7 +35,7 @@ public:
 		if (-1 == i) { ProjectionMatrices.clear(); return; }
 
 		//!< 左右方向にずれている角度(ラジアン)
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = GetOffsetAngle(i);
 		//!< 左右方向にずれている距離
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
@@ -47,7 +47,7 @@ public:
 	virtual void CreateViewMatrix(const int i) override {
 		if (-1 == i) { ViewMatrices.clear(); return; }
 
-		const auto OffsetAngle = (static_cast<float>(i) / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f) - 0.5f) * ViewCone;
+		const auto OffsetAngle = GetOffsetAngle(i);
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
 
 		const auto OffsetLocal = glm::vec3(View * glm::vec4(OffsetX, 0.0f, CameraDistance, 1.0f));

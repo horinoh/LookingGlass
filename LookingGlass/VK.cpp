@@ -137,6 +137,11 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 		vkDestroySurfaceKHR(Instance, Surface, GetAllocationCallbacks());
 		Surface = VK_NULL_HANDLE;
 	}
+#ifdef _DEBUG
+	if (VK_NULL_HANDLE != DebugUtilsMessenger) {
+		vkDestroyDebugUtilsMessenger(Instance, DebugUtilsMessenger, GetAllocationCallbacks());
+	}
+#endif
 	if (VK_NULL_HANDLE != Instance) [[likely]] {
 		vkDestroyInstance(Instance, GetAllocationCallbacks());
 		Instance = VK_NULL_HANDLE;
@@ -194,6 +199,30 @@ void VK::CreateInstance(const std::vector<const char*>& AdditionalLayers, const 
 		.enabledExtensionCount = static_cast<uint32_t>(std::size(Extensions)), .ppEnabledExtensionNames = std::data(Extensions)
 	};
 	VERIFY_SUCCEEDED(vkCreateInstance(&ICI, GetAllocationCallbacks(), &Instance));
+
+#ifdef _DEBUG
+	VkDebugUtilsMessengerEXT DebugUtilsMessenger = VK_NULL_HANDLE;
+	vkCreateDebugUtilsMessenger = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(Instance, "vkCreateDebugUtilsMessengerEXT"));
+	vkDestroyDebugUtilsMessenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(Instance, "vkDestroyDebugUtilsMessengerEXT"));
+	{
+		constexpr VkDebugUtilsMessengerCreateInfoEXT DUMCI = {
+			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+			.pNext = nullptr,
+			.flags = 0,
+			.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+			.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+			.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT DUMSFB, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT DUMTF, [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* DUMCD, [[maybe_unused]] void* UserData) {
+				if (DUMSFB >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+					LOG(DUMCD->pMessage);
+					return VK_TRUE;
+				}
+				return VK_FALSE;
+			},
+			.pUserData = nullptr
+		};
+		VERIFY_SUCCEEDED(vkCreateDebugUtilsMessenger(Instance, &DUMCI, nullptr, &DebugUtilsMessenger));
+	}
+#endif
 
 #define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetInstanceProcAddr(Instance, "vk" #proc)); VERIFY(nullptr != vk ## proc && #proc);
 #include "VKInstanceProcAddr.h"

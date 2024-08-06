@@ -91,10 +91,12 @@ public:
 		if (-1 != DeviceIndex) {
 			QuiltX = hpc_GetDevicePropertyQuiltX(DeviceIndex);
 			QuiltY = hpc_GetDevicePropertyQuiltY(DeviceIndex);
-			ViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value"));
+			HalfViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value")) * 0.5f;
 		}
 		LOG(std::data(std::format("QuiltX, QuiltY = {}, {}\n", QuiltX, QuiltY)));
-		LOG(std::data(std::format("ViewCone = {}\n", ViewCone)));
+		LOG(std::data(std::format("ViewCone = {}\n", 2.0f * HalfViewCone)));
+
+		OffsetAngleCoef = 2.0f * HalfViewCone / (LenticularBuffer.TileX * LenticularBuffer.TileY - 1.0f);
 	}
 	virtual ~Holo() {
 		hpc_CloseApp();
@@ -177,12 +179,14 @@ public:
 		}
 		return false;
 	}
+	float GetOffsetAngle(const int i) const { return static_cast<const float>(i) * OffsetAngleCoef - HalfViewCone; }
 
 protected:
 	int DeviceIndex = -1;
 
 	int QuiltX = 3360, QuiltY = 3360;
-	float ViewCone = TO_RADIAN(40.0f);
+	float HalfViewCone = TO_RADIAN(40.0f) * 0.5f;
+	float OffsetAngleCoef = 0.0f;
 
 	const float Fov = TO_RADIAN(14.0f);
 	const float CameraSize = 5.0f; //!< Å“_–Ê‚Ì‚’¼”¼Œa [Focal plane vertical radius]

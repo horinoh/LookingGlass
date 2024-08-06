@@ -23,12 +23,22 @@ public:
 		}
 	}
 
-	static auto GetOpenCVPath() {
-		char* CVPath;
+	static auto GetOpenCVSDKPath() {
+		char* SDKPath;
 		size_t Size = 0;
-		if (!_dupenv_s(&CVPath, &Size, "OPENCV_SDK_PATH")) {
-			const auto Path = std::filesystem::path(CVPath);
-			free(CVPath);
+		if (!_dupenv_s(&SDKPath, &Size, "OPENCV_SDK_PATH")) {
+			const auto Path = std::filesystem::path(SDKPath);
+			free(SDKPath);
+			return Path;
+		}
+		return std::filesystem::path();
+	}
+	static auto GetOpenCVRepoPath() {
+		char* RepoPath;
+		size_t Size = 0;
+		if (!_dupenv_s(&RepoPath, &Size, "OPENCV_REPO_PATH")) {
+			const auto Path = std::filesystem::path(RepoPath);
+			free(RepoPath);
 			return Path;
 		}
 		return std::filesystem::path();
@@ -60,12 +70,10 @@ public:
 #endif
 
 		//!< とりあえずデフォルト動作としてサンプルの左右画像を読み込んでおく
-		//const auto CVPath = CV::GetOpenCVPath();
-		//StereoImages[0] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeL.jpg").string());
-		//StereoImages[1] = cv::imread((CVPath / "sources" / "samples" / "data" / "aloeR.jpg").string());
-		const auto CVSamplePath = std::filesystem::path("..") / ".." / ".." / "opencv" / "samples" / "data";
-		StereoImages[0] = cv::imread((CVSamplePath / "aloeL.jpg").string());
-		StereoImages[1] = cv::imread((CVSamplePath / "aloeR.jpg").string());
+		//const auto CVSampleDataPath = CV::GetOpenCVSDKPath() / "sources" / "samples" / "data";
+		const auto CVSampleDataPath = CV::GetOpenCVRepoPath() / "samples" / "data";
+		StereoImages[0] = cv::imread((CVSampleDataPath / "aloeL.jpg").string());
+		StereoImages[1] = cv::imread((CVSampleDataPath / "aloeR.jpg").string());
 		cv::resize(StereoImages[0], StereoImages[0], cv::Size(640, 240));
 		cv::resize(StereoImages[1], StereoImages[1], cv::Size(640, 240));
 		cv::cvtColor(StereoImages[0], StereoImages[0], cv::COLOR_BGR2GRAY);

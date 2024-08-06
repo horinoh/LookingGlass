@@ -1124,6 +1124,11 @@ protected:
 #undef VK_PROC_ADDR
 
 	VkInstance Instance = VK_NULL_HANDLE;
+#ifdef _DEBUG
+	VkDebugUtilsMessengerEXT DebugUtilsMessenger = VK_NULL_HANDLE;
+	PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessenger;
+	PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessenger;
+#endif
 	VkSurfaceKHR Surface = VK_NULL_HANDLE;
 	std::vector<VkPhysicalDevice> PhysicalDevices;
 	VkPhysicalDevice CurrentPhysicalDevice = VK_NULL_HANDLE;

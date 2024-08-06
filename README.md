@@ -11,6 +11,39 @@
 ### [LookingGlassCoreSDK](https://github.com/Looking-Glass/LookingGlassCoreSDK)
 - LookingGlassCoreSDK\HoloPlayCore\dylib\Win64 を環境変数 Path に通しておく (Add LookingGlassCoreSDK\HoloPlayCore\dylib\Win64 to environment variable Path)
 
+### [LookingGlassBridgeSDK](https://lookingglassfactory.com/software/looking-glass-bridge)
+- ここでは、環境変数 LKG_SDK_PATH を作成し、インストール先を指定した
+- DLL の場所を環境変数 Path に通しておく
+- 使用、以下のいずれか
+    - .lib は無いようなので、Controller クラスを使用する
+        - 内部で GetProcAddress() を使用している
+    - 自前で ($(LKG_SDK_PATH)\bridge_inproc.dllから) .lib を作成する 
+        - Developer PowerShell for VS2022 を起動
+        - 関数名を調べる
+            ~~~
+            $dumpbin /EXPORTS bridge_inproc.dll > exports.def
+            ~~~
+        - exports.def に 以下のように出力される
+            ~~~
+            1    0 0000EE7B bridge_version
+            2    1 000124FE copy_texture_dx
+            3    2 0000E011 create_texture_dx
+            ...
+            ~~~
+        - 以下のように編集して、関数名だけを残し、頭に EXPORTS を書く
+            ~~~
+            EXPORTS
+            bridge_version
+            copy_texture_dx
+            create_texture_dx
+            ...
+            ~~~
+        - 以下のようにすると .lib, .exp が作成される
+            ~~~
+            $lib /def:exports.def /machine:x64 /out:bridge_inproc.lib
+            ~~~
+- Vulkan には非対応のようなので使えない…
+
 ### テクスチャ (Texture)
 #### DX
 - [DirectXTK12](https://github.com/Microsoft/DirectXTK12)
