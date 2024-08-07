@@ -116,7 +116,7 @@ public:
 	virtual void LoadVulkanLibrary();
 	virtual void CreateInstance(const std::vector<const char*>& AdditionalLayers = {}, const std::vector<const char*>& AdditionalExtensions = {});
 	virtual void SelectPhysicalDevice(VkInstance Inst);
-	virtual void CreateDevice([[maybe_unused]] HWND hWnd, HINSTANCE hInstance, void* pNext = nullptr, const std::vector<const char*>& AdditionalExtensions = {});
+	virtual void CreateDevice([[maybe_unused]] HWND hWnd, HINSTANCE hInstance, const std::vector<const char*>& AdditionalExtensions = {});
 	virtual void CreateFence(VkDevice Dev) {
 		constexpr VkFenceCreateInfo FCI = {
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,

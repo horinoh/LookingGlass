@@ -201,7 +201,6 @@ void VK::CreateInstance(const std::vector<const char*>& AdditionalLayers, const 
 	VERIFY_SUCCEEDED(vkCreateInstance(&ICI, GetAllocationCallbacks(), &Instance));
 
 #ifdef _DEBUG
-	VkDebugUtilsMessengerEXT DebugUtilsMessenger = VK_NULL_HANDLE;
 	vkCreateDebugUtilsMessenger = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(Instance, "vkCreateDebugUtilsMessengerEXT"));
 	vkDestroyDebugUtilsMessenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(Instance, "vkDestroyDebugUtilsMessengerEXT"));
 	{
@@ -248,7 +247,7 @@ void VK::SelectPhysicalDevice(VkInstance Inst)
 	CurrentPhysicalDevice = PhysicalDevices[Index];
 	vkGetPhysicalDeviceMemoryProperties(CurrentPhysicalDevice, &CurrentPhysicalDeviceMemoryProperties);
 }
-void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::vector<const char*>& AdditionalExtensions)
+void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, const std::vector<const char*>& AdditionalExtensions)
 {
 	const VkWin32SurfaceCreateInfoKHR SCI = {
 		.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
@@ -302,7 +301,7 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 			std::vector<std::vector<float>> Priorites(std::size(QFPs));
 			const uint32_t GraphicsQueueIndexInFamily = static_cast<uint32_t>(std::size(Priorites[GraphicsQueueFamilyIndex])); Priorites[GraphicsQueueFamilyIndex].emplace_back(0.5f);
 			const uint32_t PresentQueueIndexInFamily = static_cast<uint32_t>(std::size(Priorites[PresentQueueFamilyIndex])); Priorites[PresentQueueFamilyIndex].emplace_back(0.5f);
-		
+
 			//!< ƒLƒ…[ì¬î•ñ (Queue create information)
 			std::vector<VkDeviceQueueCreateInfo> DQCIs;
 			for (size_t i = 0; i < std::size(Priorites); ++i) {
@@ -319,28 +318,36 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, void* pNext, const std::ve
 				}
 			}
 
-			std::vector Extensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+			std::vector Extensions = { 
+				VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+				VK_EXT_NESTED_COMMAND_BUFFER_EXTENSION_NAME,
+			};
 			std::ranges::copy(AdditionalExtensions, std::back_inserter(Extensions));
 
 			VkPhysicalDeviceFeatures PDF;
 			vkGetPhysicalDeviceFeatures(PD, &PDF);
-			if (nullptr == pNext) {
-				constexpr VkPhysicalDeviceSynchronization2Features PDS2 = {
-					.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
-					.pNext = nullptr,
-					.synchronization2 = VK_TRUE
-				};
-				const VkDeviceCreateInfo DCI = {
-					.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-					.pNext = &PDS2,
-					.flags = 0,
-					.queueCreateInfoCount = static_cast<uint32_t>(std::size(DQCIs)), .pQueueCreateInfos = std::data(DQCIs),
-					.enabledLayerCount = 0, .ppEnabledLayerNames = nullptr,
-					.enabledExtensionCount = static_cast<uint32_t>(std::size(Extensions)), .ppEnabledExtensionNames = std::data(Extensions),
-					.pEnabledFeatures = &PDF
-				};
-				VERIFY_SUCCEEDED(vkCreateDevice(PD, &DCI, GetAllocationCallbacks(), &Device));
-			}
+			VkPhysicalDeviceSynchronization2Features PDS2 = {
+				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
+				.pNext = nullptr,
+				.synchronization2 = VK_TRUE
+			};
+			const VkPhysicalDeviceNestedCommandBufferFeaturesEXT PDNCBF = {
+				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT,
+				.pNext = &PDS2,
+				.nestedCommandBuffer = VK_TRUE,
+				.nestedCommandBufferRendering = VK_TRUE,
+				.nestedCommandBufferSimultaneousUse = VK_TRUE
+			};
+			const VkDeviceCreateInfo DCI = {
+				.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+				.pNext = &PDNCBF,
+				.flags = 0,
+				.queueCreateInfoCount = static_cast<uint32_t>(std::size(DQCIs)), .pQueueCreateInfos = std::data(DQCIs),
+				.enabledLayerCount = 0, .ppEnabledLayerNames = nullptr,
+				.enabledExtensionCount = static_cast<uint32_t>(std::size(Extensions)), .ppEnabledExtensionNames = std::data(Extensions),
+				.pEnabledFeatures = &PDF
+			};
+			VERIFY_SUCCEEDED(vkCreateDevice(PD, &DCI, GetAllocationCallbacks(), &Device));
 
 #define VK_PROC_ADDR(proc) vk ## proc = reinterpret_cast<PFN_vk ## proc>(vkGetDeviceProcAddr(Device, "vk" #proc)); VERIFY(nullptr != vk ## proc && #proc && #proc);
 #include "VKDeviceProcAddr.h"
