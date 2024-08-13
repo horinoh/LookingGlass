@@ -33,7 +33,7 @@ public:
 		VK::AllocateSecondaryCommandBuffer(2);
 	}
 	virtual void CreateGeometry() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		const auto CB = CommandBuffers[0];
 
 		//!<【Pass0】メッシュ描画用 [To draw mesh] 
@@ -107,7 +107,7 @@ public:
 	}
 
 	virtual void CreateUniformBuffer() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 
 		//!<【Pass0】
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(ViewProjectionBuffer));
@@ -247,7 +247,7 @@ public:
 		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
 		//!< [When using dynamic offset, .range value is data size used in each offset]
 		//!<	ex) 100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
-		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 		{
 			const DescriptorUpdateInfo DUI = {
 				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + 0].Buffer, .offset = 0, .range = DynamicOffset }),
@@ -348,7 +348,7 @@ public:
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
 			//!< 描画毎にユニフォームバッファのアクセス先をオフセットする [Offset uniform buffer access on each draw]
-			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+			const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 			//!< アライメント情報が必要 [Need alignment information]
 			VkMemoryRequirements MR;
 			vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);

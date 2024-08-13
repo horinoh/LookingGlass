@@ -127,15 +127,15 @@ public:
 		LOG(std::data(std::format("ViewPortion = {} x {}\n", static_cast<float>(ViewWidth) * LenticularBuffer.TileX / static_cast<float>(QuiltX), static_cast<float>(ViewHeight) * LenticularBuffer.TileY / static_cast<float>(QuiltY))));
 	}
 
-	virtual uint32_t GetViewportMax() const { return 16; }
+	virtual uint32_t GetMaxViewports() const { return 16; }
 	uint32_t GetViewportDrawCount() const {
 		const auto XY = static_cast<uint32_t>(LenticularBuffer.TileX * LenticularBuffer.TileY);
-		const auto ViewportCount = GetViewportMax();
+		const auto ViewportCount = GetMaxViewports();
 		return XY / ViewportCount + ((XY % ViewportCount) ? 1 : 0);
 	}
-	uint32_t GetViewportSetOffset(const uint32_t i) const { return GetViewportMax() * i; }
+	uint32_t GetViewportSetOffset(const uint32_t i) const { return GetMaxViewports() * i; }
 	uint32_t GetViewportSetCount(const uint32_t i) const {
-		return (std::min)(static_cast<int32_t>(LenticularBuffer.TileX * LenticularBuffer.TileY) - GetViewportSetOffset(i), GetViewportMax());
+		return (std::min)(static_cast<int32_t>(LenticularBuffer.TileX * LenticularBuffer.TileY) - GetViewportSetOffset(i), GetMaxViewports());
 	}
 
 	virtual void CreateProjectionMatrix(const int i) {}

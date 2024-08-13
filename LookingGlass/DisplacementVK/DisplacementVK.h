@@ -18,7 +18,7 @@ public:
 	virtual void CreateTexture() override {
 		Super::CreateTexture();
 
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		const auto CB = CommandBuffers[0];
 
 		//!< カラー、デプステクスチャ (DDS) を読み込む

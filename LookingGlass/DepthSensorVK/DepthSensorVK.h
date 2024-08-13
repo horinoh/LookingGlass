@@ -40,7 +40,7 @@ public:
 		Super::CreateTexture();
 
 		constexpr auto Bpp = 1;
-		AnimatedTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, VK_FORMAT_R8_UNORM, Bpp, VkExtent3D({ .width = Frame.Header.Cols, .height = Frame.Header.Rows, .depth = 1 }));
+		AnimatedTextures.emplace_back().Create(Device, SelectedPhysDevice.second.PDMP, VK_FORMAT_R8_UNORM, Bpp, VkExtent3D({ .width = Frame.Header.Cols, .height = Frame.Header.Rows, .depth = 1 }));
 	}
 	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
 	virtual const Texture& GetDepthMap() const override { return AnimatedTextures[0]; };
@@ -86,7 +86,7 @@ public:
 		Super::CreateTexture();
 
 		constexpr auto Bpp = 1;
-		AnimatedTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, VK_FORMAT_R8_UNORM, Bpp, VkExtent3D({ .width = 320, .height = 240, .depth = 1 }));
+		AnimatedTextures.emplace_back().Create(Device, SelectedPhysDevice.second.PDMP, VK_FORMAT_R8_UNORM, Bpp, VkExtent3D({ .width = 320, .height = 240, .depth = 1 }));
 	}
 	virtual const Texture& GetColorMap() const override { return AnimatedTextures[0]; };
 	virtual const Texture& GetDepthMap() const override { return AnimatedTextures[0]; };

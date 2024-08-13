@@ -65,11 +65,7 @@ protected:
 class HoloViewsVK : public HoloViews, public VK
 {
 public:
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
-	}
+	virtual uint32_t GetMaxViewports() const override { return SelectedPhysDevice.second.PDP.limits.maxViewports; }
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
 		//!<【Pass0】
 		HoloViews::CreateViewportScissor(MinDepth, MaxDepth);
@@ -82,20 +78,12 @@ public:
 class HoloImageVK : public VKImage, public Holo
 {
 public:
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
-	}
+	virtual uint32_t GetMaxViewports() const override { return SelectedPhysDevice.second.PDP.limits.maxViewports; }
 };
 class HoloViewsImageVK : public HoloViews, public VKImage
 {
 public:
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
-	}
+	virtual uint32_t GetMaxViewports() const override { return SelectedPhysDevice.second.PDP.limits.maxViewports; }
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
 		//!<【Pass0】
 		HoloViews::CreateViewportScissor(MinDepth, MaxDepth);
@@ -132,7 +120,7 @@ public:
 		VK::AllocateSecondaryCommandBuffer(2);
 	}
 	virtual void CreateGeometry() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		const auto CB = CommandBuffers[0];
 
 		//!<【Pass0】メッシュ描画用 [To draw mesh] 
@@ -147,7 +135,7 @@ public:
 		VK::Scoped<StagingBuffer> StagingPass0Indirect(Device);
 		StagingPass0Indirect.Create(Device, PDMP, sizeof(DIC0), &DIC0);
 
-		//!<【Pass0】レンダーテクスチャ描画用 [To draw render texture]
+		//!<【Pass1】レンダーテクスチャ描画用 [To draw render texture]
 		constexpr VkDrawIndirectCommand DIC1 = {
 			.vertexCount = 4,
 			.instanceCount = 1,
@@ -175,7 +163,7 @@ public:
 	}
 
 	virtual void CreateUniformBuffer() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 
 		//!<【Pass0】
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(ViewProjectionBuffer));
@@ -328,7 +316,7 @@ public:
 		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
 		//!< [When using dynamic offset, .range value is data size used in each offset]
 		//!<	ex) 100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
-		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 		{
 			const auto& ColorMap = GetColorMap();
 			const auto& DepthMap = GetDepthMap();
@@ -433,7 +421,7 @@ public:
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
 			//!< 描画毎にユニフォームバッファのアクセス先をオフセットする [Offset uniform buffer access on each draw]
-			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+			const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 			//!< アライメント情報が必要 [Need alignment information]
 			VkMemoryRequirements MR;
 			vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);
@@ -588,7 +576,7 @@ private:
 	using Super = DisplacementBaseVK;
 public:
 	virtual void CreateUniformBuffer() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		Super::CreateUniformBuffer();
 		
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(WorldBuffer));
@@ -660,7 +648,7 @@ public:
 		const auto DSIndex = 0;
 		const auto UB1Index = 2;
 
-		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 		{
 			const auto& ColorMap = GetColorMap();
 			const auto& DepthMap = GetDepthMap();
@@ -798,11 +786,7 @@ public:
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
-	}
+	virtual uint32_t GetMaxViewports() const override { return SelectedPhysDevice.second.PDP.limits.maxViewports; }
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
 		HoloViews::CreateViewportScissor(MinDepth, MaxDepth);
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);
@@ -840,11 +824,7 @@ public:
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 
-	virtual uint32_t GetViewportMax() const override {
-		VkPhysicalDeviceProperties PDP;
-		vkGetPhysicalDeviceProperties(CurrentPhysicalDevice, &PDP);
-		return PDP.limits.maxViewports;
-	}
+	virtual uint32_t GetMaxViewports() const override { return SelectedPhysDevice.second.PDP.limits.maxViewports; }
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
 		HoloViews::CreateViewportScissor(MinDepth, MaxDepth);
 		VK::CreateViewport(Width, Height, MinDepth, MaxDepth);

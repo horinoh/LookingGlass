@@ -8,7 +8,7 @@ class DisplacementCVVK : public DisplacementVK, public CV
 {
 public:
 	virtual Texture& Create(Texture& Tex, const cv::Mat CVImage, const VkFormat Format) {
-		return Tex.Create(Device, CurrentPhysicalDeviceMemoryProperties, Format, VkExtent3D({ .width = static_cast<uint32_t>(CVImage.cols), .height = static_cast<uint32_t>(CVImage.rows), .depth = 1 }));
+		return Tex.Create(Device, SelectedPhysDevice.second.PDMP, Format, VkExtent3D({ .width = static_cast<uint32_t>(CVImage.cols), .height = static_cast<uint32_t>(CVImage.rows), .depth = 1 }));
 	}
 	virtual Texture& Update(Texture& Tex, const cv::Mat CVImage, const VkPipelineStageFlags Stage) {
 		VK::UpdateTexture(Tex, CVImage.cols, CVImage.rows, static_cast<uint32_t>(CVImage.elemSize()), CVImage.ptr(), Stage);

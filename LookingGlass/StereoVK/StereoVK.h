@@ -31,11 +31,11 @@ public:
 		
 		constexpr auto HasColorMap = true;
 
-		AnimatedTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, VK_FORMAT_R8_UNORM, static_cast<uint32_t>(DisparityImage.elemSize()), VkExtent3D({ .width = static_cast<uint32_t>(DisparityImage.cols), .height = static_cast<uint32_t>(DisparityImage.rows), .depth = 1 }));
+		AnimatedTextures.emplace_back().Create(Device, SelectedPhysDevice.second.PDMP, VK_FORMAT_R8_UNORM, static_cast<uint32_t>(DisparityImage.elemSize()), VkExtent3D({ .width = static_cast<uint32_t>(DisparityImage.cols), .height = static_cast<uint32_t>(DisparityImage.rows), .depth = 1 }));
 
 		if (HasColorMap) {
 			const auto& ColorMap = StereoImages[0];
-			AnimatedTextures.emplace_back().Create(Device, CurrentPhysicalDeviceMemoryProperties, DrawGrayScale() ? VK_FORMAT_R8_UNORM : VK_FORMAT_R8G8B8_UNORM, static_cast<uint32_t>(ColorMap.elemSize()), VkExtent3D({ .width = static_cast<uint32_t>(ColorMap.cols), .height = static_cast<uint32_t>(ColorMap.rows), .depth = 1 }));
+			AnimatedTextures.emplace_back().Create(Device, SelectedPhysDevice.second.PDMP, DrawGrayScale() ? VK_FORMAT_R8_UNORM : VK_FORMAT_R8G8B8_UNORM, static_cast<uint32_t>(ColorMap.elemSize()), VkExtent3D({ .width = static_cast<uint32_t>(ColorMap.cols), .height = static_cast<uint32_t>(ColorMap.rows), .depth = 1 }));
 		}
 	}
 	virtual const Texture& GetColorMap() const override { return std::size(AnimatedTextures) > 1 ? AnimatedTextures[1] : AnimatedTextures[0]; };

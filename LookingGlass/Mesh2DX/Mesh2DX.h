@@ -308,7 +308,7 @@ public:
 				}
 				{
 					const auto& CB = ConstantBuffers[CB1Index + i];
-					const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+					const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 					for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 						const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
 							.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,

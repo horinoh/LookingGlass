@@ -81,7 +81,7 @@ public:
 class HoloImageDX : public DXImage, public Holo
 {
 public:
-	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+	virtual uint32_t GetMaxViewports() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
 };
 class HoloViewsImageDX : public HoloViews, public DXImage
 {
@@ -126,7 +126,6 @@ public:
 		DX::CreateCommandList();
 		DX::CreateBundleCommandList(2);
 	}
-
 	virtual void CreateGeometry() override {
 		const auto CA = COM_PTR_GET(DirectCommandAllocators[0]);
 		const auto CL = COM_PTR_GET(DirectCommandLists[0]);
@@ -145,7 +144,7 @@ public:
 		UploadResource UploadPass0Indirect;
 		UploadPass0Indirect.Create(COM_PTR_GET(Device), sizeof(DA0), &DA0);
 
-		//!<【Pass1】フルスクリーン描画用 [To draw render texture]
+		//!<【Pass1】レンダーテクスチャ描画用 [To draw render texture]
 		constexpr D3D12_DRAW_ARGUMENTS DA1 = {
 			.VertexCountPerInstance = 4,
 			.InstanceCount = 1,
@@ -392,7 +391,7 @@ public:
 
 				const auto& CB = ConstantBuffers[0];
 				//!< オフセット毎に使用するサイズ [Offset size]
-				const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+				const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 				//!< ビュー、ハンドルを描画回数分用意する [View and handles of draw count]
 				for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 					//!< オフセット毎の位置、サイズ [Offset location and size]
@@ -760,7 +759,7 @@ public:
 				const auto IncSize = Device->GetDescriptorHandleIncrementSize(Heap->GetDesc().Type);
 
 				const auto& CB = ConstantBuffers[0];
-				const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+				const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 				for (UINT i = 0; i < GetViewportDrawCount(); ++i) {
 					const D3D12_CONSTANT_BUFFER_VIEW_DESC CBVD = {
 						.BufferLocation = CB.Resource->GetGPUVirtualAddress() + DynamicOffset * i,
@@ -902,7 +901,7 @@ protected:
 class HoloGLTFDX : public DX, public HoloViews, public  Gltf::SDK
 {
 public:
-	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+	virtual uint32_t GetMaxViewports() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
 	virtual void Process() override {
 		for (const auto& i : Document.meshes.Elements()) {
 			for (const auto& j : i.primitives) {
@@ -1009,7 +1008,7 @@ public:
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 	
-	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+	virtual uint32_t GetMaxViewports() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
 		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));
@@ -1052,7 +1051,7 @@ public:
 	}
 	virtual float GetMeshScale() const { return 5.0f; }
 
-	virtual uint32_t GetViewportMax() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
+	virtual uint32_t GetMaxViewports() const override { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
 	virtual void CreateViewport(const FLOAT Width, const FLOAT Height, const FLOAT MinDepth = 0.0f, const FLOAT MaxDepth = 1.0f) override {
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 FDO3;
 		VERIFY_SUCCEEDED(Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, reinterpret_cast<void*>(&FDO3), sizeof(FDO3)));

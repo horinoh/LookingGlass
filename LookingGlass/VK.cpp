@@ -237,15 +237,16 @@ void VK::SelectPhysicalDevice(VkInstance Inst)
 	VERIFY_SUCCEEDED(vkEnumeratePhysicalDevices(Inst, &Count, std::data(PhysicalDevices)));
 
 	//!< 物理デバイスの選択、ここでは最大メモリを選択することにする (Select physical device, here select max memory size)
-	const auto Index = std::distance(begin(PhysicalDevices), std::ranges::max_element(PhysicalDevices, [](const VkPhysicalDevice& lhs, const VkPhysicalDevice& rhs) {
-		std::array<VkPhysicalDeviceMemoryProperties, 2> PDMPs;
-		vkGetPhysicalDeviceMemoryProperties(lhs, &PDMPs[0]);
-		vkGetPhysicalDeviceMemoryProperties(rhs, &PDMPs[1]);
-		return std::accumulate(&PDMPs[0].memoryHeaps[0], &PDMPs[0].memoryHeaps[PDMPs[0].memoryHeapCount], static_cast<VkDeviceSize>(0), [](VkDeviceSize Sum, const VkMemoryHeap& rhs) { return Sum + rhs.size; })
-			< std::accumulate(&PDMPs[1].memoryHeaps[0], &PDMPs[1].memoryHeaps[PDMPs[1].memoryHeapCount], static_cast<VkDeviceSize>(0), [](VkDeviceSize Sum, const VkMemoryHeap& rhs) { return Sum + rhs.size; });
-		}));
-	CurrentPhysicalDevice = PhysicalDevices[Index];
-	vkGetPhysicalDeviceMemoryProperties(CurrentPhysicalDevice, &CurrentPhysicalDeviceMemoryProperties);
+	SelectedPhysDevice.first = *std::ranges::max_element(PhysicalDevices, [](const auto& lhs, const auto& rhs) {
+		VkPhysicalDeviceMemoryProperties MemPropL, MemPropR;
+		vkGetPhysicalDeviceMemoryProperties(lhs, &MemPropL);
+		vkGetPhysicalDeviceMemoryProperties(rhs, &MemPropR);
+		const auto MemTotalL = std::accumulate(std::data(MemPropL.memoryHeaps), &MemPropL.memoryHeaps[MemPropL.memoryHeapCount], static_cast<VkDeviceSize>(0), [](auto Sum, const auto& rhs) { return Sum + rhs.size; });
+		const auto MemTotalR = std::accumulate(std::data(MemPropR.memoryHeaps), &MemPropR.memoryHeaps[MemPropR.memoryHeapCount], static_cast<VkDeviceSize>(0), [](auto Sum, const auto& rhs) { return Sum + rhs.size; });
+		return MemTotalL < MemTotalR;
+		});
+	vkGetPhysicalDeviceProperties(SelectedPhysDevice.first, &SelectedPhysDevice.second.PDP);
+	vkGetPhysicalDeviceMemoryProperties(SelectedPhysDevice.first, &SelectedPhysDevice.second.PDMP);
 }
 void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, const std::vector<const char*>& AdditionalExtensions)
 {
@@ -258,7 +259,7 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, const std::vector<const ch
 	};
 	VERIFY_SUCCEEDED(vkCreateWin32SurfaceKHR(Instance, &SCI, GetAllocationCallbacks(), &Surface));
 
-	const auto PD = CurrentPhysicalDevice;
+	const auto PD = SelectedPhysDevice.first;
 
 	std::vector<VkQueueFamilyProperties> QFPs;
 	{

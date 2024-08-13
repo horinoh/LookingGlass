@@ -40,7 +40,7 @@ public:
 	}
 
 	virtual void CreateGeometry() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		const auto CB = CommandBuffers[0];
 
 		//Load(std::filesystem::path("..") / "Asset" / "Mesh" / "bunny.FBX");
@@ -103,7 +103,7 @@ public:
 	}
 
 	virtual void CreateUniformBuffer() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		for (const auto& i : SwapchainBackBuffers) {
 			UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(WorldBuffer));
 			CopyToHostVisibleDeviceMemory(Device, UniformBuffers.back().DeviceMemory, 0, sizeof(WorldBuffer), &WorldBuffer);
@@ -245,7 +245,7 @@ public:
 				.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DescriptorUpdateInfo)
 			}),
 		}, DSL);
-		const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 		for (uint32_t i = 0; i < BackBufferCount; ++i) {
 			const DescriptorUpdateInfo DUI = {
 				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + i].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
@@ -344,7 +344,7 @@ public:
 		VERIFY_SUCCEEDED(vkBeginCommandBuffer(SCB, &SCBBI)); {
 			vkCmdBindPipeline(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PL);
 
-			const auto DynamicOffset = GetViewportMax() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+			const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 			for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
 				const auto Offset = GetViewportSetOffset(j);
 				const auto Count = GetViewportSetCount(j);

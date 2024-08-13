@@ -16,7 +16,7 @@ public:
 	}
 
 	virtual void CreateGeometry() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		const auto CB = CommandBuffers[0];
 		constexpr VkDrawIndirectCommand DIC = {
 			.vertexCount = 4, 
@@ -27,13 +27,13 @@ public:
 		IndirectBuffers.emplace_back().Create(Device, PDMP, DIC).SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, sizeof(DIC), &DIC);
 	}
 	virtual void CreateUniformBuffer() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		UniformBuffers.emplace_back().Create(Device, PDMP, sizeof(LenticularBuffer));
 		//!< CopyToHostVisibleDeviceMemory() はテクスチャ情報確定後 CreateTexture() 内でやっている
 	}
 	//!< キルト画像は dds 形式にして Asset フォルダ内へ配置しておく [Convert quilt image to dds format, and put in Asset folder]
 	virtual void CreateTexture() override {
-		const auto PDMP = CurrentPhysicalDeviceMemoryProperties;
+		const auto& PDMP = SelectedPhysDevice.second.PDMP;
 		const auto CB = CommandBuffers[0];
 		//example01.dds // 4x8
 		//mar1_qs5x8.dds 
