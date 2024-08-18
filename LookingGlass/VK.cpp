@@ -26,10 +26,6 @@ void AdjustScale(std::vector<glm::vec3>& Vertices, const float Scale)
 
 void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 {
-	for (auto i : DescriptorUpdateTemplates) {
-		vkDestroyDescriptorUpdateTemplate(Device, i, GetAllocationCallbacks());
-	}
-	DescriptorUpdateTemplates.clear();
 	//!< ŒÂ•Ê‚ÉŠJ•ú‚Å‚«‚é‚Ì‚Í VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT ‚ðŽw’è‚µ‚½ê‡
 	//if (!empty(DescriptorSets)) { vkFreeDescriptorSets(Device, DescriptorPool, static_cast<uint32_t>(std::size(DescriptorSets)), std::data(DescriptorSets)); }
 	DescriptorSets.clear();

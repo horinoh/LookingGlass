@@ -285,48 +285,46 @@ public:
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
 
-		struct DescriptorUpdateInfo
-		{
-			VkDescriptorBufferInfo DBI[1];
-			VkDescriptorImageInfo DII0;
-			VkDescriptorImageInfo DII1;
-		};
-		VkDescriptorUpdateTemplate DUT;
-		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
-			VkDescriptorUpdateTemplateEntry({
-				.dstBinding = 0, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
-			}),
-			VkDescriptorUpdateTemplateEntry({
-				.dstBinding = 1, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DescriptorUpdateInfo, DII0), .stride = sizeof(DescriptorUpdateInfo)
-			}),
-			VkDescriptorUpdateTemplateEntry({
-				.dstBinding = 2, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DescriptorUpdateInfo, DII1), .stride = sizeof(DescriptorUpdateInfo)
-			}),
-			}, DSL);
-
-		const auto UBIndex = 0;
-		const auto DSIndex = 0;
-
+		const auto UB = UniformBuffers[0].Buffer;
 		//!< ダイナミックオフセット (UNIFORM_BUFFER_DYNAMIC) を使用する場合、.range には VK_WHOLE_SIZE では無くオフセット毎に使用するサイズを指定する
 		//!< [When using dynamic offset, .range value is data size used in each offset]
 		//!<	ex) 100(VK_WHOLE_SIZE) = 25(DynamicOffset) * 4 なら 25 を指定するということ
 		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		const auto& ColorMap = GetColorMap();
+		const auto& DepthMap = GetDepthMap();
+		const auto DS = DescriptorSets[0];
+
+		struct DescriptorUpdateInfo
 		{
-			const auto& ColorMap = GetColorMap();
-			const auto& DepthMap = GetDepthMap();
-			const DescriptorUpdateInfo DUI = {
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + 0].Buffer, .offset = 0, .range = DynamicOffset }),
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = ColorMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Depth
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = DepthMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Color
-			};
-			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + 0], DUT, &DUI);
-		}
+			VkDescriptorBufferInfo DBI[1];
+			VkDescriptorImageInfo DII0[1];
+			VkDescriptorImageInfo DII1[1];
+		};
+		const DescriptorUpdateInfo DUI = {
+			.DBI = VkDescriptorBufferInfo({.buffer = UB, .offset = 0, .range = DynamicOffset }),
+			.DII0 = VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = ColorMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Depth
+			.DII1 = VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = DepthMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Color
+		};
+
+		VkDescriptorUpdateTemplate DUT;
+		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 0, .dstArrayElement = 0,
+				.descriptorCount = _countof(DUI.DBI), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DUI, DBI), .stride = sizeof(DUI)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 1, .dstArrayElement = 0,
+				.descriptorCount = _countof(DUI.DII0), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DUI, DII0), .stride = sizeof(DUI)
+			}),
+			VkDescriptorUpdateTemplateEntry({
+				.dstBinding = 2, .dstArrayElement = 0,
+				.descriptorCount = _countof(DUI.DII1), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DUI, DII1), .stride = sizeof(DUI)
+			}),
+			}, DSL);
+		vkUpdateDescriptorSetWithTemplate(Device, DS, DUT, &DUI);
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
 	virtual void CreateDescriptor_Pass1() {
@@ -336,9 +334,6 @@ public:
 			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = DescCount }),
 			VkDescriptorPoolSize({.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = DescCount }),
 			});
-
-		const auto UBIndex = 1;
-		const auto DSIndex = 1;
 
 		auto DSL = DescriptorSetLayouts[1];
 		auto DP = DescriptorPools[1];
@@ -352,32 +347,32 @@ public:
 			};
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
+		const auto DS = DescriptorSets[1];
+		const auto UB = UniformBuffers[1].Buffer;
 
 		struct DescriptorUpdateInfo
 		{
 			VkDescriptorImageInfo DII[1];
 			VkDescriptorBufferInfo DBI[1];
 		};
+		const DescriptorUpdateInfo DUI = {
+			.DII = VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
+			.DBI = VkDescriptorBufferInfo({.buffer = UB, .offset = 0, .range = VK_WHOLE_SIZE}),
+		};
 		VkDescriptorUpdateTemplate DUT;
 		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 0, .dstArrayElement = 0,
-				.descriptorCount = _countof(DescriptorUpdateInfo::DII), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DescriptorUpdateInfo, DII), .stride = sizeof(VkDescriptorImageInfo)
+				.descriptorCount = _countof(DUI.DII), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DUI, DII), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 1, .dstArrayElement = 0,
-				.descriptorCount = _countof(DescriptorUpdateInfo::DBI), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DescriptorUpdateInfo)
+				.descriptorCount = _countof(DUI.DBI), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DUI, DBI), .stride = sizeof(DUI)
 			}),
 			}, DSL);
-		{
-			const DescriptorUpdateInfo DUI = {
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = RenderTextures[0].View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }),
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[UBIndex + 0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE}),
-			};
-			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + 0], DUT, &DUI);
-		}
+		vkUpdateDescriptorSetWithTemplate(Device, DS, DUT, &DUI);
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
 	virtual void CreateDescriptor() override {
@@ -613,53 +608,50 @@ public:
 			VERIFY_SUCCEEDED(vkAllocateDescriptorSets(Device, &DSAI, &DescriptorSets.emplace_back()));
 		}
 
-		struct DescriptorUpdateInfo
-		{
-			VkDescriptorBufferInfo DBI0;
-			VkDescriptorImageInfo DII0;
-			VkDescriptorImageInfo DII1;
-			VkDescriptorBufferInfo DBI1;
+		const auto DS = DescriptorSets[0];
+		const auto UB0 = UniformBuffers[0].Buffer;
+		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
+		const auto& ColorMap = GetColorMap();
+		const auto& DepthMap = GetDepthMap();
+		const auto UB2 = UniformBuffers[2].Buffer;
+
+		struct DescriptorUpdateInfo {
+			VkDescriptorBufferInfo DBI0[1];
+			VkDescriptorImageInfo DII0[1];
+			VkDescriptorImageInfo DII1[1];
+			VkDescriptorBufferInfo DBI1[1];
 		};
+		const auto DUI = DescriptorUpdateInfo({
+			.DBI0 = VkDescriptorBufferInfo({.buffer = UB0, .offset = 0, .range = DynamicOffset }),
+			.DII0 = VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = ColorMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Depth
+			.DII1 = VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = DepthMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Color
+			.DBI1 = VkDescriptorBufferInfo({.buffer = UB2, .offset = 0, .range = VK_WHOLE_SIZE }),
+		});
+
 		VkDescriptorUpdateTemplate DUT;
 		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 0, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-				.offset = offsetof(DescriptorUpdateInfo, DBI0), .stride = sizeof(DescriptorUpdateInfo)
+				.descriptorCount = _countof(DUI.DBI0), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DUI, DBI0), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 1, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DescriptorUpdateInfo, DII0), .stride = sizeof(DescriptorUpdateInfo)
+				.descriptorCount = _countof(DUI.DII0), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DUI, DII0), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 2, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DescriptorUpdateInfo, DII1), .stride = sizeof(DescriptorUpdateInfo)
+				.descriptorCount = _countof(DUI.DII1), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DUI, DII1), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 3, .dstArrayElement = 0,
-				.descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DescriptorUpdateInfo)
+				.descriptorCount = _countof(DUI.DBI1), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DUI, DBI1), .stride = sizeof(DUI)
 			}),
 			}, DSL);
-
-		const auto UB0Index = 0;
-		const auto DSIndex = 0;
-		const auto UB1Index = 2;
-
-		const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
-		{
-			const auto& ColorMap = GetColorMap();
-			const auto& DepthMap = GetDepthMap();
-			const DescriptorUpdateInfo DUI = {
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB0Index + 0].Buffer, .offset = 0, .range = DynamicOffset }),
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = ColorMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Depth
-				VkDescriptorImageInfo({.sampler = VK_NULL_HANDLE, .imageView = DepthMap.View, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}), //!< Color
-				VkDescriptorBufferInfo({.buffer = UniformBuffers[UB1Index + 0].Buffer, .offset = 0, .range = VK_WHOLE_SIZE }),
-			};
-			vkUpdateDescriptorSetWithTemplate(Device, DescriptorSets[DSIndex + 0], DUT, &DUI);
-		}
+		vkUpdateDescriptorSetWithTemplate(Device, DS, DUT, &DUI);
 		vkDestroyDescriptorUpdateTemplate(Device, DUT, GetAllocationCallbacks());
 	}
 	virtual void UpdateWorldBuffer() {

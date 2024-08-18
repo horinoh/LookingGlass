@@ -231,15 +231,11 @@ public:
 	}
 
 	virtual void CreateDescriptorPool(VkDescriptorPool& DP, const VkDescriptorPoolCreateFlags Flags, const std::vector<VkDescriptorPoolSize>& DPSs) {
-		uint32_t MaxSets = 0;
-		for (const auto& i : DPSs) {
-			MaxSets = (std::max)(MaxSets, i.descriptorCount);
-		}
 		const VkDescriptorPoolCreateInfo DPCI = {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = Flags,
-			.maxSets = MaxSets,
+			.maxSets = std::ranges::max_element(DPSs, [](const auto& lhs, const auto& rhs) { return lhs.descriptorCount < rhs.descriptorCount; })->descriptorCount,
 			.poolSizeCount = static_cast<uint32_t>(std::size(DPSs)), .pPoolSizes = std::data(DPSs)
 		};
 		VERIFY_SUCCEEDED(vkCreateDescriptorPool(Device, &DPCI, GetAllocationCallbacks(), &DP));
@@ -1187,7 +1183,6 @@ protected:
 
 	std::vector<VkDescriptorPool> DescriptorPools;
 	std::vector<VkDescriptorSet> DescriptorSets;
-	std::vector<VkDescriptorUpdateTemplate> DescriptorUpdateTemplates;
 
 	std::vector<VkViewport> Viewports;
 	std::vector<VkRect2D> ScissorRects;
