@@ -418,8 +418,17 @@ public:
 			//!< 描画毎にユニフォームバッファのアクセス先をオフセットする [Offset uniform buffer access on each draw]
 			const auto DynamicOffset = GetMaxViewports() * sizeof(ViewProjectionBuffer.ViewProjection[0]);
 			//!< アライメント情報が必要 [Need alignment information]
-			VkMemoryRequirements MR;
-			vkGetBufferMemoryRequirements(Device, UniformBuffers[0].Buffer, &MR);
+			
+			const VkBufferMemoryRequirementsInfo2 BMRI = {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+				.pNext = nullptr,
+				.buffer = UniformBuffers[0].Buffer
+			};
+			VkMemoryRequirements2 MR = {
+				.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+				.pNext = nullptr,
+			};
+			vkGetBufferMemoryRequirements2(Device, &BMRI, &MR);
 
 			//!< キルトパターン描画 (ビューポート同時描画数に制限がある為、要複数回実行) [Because viewport max is 16, need to draw few times]
 			for (uint32_t j = 0; j < GetViewportDrawCount(); ++j) {
@@ -431,7 +440,7 @@ public:
 
 				//!< デスクリプタ [Descriptor]
 				const std::array DSs = { DS };
-				const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
+				const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.memoryRequirements.alignment)) };
 				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(std::size(DSs)), std::data(DSs), static_cast<uint32_t>(std::size(DynamicOffsets)), std::data(DynamicOffsets));
 
 				vkCmdDrawIndirect(SCB, IndirectBuffers[0].Buffer, 0, 1, 0);

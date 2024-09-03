@@ -310,8 +310,17 @@ protected:
 		};
 		VERIFY_SUCCEEDED(vkCreateBuffer(Device, &BCI, GetAllocationCallbacks(), Buffer));
 
-		VkMemoryRequirements MR;
-		vkGetBufferMemoryRequirements(Device, *Buffer, &MR);
+		const VkBufferMemoryRequirementsInfo2 BMRI = {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+			.pNext = nullptr,
+			.buffer = *Buffer
+		};
+		VkMemoryRequirements2 MR = {
+			.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+			.pNext = nullptr,
+		};
+		vkGetBufferMemoryRequirements2(Device, &BMRI, &MR);
+
 		constexpr VkMemoryAllocateFlagsInfo MAFI = { 
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO, 
 			.pNext = nullptr, 
@@ -321,8 +330,8 @@ protected:
 		const VkMemoryAllocateInfo MAI = {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.pNext = (VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT & BUF) ? &MAFI : nullptr,
-			.allocationSize = MR.size,
-			.memoryTypeIndex = GetMemoryTypeIndex(PDMP, MR.memoryTypeBits, MPF)
+			.allocationSize = MR.memoryRequirements.size,
+			.memoryTypeIndex = GetMemoryTypeIndex(PDMP, MR.memoryRequirements.memoryTypeBits, MPF)
 		};
 		VERIFY_SUCCEEDED(vkAllocateMemory(Device, &MAI, GetAllocationCallbacks(), DeviceMemory));
 
@@ -352,13 +361,22 @@ protected:
 		};
 		VERIFY_SUCCEEDED(vkCreateImage(Device, &ICI, GetAllocationCallbacks(), Image));
 
-		VkMemoryRequirements MR;
-		vkGetImageMemoryRequirements(Device, *Image, &MR);
+		const VkImageMemoryRequirementsInfo2 IMRI = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+			.pNext = nullptr,
+			.image = *Image
+		};
+		VkMemoryRequirements2 MR = {
+			.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+			.pNext = nullptr,
+		};
+		vkGetImageMemoryRequirements2(Device, &IMRI, &MR);
+
 		const VkMemoryAllocateInfo MAI = {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.pNext = nullptr,
-			.allocationSize = MR.size,
-			.memoryTypeIndex = VK::GetMemoryTypeIndex(PDMP, MR.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+			.allocationSize = MR.memoryRequirements.size,
+			.memoryTypeIndex = VK::GetMemoryTypeIndex(PDMP, MR.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
 		};
 		VERIFY_SUCCEEDED(vkAllocateMemory(Device, &MAI, GetAllocationCallbacks(), DM));
 		VERIFY_SUCCEEDED(vkBindImageMemory(Device, *Image, *DM, 0));

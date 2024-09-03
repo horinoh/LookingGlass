@@ -323,8 +323,16 @@ public:
 		const auto SCB = SecondaryCommandBuffers[i];
 		const auto DS = DescriptorSets[i];
 
-		VkMemoryRequirements MR;
-		vkGetBufferMemoryRequirements(Device, UniformBuffers[std::size(SwapchainBackBuffers)].Buffer, &MR);
+		const VkBufferMemoryRequirementsInfo2 BMRI = {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+			.pNext = nullptr,
+			.buffer = UniformBuffers[std::size(SwapchainBackBuffers)].Buffer
+		};
+		VkMemoryRequirements2 MR = {
+			.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+			.pNext = nullptr,
+		};
+		vkGetBufferMemoryRequirements2(Device, &BMRI, &MR);
 
 		const VkCommandBufferInheritanceInfo CBII = {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
@@ -353,7 +361,7 @@ public:
 				vkCmdSetScissor(SCB, 0, Count, &QuiltScissorRects[Offset]);
 
 				const std::array DSs = { DS };
-				const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.alignment)) };
+				const std::array DynamicOffsets = { static_cast<uint32_t>(RoundUp(DynamicOffset * j, MR.memoryRequirements.alignment)) };
 				vkCmdBindDescriptorSets(SCB, VK_PIPELINE_BIND_POINT_GRAPHICS, PLL, 0, static_cast<uint32_t>(std::size(DSs)), std::data(DSs), static_cast<uint32_t>(std::size(DynamicOffsets)), std::data(DynamicOffsets));
 
 				const std::array VBs = { VertexBuffers[0].Buffer };
