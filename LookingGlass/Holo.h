@@ -8,7 +8,12 @@
 #include <format>
 
 #include <HoloPlayCore.h>
+#if false
 #include <HoloPlayShaders.h>
+#endif
+//!< 前提条件 (Prerequisites)
+//!<	Looking Glass を PC に接続し、OS のディスプレイ設定から、「表示画面を拡張する」で Looking Glass を拡張画面としておくこと
+//!<	(Connect Looking Glass to PC, from OS display settings "extend screen", select Looking Glass as extended screen)
 
 #include "Common.h"
 
@@ -22,9 +27,10 @@ class Holo
 {
 public:
 	Holo() {
+#if false
 		LOG(std::data(std::format("hpc_LightfieldVertShaderGLSL =\n{}\n", hpc_LightfieldVertShaderGLSL)));
 		LOG(std::data(std::format("hpc_LightfieldFragShaderGLSL =\n{}\n", hpc_LightfieldFragShaderGLSL)));
-
+#endif
 		if (hpc_CLIERR_NOERROR == hpc_InitializeApp("Holo", hpc_LICENSE_NONCOMMERCIAL)) {
 			{
 				std::vector<char> Buf(hpc_GetStateAsJSON(nullptr, 0));
@@ -48,7 +54,18 @@ public:
 				{
 					std::vector<char> Buf(hpc_GetDeviceHDMIName(i, nullptr, 0));
 					hpc_GetDeviceHDMIName(i, std::data(Buf), std::size(Buf));
-					LOG(std::data(std::format("\thpc_GetDeviceHDMIName = {}\n", std::data(Buf)))); //!< 参考値) LKG-PO3996
+					//!< 参考値)
+					//!<	Portrait	: LKG-PO3996
+					//!<	Go			: LKG-E05304
+					LOG(std::data(std::format("\thpc_GetDeviceHDMIName = {}\n", std::data(Buf))));
+
+					//!< Looking Glass Go の場合は、Core SDK がサポートされず、パラメータが取れない (Looking Glass Go is not supported by Core SDK)
+					if (0 == std::strncmp(std::data(Buf), "LKG-E05304", std::size(Buf))) {
+						DeviceTypes.emplace_back(DEVICE_TYPE::GO);
+					}
+					else {
+						DeviceTypes.emplace_back(DEVICE_TYPE::SUPPORTED);
+					}
 				}
 				{
 					std::vector<char> Buf(hpc_GetDeviceSerial(i, nullptr, 0));
@@ -73,11 +90,33 @@ public:
 			//!< ここでは最初のデバイスを選択 (Select 1st device here)
 			DeviceIndex = 0;
 			LOG(std::data(std::format("Selected DeviceIndex = {}\n", DeviceIndex)));
-		} else {
+		}
+		else {
 			LOG("Device not found\n");
 		}
 
 		LenticularBuffer = LENTICULAR_BUFFER(DeviceIndex);
+		if (-1 != DeviceIndex) {
+			switch (DeviceTypes[DeviceIndex]) {
+			case Holo::DEVICE_TYPE::GO:
+				//!< パラメータは調査中 #TODO
+				LenticularBuffer.Pitch = 246.866f;
+				LenticularBuffer.Tilt = -0.185377f;
+				LenticularBuffer.Center = 0.131987f;
+				LenticularBuffer.Subp = 0.000217014f;
+
+				LenticularBuffer.InvView = 1;
+				LenticularBuffer.Ri = 0;
+				LenticularBuffer.Bi = 2;
+
+				LenticularBuffer.TileX = 11;
+				LenticularBuffer.TileY = 6;
+				LenticularBuffer.QuiltAspect = 0.5625f;
+				LenticularBuffer.DisplayAspect = LenticularBuffer.QuiltAspect;
+				break;
+			default: break;
+			}
+		}
 		LOG(std::data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
 		LOG(std::data(std::format("Tilt = {}\n", LenticularBuffer.Tilt)));
 		LOG(std::data(std::format("Center = {}\n", LenticularBuffer.Center)));
@@ -92,6 +131,15 @@ public:
 			QuiltX = hpc_GetDevicePropertyQuiltX(DeviceIndex);
 			QuiltY = hpc_GetDevicePropertyQuiltY(DeviceIndex);
 			HalfViewCone = TO_RADIAN(hpc_GetDevicePropertyFloat(DeviceIndex, "/calibration/viewCone/value")) * 0.5f;
+
+			switch (DeviceTypes[DeviceIndex]) {
+			case Holo::DEVICE_TYPE::GO:
+				QuiltX = 4092;
+				QuiltY = 4092;
+				HalfViewCone = TO_RADIAN(40.0f) * 0.5f;
+				break;
+			default: break;
+			}
 		}
 		LOG(std::data(std::format("QuiltX, QuiltY = {}, {}\n", QuiltX, QuiltY)));
 		LOG(std::data(std::format("ViewCone = {}\n", 2.0f * HalfViewCone)));
@@ -102,12 +150,29 @@ public:
 		hpc_CloseApp();
 	}
 
-	void SetHoloWindow(HWND hWnd, HINSTANCE hInstance)  
-	{
+	void SetHoloWindow(HWND hWnd, HINSTANCE hInstance) {
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する [Get window position, size from Looking Glass and apply]
 		if (-1 != DeviceIndex) {
-			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex))));
-			::SetWindowPos(hWnd, nullptr, hpc_GetDevicePropertyWinX(DeviceIndex), hpc_GetDevicePropertyWinY(DeviceIndex), hpc_GetDevicePropertyScreenW(DeviceIndex), hpc_GetDevicePropertyScreenH(DeviceIndex), SWP_FRAMECHANGED);
+			auto X = hpc_GetDevicePropertyWinX(DeviceIndex);
+			auto Y = hpc_GetDevicePropertyWinY(DeviceIndex);
+			auto W = hpc_GetDevicePropertyScreenW(DeviceIndex);
+			auto H = hpc_GetDevicePropertyScreenH(DeviceIndex);
+			
+			//!< サポート外デバイスでは Core SDK が使えず hpc_GetDevicePropertyWinX() がまともな値を返さないので自前でやるしかない
+			switch (DeviceTypes[DeviceIndex]) {
+			case Holo::DEVICE_TYPE::GO:
+				//!< [0] メインウインドウ, [1] 拡張ウインドウ が左右に配置されていると想定
+				//!< メインウインドウの幅を取得、拡張ウインドウはその分 X 方向にオフセットされている
+				X = GetSystemMetrics(SM_CXSCREEN);
+				Y = 0;
+				W = 1440;
+				H = 2560;
+				break;
+			default: break;
+			}
+
+			::SetWindowPos(hWnd, nullptr, X, Y, W, H, SWP_FRAMECHANGED);
+			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", X, Y, W, H)));
 		} else {
 			::SetWindowPos(hWnd, nullptr, 0, 0, 1536, 2048, SWP_FRAMECHANGED);
 		}
@@ -183,6 +248,16 @@ public:
 
 protected:
 	int DeviceIndex = -1;
+
+	//!< Core SDK でサポート外のデバイスの場合どれか (What type of device, not supported by core sdk)
+	enum class DEVICE_TYPE : uint8_t {
+		SUPPORTED,
+		UNSUPPORTED,
+		GO = UNSUPPORTED,
+	};
+	std::vector<DEVICE_TYPE> DeviceTypes;
+	
+	//DEVICE_TYPE UnsupportedDeviceType = DEVICE_TYPE::NONE;
 
 	int QuiltX = 3360, QuiltY = 3360;
 	float HalfViewCone = TO_RADIAN(40.0f) * 0.5f;
