@@ -568,7 +568,7 @@ public:
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {
-		glm::mat4 ViewProjection[64];
+		glm::mat4 ViewProjection[Holo::TileDimensionMax];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };

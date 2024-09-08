@@ -6,6 +6,7 @@
 #include <vector>
 #include <numbers>
 #include <format>
+#include <cassert>
 
 #include <HoloPlayCore.h>
 #if false
@@ -116,6 +117,10 @@ public:
 				break;
 			default: break;
 			}
+		}
+		if (LenticularBuffer.TileX * LenticularBuffer.TileY > TileDimensionMax) {
+			LOG(std::data(std::format("TileX * TileY ({} * {}) > TileDimensionMax ({})\n", LenticularBuffer.TileX, LenticularBuffer.TileY, TileDimensionMax)));
+			__debugbreak();
 		}
 		LOG(std::data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
 		LOG(std::data(std::format("Tilt = {}\n", LenticularBuffer.Tilt)));
@@ -247,6 +252,10 @@ public:
 	float GetOffsetAngle(const int i) const { return static_cast<const float>(i) * OffsetAngleCoef - HalfViewCone; }
 
 protected:
+	//!< 64 もあれば十分だと思っていたら Go が超えてきた (11 * 6 = 66) ので注意 
+	//!< シェーダ側にも対応が必要になるので注意
+	static constexpr int TileDimensionMax = 96;
+
 	int DeviceIndex = -1;
 
 	//!< Core SDK でサポート外のデバイスの場合どれか (What type of device, not supported by core sdk)

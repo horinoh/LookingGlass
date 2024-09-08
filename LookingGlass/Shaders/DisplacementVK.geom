@@ -2,11 +2,13 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#define TILE_DIMENSION_MAX 96
+
 layout (location = 0) in vec2 InTexcoord[];
 
 layout (set = 0, binding = 0) uniform VIEW_PROJECTION_BUFFER
 {
-	mat4 ViewProjection[64];
+	mat4 ViewProjection[TILE_DIMENSION_MAX];
 } VPB;
 
 layout (location = 0) out vec2 OutTexcoord;

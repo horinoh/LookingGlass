@@ -2,6 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#define TILE_DIMENSION_MAX 96
+
 layout (location = 0) in vec3 InNormal[];
 
 struct VIEW_PROJECTION
@@ -11,7 +13,7 @@ struct VIEW_PROJECTION
 };
 layout (set = 0, binding = 1) uniform VIEW_PROJECTION_BUFFER
 {
-	VIEW_PROJECTION ViewProjection[64];
+	VIEW_PROJECTION ViewProjection[TILE_DIMENSION_MAX];
 } VPB;
 
 layout (location = 0) out vec3 OutNormal;

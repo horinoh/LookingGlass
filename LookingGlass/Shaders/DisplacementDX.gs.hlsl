@@ -1,3 +1,5 @@
+#define TILE_DIMENSION_MAX 96
+
 struct IN
 {
 	float4 Position : POSITION;
@@ -6,7 +8,7 @@ struct IN
 
 struct VIEW_PROJECTION_BUFFER
 {
-	float4x4 ViewProjection[64];
+	float4x4 ViewProjection[TILE_DIMENSION_MAX];
 };
 ConstantBuffer<VIEW_PROJECTION_BUFFER> VPB : register(b0, space0);
 

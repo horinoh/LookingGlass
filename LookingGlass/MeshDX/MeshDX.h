@@ -504,7 +504,7 @@ public:
 
 protected:
 	struct VIEW_PROJECTION_BUFFER {
-		DirectX::XMFLOAT4X4 ViewProjection[64]; //!< 64 ‚à‚ ‚ê‚Î\•ª [64 will be enough]
+		DirectX::XMFLOAT4X4 ViewProjection[Holo::TileDimensionMax];
 	};
 	VIEW_PROJECTION_BUFFER ViewProjectionBuffer;
 };
