@@ -1,4 +1,4 @@
-#define TILE_DIMENSION_MAX 96
+#define TILE_DIMENSION_MAX (16 * 5)
 
 struct IN
 {

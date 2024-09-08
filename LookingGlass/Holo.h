@@ -254,7 +254,7 @@ public:
 protected:
 	//!< 64 もあれば十分だと思っていたら Go が超えてきた (11 * 6 = 66) ので注意 
 	//!< シェーダ側にも対応が必要になるので注意
-	static constexpr int TileDimensionMax = 96;
+	static constexpr int TileDimensionMax = 16 * 5;
 
 	int DeviceIndex = -1;
 
@@ -313,6 +313,7 @@ protected:
 		int TileX = 2, TileY = 1; //!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
 #else
 		int TileX = 8, TileY = 6;
+		//int TileX = 11, TileY = 6;
 #endif
 		float QuiltAspect = static_cast<float>(TileX) / TileY;
 		float Padding;
