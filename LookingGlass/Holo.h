@@ -110,24 +110,36 @@ public:
 		if (-1 != DeviceIndex) {
 			switch (DeviceTypes[DeviceIndex]) {
 			case Holo::DEVICE_TYPE::GO:
-				//!< パラメータは調査中
-				LenticularBuffer.Pitch = 246.866f; //!< #TODO [ Portrait : 246.866f ]
-				LenticularBuffer.Tilt = -0.185377f; //!< #TODO [ Portrait : -0.185377f ]
-				LenticularBuffer.Center = 0.131987f; //!< [ Portrait : 0.565845f ]
-				LenticularBuffer.Subp = 0.000217014f; //!< #TODO [ Portrait : 0.000217014f ]
+				//!< パラメータ調査中 (Go における Core SDK 上での Pitch, Tilt, Subp 相当の値が欲しい)
+				//!< [ Core SDK : Portrait ]
+				//!<	Center = 0.565845f
+				//!<	Pitch = 246.866f
+				//!<	Tilt = -0.185377f
+				//!<	Subp = 0.000217014f
+				//!< 
+				// [ Bridge SDK : Portrait ]
+				//!<	Center = 0.565845f
+				//!<	Pitch = 52.5741f
+				//!<	Slope = -7.19256f
+				//!<	Dpi = 324
+				//!< 
+				// [ Bridge SDK : Go ]
+				//!<	Center = 0.131987f
+				//!<	Pitch = 80.756f
+				//!<	Slope = -6.66381f
+				//!<	Dpi = 491
+				LenticularBuffer.Center = 0.131987f;
+				LenticularBuffer.Pitch = 246.866f; //!< #TODO
+				LenticularBuffer.Tilt = -0.185377f; //!< #TODO 
+				LenticularBuffer.Subp = 0.000217014f; //!< #TODO
 				
-				// [ Bridge SDK ]
-				//Pitch = 80.756f #TODO
-				//Slope = -6.66381f #TODO
-				//Dpi = 491 #TODO
-
 				LenticularBuffer.InvView = 1;
 				LenticularBuffer.Ri = 0;
 				LenticularBuffer.Bi = 2;
 
-				LenticularBuffer.TileX = 11; //!< [ Portrait : 8 ]
+				LenticularBuffer.TileX = 11;
 				LenticularBuffer.TileY = 6;
-				LenticularBuffer.DisplayAspect = LenticularBuffer.QuiltAspect = 0.5625f; //!< == 1440 / 2560 [ Portrait : 0.75f ]
+				LenticularBuffer.DisplayAspect = LenticularBuffer.QuiltAspect = 0.5625f; //!< == 1440 / 2560
 				break;
 			default: break;
 			}
