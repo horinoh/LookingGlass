@@ -111,10 +111,13 @@ public:
 			switch (DeviceTypes[DeviceIndex]) {
 			case Holo::DEVICE_TYPE::GO:
 				//!< ƒpƒ‰ƒ[ƒ^‚Í’²¸’†
-				LenticularBuffer.Pitch = 246.866f; //!< 80.756f #TODO
-				LenticularBuffer.Tilt = -0.185377f; //!< #TODO
-				LenticularBuffer.Center = 0.131987f;
-				LenticularBuffer.Subp = 0.000217014f; //!< #TODO
+				LenticularBuffer.Pitch = 246.866f; //!< #TODO [ Portrait : 246.866f ]
+				LenticularBuffer.Tilt = -0.185377f; //!< #TODO [ Portrait : -0.185377f ]
+				LenticularBuffer.Center = 0.131987f; //!< [ Portrait : 0.565845f ]
+				LenticularBuffer.Subp = 0.000217014f; //!< #TODO [ Portrait : 0.000217014f ]
+				
+				// [ Bridge SDK ]
+				//Pitch = 80.756f #TODO
 				//Slope = -6.66381f #TODO
 				//Dpi = 491 #TODO
 
@@ -122,10 +125,9 @@ public:
 				LenticularBuffer.Ri = 0;
 				LenticularBuffer.Bi = 2;
 
-				LenticularBuffer.TileX = 11;
+				LenticularBuffer.TileX = 11; //!< [ Portrait : 8 ]
 				LenticularBuffer.TileY = 6;
-				LenticularBuffer.QuiltAspect = 0.5625f; //!< == 1440 / 2560
-				LenticularBuffer.DisplayAspect = LenticularBuffer.QuiltAspect;
+				LenticularBuffer.DisplayAspect = LenticularBuffer.QuiltAspect = 0.5625f; //!< == 1440 / 2560 [ Portrait : 0.75f ]
 				break;
 			default: break;
 			}
