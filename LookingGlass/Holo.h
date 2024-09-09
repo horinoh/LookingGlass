@@ -50,14 +50,20 @@ public:
 			}
 
 			LOG(std::data(std::format("hpc_GetNumDevices = {}\n", hpc_GetNumDevices())));
+			
+			//!< 8x6	3360x3360 : Portrait
+			//!< 11x6	4096x4096 : Go
+			//!< 4x8	2048x2048 : Standard
+			//!< 5x9	8192x8192 : 8K
+			//!< 5x9	4096x4096 :
 			for (auto i = 0; i < hpc_GetNumDevices(); ++i) {
 				LOG(std::data(std::format("[{}]\n", i)));
 				{
 					std::vector<char> Buf(hpc_GetDeviceHDMIName(i, nullptr, 0));
 					hpc_GetDeviceHDMIName(i, std::data(Buf), std::size(Buf));
 					//!< 参考値)
-					//!<	Portrait	: LKG-PO3996
-					//!<	Go			: LKG-E05304
+					//!<	LKG-PO3996 : Portrait
+					//!<	LKG-E05304 : Go
 					LOG(std::data(std::format("\thpc_GetDeviceHDMIName = {}\n", std::data(Buf))));
 
 					//!< Looking Glass Go の場合は、Core SDK がサポートされず、パラメータが取れない (Looking Glass Go is not supported by Core SDK)
@@ -71,19 +77,23 @@ public:
 				{
 					std::vector<char> Buf(hpc_GetDeviceSerial(i, nullptr, 0));
 					hpc_GetDeviceSerial(i, std::data(Buf), std::size(Buf));
-					LOG(std::data(std::format("\thpc_GetDeviceSerial = {}\n", std::data(Buf)))); //!< 参考値) LKG-PORT-03996
+					//!< 参考値)
+					//!<	LKG-PORT-03996	: Portrait
+					//!<	LKG-E			: Go
+					LOG(std::data(std::format("\thpc_GetDeviceSerial = {}\n", std::data(Buf))));
 				}
 				{
 					std::vector<char> Buf(hpc_GetDeviceType(i, nullptr, 0));
 					hpc_GetDeviceType(i, std::data(Buf), std::size(Buf));
-					LOG(std::data(std::format("\thpc_GetDeviceType = {}\n", std::data(Buf)))); //!< 参考値) portrait
-					//!< "standard"	4x8	2048x2048
-					//!< "8k"		5x9	8192x8192
-					//!< "portrait"	8x6	3360x3360
-					//!<			5x9	4096x4096
+					//!< 参考値)
+					//!<	portrait	: Portrait
+					//!<	go_p		: Go
+					//!<	standard	: Standard
+					LOG(std::data(std::format("\thpc_GetDeviceType = {}\n", std::data(Buf))));
 				}
 				//!< Display fringe correction uniform (currently only applicable to 15.6" Developer/Pro units)
-				LOG(std::data(std::format("\thpc_GetDevicePropertyFringe = {}\n", hpc_GetDevicePropertyFringe(i))));//!< 参考値) 0
+				//!< 参考値) 0
+				LOG(std::data(std::format("\thpc_GetDevicePropertyFringe = {}\n", hpc_GetDevicePropertyFringe(i))));
 			}
 		}
 
@@ -100,11 +110,13 @@ public:
 		if (-1 != DeviceIndex) {
 			switch (DeviceTypes[DeviceIndex]) {
 			case Holo::DEVICE_TYPE::GO:
-				//!< パラメータは調査中 #TODO
-				LenticularBuffer.Pitch = 246.866f;
-				LenticularBuffer.Tilt = -0.185377f;
+				//!< パラメータは調査中
+				LenticularBuffer.Pitch = 246.866f; //!< 80.756f #TODO
+				LenticularBuffer.Tilt = -0.185377f; //!< #TODO
 				LenticularBuffer.Center = 0.131987f;
-				LenticularBuffer.Subp = 0.000217014f;
+				LenticularBuffer.Subp = 0.000217014f; //!< #TODO
+				//Slope = -6.66381f #TODO
+				//Dpi = 491 #TODO
 
 				LenticularBuffer.InvView = 1;
 				LenticularBuffer.Ri = 0;
@@ -112,7 +124,7 @@ public:
 
 				LenticularBuffer.TileX = 11;
 				LenticularBuffer.TileY = 6;
-				LenticularBuffer.QuiltAspect = 0.5625f;
+				LenticularBuffer.QuiltAspect = 0.5625f; //!< == 1440 / 2560
 				LenticularBuffer.DisplayAspect = LenticularBuffer.QuiltAspect;
 				break;
 			default: break;
@@ -158,20 +170,16 @@ public:
 	void SetHoloWindow(HWND hWnd, HINSTANCE hInstance) {
 		//!< ウインドウ位置、サイズを Looking Glass から取得し、反映する [Get window position, size from Looking Glass and apply]
 		if (-1 != DeviceIndex) {
-			auto X = hpc_GetDevicePropertyWinX(DeviceIndex);
-			auto Y = hpc_GetDevicePropertyWinY(DeviceIndex);
-			auto W = hpc_GetDevicePropertyScreenW(DeviceIndex);
-			auto H = hpc_GetDevicePropertyScreenH(DeviceIndex);
+			auto X = hpc_GetDevicePropertyWinX(DeviceIndex), Y = hpc_GetDevicePropertyWinY(DeviceIndex);
+			auto W = hpc_GetDevicePropertyScreenW(DeviceIndex), H = hpc_GetDevicePropertyScreenH(DeviceIndex);
 			
 			//!< サポート外デバイスでは Core SDK が使えず hpc_GetDevicePropertyWinX() がまともな値を返さないので自前でやるしかない
 			switch (DeviceTypes[DeviceIndex]) {
 			case Holo::DEVICE_TYPE::GO:
 				//!< [0] メインウインドウ, [1] 拡張ウインドウ が左右に配置されていると想定
 				//!< メインウインドウの幅を取得、拡張ウインドウはその分 X 方向にオフセットされている
-				X = GetSystemMetrics(SM_CXSCREEN);
-				Y = 0;
-				W = 1440;
-				H = 2560;
+				X = GetSystemMetrics(SM_CXSCREEN); Y = 0;
+				W = 1440; H = 2560;
 				break;
 			default: break;
 			}
@@ -179,7 +187,9 @@ public:
 			::SetWindowPos(hWnd, nullptr, X, Y, W, H, SWP_FRAMECHANGED);
 			LOG(std::data(std::format("Win = ({}, {}) {} x {}\n", X, Y, W, H)));
 		} else {
-			::SetWindowPos(hWnd, nullptr, 0, 0, 1536, 2048, SWP_FRAMECHANGED);
+			constexpr auto W = 1536, H = 2048;
+			//constexpr auto W = 1440, H = 2560;
+			::SetWindowPos(hWnd, nullptr, 0, 0, W, H, SWP_FRAMECHANGED);
 		}
 		::ShowWindow(hWnd, SW_SHOW);
 		//::ShowWindow(hWnd, SW_SHOWMAXIMIZED);
@@ -240,6 +250,9 @@ public:
 			else if (0 == strncmp(std::data(Buf), "8k", std::size(Buf))) {
 				X = 9.0f; Y = 5.0f;
 			}
+			else if (0 == strncmp(std::data(Buf), "go_p", std::size(Buf))) {
+				X = 6.0f * 0.65f; Y = 8.0f * 0.65f;
+			}
 			else {
 				LOG(std::data(std::format("{} is not supported\n", std::data(Buf))));
 				//!< #TODO Add support
@@ -254,7 +267,7 @@ public:
 protected:
 	//!< 64 もあれば十分だと思っていたら Go が超えてきた (11 * 6 = 66) ので注意 
 	//!< シェーダ側にも対応が必要になるので注意
-	static constexpr int TileDimensionMax = 16 * 5;
+	static constexpr int TileDimensionMax = 16 * 5; //!< 16 Views * 5 Draw call
 
 	int DeviceIndex = -1;
 
@@ -304,7 +317,7 @@ protected:
 		float Center = 0.565845f;
 		float Subp = 0.000217014f;
 
-		float DisplayAspect = 0.75f;
+		float DisplayAspect = 0.75f; //!< 1536 / 2048
 		int InvView = 1;
 		int Ri = 0;
 		int Bi = 2;
