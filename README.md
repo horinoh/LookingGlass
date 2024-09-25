@@ -25,15 +25,13 @@
             ~~~
         - exports.def に 以下のように出力される
             ~~~
-            1    0 0000EE7B bridge_version
-            2    1 000124FE copy_texture_dx
-            3    2 0000E011 create_texture_dx
+            1    0 00012959 copy_texture_dx
+            2    1 0000E363 create_texture_dx
             ...
             ~~~
         - 以下のように編集して、関数名だけを残し、頭に EXPORTS を書く
             ~~~
             EXPORTS
-            bridge_version
             copy_texture_dx
             create_texture_dx
             ...
