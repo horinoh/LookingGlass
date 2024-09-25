@@ -125,13 +125,15 @@ public:
 				//!< 
 				// [ Bridge SDK : Go ]
 				//!<	Center = 0.131987f
-				//!<	Pitch = 80.756f
+				//!<	Pitch = 234.218f
+				//!<    Tilt = -2.10847f
+				//!<	Subp = 0.000231481f
 				//!<	Slope = -6.66381f
 				//!<	Dpi = 491
 				LenticularBuffer.Center = 0.131987f;
-				LenticularBuffer.Pitch = 246.866f; //!< #TODO
-				LenticularBuffer.Tilt = -0.185377f; //!< #TODO 
-				LenticularBuffer.Subp = 0.000217014f; //!< #TODO
+				LenticularBuffer.Pitch = 234.218f;
+				LenticularBuffer.Tilt = -2.10847f;
+				LenticularBuffer.Subp = 0.000231481f;
 				
 				LenticularBuffer.InvView = 1;
 				LenticularBuffer.Ri = 0;
