@@ -40,7 +40,6 @@
             ~~~
             $lib /def:exports.def /machine:x64 /out:bridge_inproc.lib
             ~~~
-- Vulkan には非対応のようなので使えない…
 
 ### テクスチャ (Texture)
 #### DX

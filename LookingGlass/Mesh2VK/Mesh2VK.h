@@ -478,7 +478,7 @@ public:
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
 	virtual void UpdateViewProjectionBuffer() override {
-		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(TileXY), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			ViewProjectionBuffer.ViewProjection[i].View = ViewMatrices[i];
 			ViewProjectionBuffer.ViewProjection[i].Projection = ProjectionMatrices[i];

@@ -69,7 +69,7 @@ public:
 		}
 	}
 	virtual void UpdateWorldBuffer() override {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, 5.0f));
 	}

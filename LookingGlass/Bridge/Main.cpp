@@ -1,9 +1,12 @@
 #include <numbers>
 
 #include <bridge.h>
-
 #include <GLFW/glfw3.h>
 
+//#define HAS_LIB
+#ifdef HAS_LIB
+#pragma comment(lib, "bridge_inproc.lib")
+#endif
 #pragma comment(lib, "glfw3dll.lib")
 
 #define TO_RADIAN(x) ((x) * std::numbers::pi_v<float> / 180.0f)
@@ -12,11 +15,94 @@
 //!< Bridge 2.5.0
 int main()
 {
-	if (!glfwInit()) {
-		std::cerr << "glfwInit() failed" << std::endl;
+#ifdef HAS_LIB
+	//!< 初期化
+	if (!initialize_bridge(TEXT("BridgeTest"))) {
+		std::cerr << "Initialize failed" << std::endl;
 		exit(EXIT_FAILURE);
 	}
 
+	//!< ディスプレイの取得
+	int Count = 0;
+	if (!get_displays(&Count, nullptr)) {
+		std::cerr << "Get displays failed" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	std::vector<unsigned long> Displays(Count);
+	if (!get_displays(&Count, std::data(Displays)) || std::empty(Displays)) {
+		std::cerr << "Get displays failed" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	//!< ここでは最初のやつ
+	const auto Index = Displays[0];
+
+	auto StrCount = 0;
+	//!< デバイス名
+	if (get_device_name_for_display(Index, &StrCount, nullptr)) {
+		std::wstring DevName;
+		DevName.resize(StrCount + 1);
+		get_device_name_for_display(Index, &StrCount, std::data(DevName));
+		std::wcout << "DeviceName=" << std::data(DevName) << std::endl;
+	}
+	//!< シリアル
+	if (get_device_serial_for_display(Index, &StrCount, nullptr)) {
+		std::wstring Serial;
+		Serial.resize(StrCount + 1);
+		get_device_serial_for_display(Index, &StrCount, std::data(Serial));
+		std::wcout << "Serial=" << std::data(Serial) << std::endl;
+	}
+
+	auto Center = 0.0f, Pitch = 0.0f;
+	auto InvView = 0;
+	auto ViewCone = 0.0f, Fringe = 0.0f;
+	auto DisplayAspect = 0.0f;
+	auto Ri = 0, Bi = 0;
+	auto Subp = 0.0f;
+	auto Tilt = 0.0f;
+	if (get_center_for_display(Index, &Center)) {
+		std::cout << "Center=" << Center << std::endl;
+	}
+	if (get_pitch_for_display(Index, &Pitch)) {
+		std::cout << "Pitch=" << Pitch << std::endl;
+	}
+	if (get_invview_for_display(Index, &InvView)) {
+		std::cout << "InvView=" << InvView << std::endl;
+	}
+	if (get_viewcone_for_display(Index, &ViewCone)) {
+		std::cout << "ViewCone=" << ViewCone << "(" << TO_RADIAN(ViewCone) << ")" << std::endl;
+	}
+	if (get_fringe_for_display(Index, &Fringe)) {
+		std::cout << "Fringe=" << Fringe << std::endl;
+	}
+	if (get_displayaspect_for_display(Index, &DisplayAspect)) {
+		std::cout << "DisplayAspect=" << DisplayAspect << std::endl;
+	}
+	if (get_ri_for_display(Index, &Ri) && get_bi_for_display(Index, &Bi)) {
+		std::cout << "Ri=" << Ri << ", Bi=" << Bi << std::endl;
+	}
+	if (get_subp_for_display(Index, &Subp)) {
+		std::cout << "Subp=" << Subp << std::endl;
+	}
+	if (get_tilt_for_display(Index, &Tilt)) {
+		std::cout << "Tilt=" << Tilt << std::endl;
+	}
+
+	auto QuiltAspect = 0.0f;
+	auto QuiltX = 0, QuiltY = 0, TileX = 0, TileY = 0;
+	if (get_default_quilt_settings_for_display(Index, &QuiltAspect, &QuiltX, &QuiltY, &TileX, &TileY)) {
+		std::cout << "QuiltAspect=" << QuiltAspect << ", QuiltXY=" << QuiltX << " x " << QuiltY << ", TileXY=" << TileX << " x " << TileY << std::endl;
+	}
+
+	long WinX, WinY;
+	if (get_window_position_for_display(Index, &WinX, &WinY)) {
+		std::cout << "WinX, Y=" << WinX << " x " << WinY << std::endl;
+	}
+	unsigned long WinWidth, WinHeight;
+	if (get_dimensions_for_display(Index, &WinWidth, &WinHeight)) {
+		std::cout << "WinWidth, Height=" << WinWidth << " x " << WinHeight << std::endl;
+	}
+#else
+	//!< 初期化
 	Controller LKGCtrl;
 	if (!LKGCtrl.Initialize(TEXT("BridgeTest"))) {
 		std::cerr << "Initialize failed" << std::endl;
@@ -25,57 +111,37 @@ int main()
 	std::wcout << "SettingsPath=" << std::data(LKGCtrl.SettingsPath()) << std::endl;
 	std::wcout << "BridgeInstallLocation=" << std::data(LKGCtrl.BridgeInstallLocation(BridgeVersion)) << std::endl;
 
-	//!< Glfw を OpenGL の設定にする
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	auto GlfwWnd = glfwCreateWindow(1440, 2560, "Bridge SDK example", nullptr, nullptr);
-	glfwMakeContextCurrent(GlfwWnd);
-
-	//!< Glfw を OpenGL の設定で準備した上で、デバイスを接続していないと失敗する
-	WINDOW_HANDLE LKGWnd;
-	if (!LKGCtrl.InstanceWindowGL(&LKGWnd)) {
-		std::cerr << "InstanceWindowGL failed" << std::endl;
+	//!< ディスプレイの取得
+	int Count = 0;
+	if (!LKGCtrl.GetDisplays(&Count, nullptr)) {
+		std::cerr << "Get displays failed" << std::endl;
+		exit(EXIT_FAILURE);
 	}
+	std::vector<unsigned long> Displays(Count);
+	if (!LKGCtrl.GetDisplays(&Count, std::data(Displays)) || std::empty(Displays)) {
+		std::cerr << "Get displays failed" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	//!< ここでは最初のやつ
+	const auto Index = Displays[0];
 
 	auto StrCount = 0;
 	//!< デバイス名
-	if (LKGCtrl.GetDeviceName(LKGWnd, &StrCount, nullptr)) {
+	if (LKGCtrl.GetDeviceNameForDisplay(Index, &StrCount, nullptr)) {
 		std::wstring DevName;
 		DevName.resize(StrCount + 1);
-		LKGCtrl.GetDeviceName(LKGWnd, &StrCount, std::data(DevName));
+		LKGCtrl.GetDeviceNameForDisplay(Index, &StrCount, std::data(DevName));
 		std::wcout << "DeviceName=" << std::data(DevName) << std::endl;
 	}
 	//!< シリアル
-	if (LKGCtrl.GetDeviceSerial(LKGWnd, &StrCount, nullptr)) {
+	if (LKGCtrl.GetDeviceSerialForDisplay(Index, &StrCount, nullptr)) {
 		std::wstring Serial;
 		Serial.resize(StrCount + 1);
-		LKGCtrl.GetDeviceSerial(LKGWnd, &StrCount, std::data(Serial));
+		LKGCtrl.GetDeviceSerialForDisplay(Index, &StrCount, std::data(Serial));
+		std::wcout << "Serial=" << std::data(Serial) << std::endl;
 	}
 
-#if 0
-	auto Center = 0.0f, Pitch = 0.0f, Slope = 0.0f;
-	auto Width = 0, Height = 0;
-	auto Dpi = 0.0f, FlipX = 0.0f;
-	auto InvView = 0;
-	auto ViewCone = 0.0f, Fringe = 0.0f;
-	auto CellPatternMode = 0, NumberOfCells = 0;
-	if (LKGCtrl.GetCalibration(LKGWnd, &Center, &Pitch, &Slope, &Width, &Height, &Dpi, &FlipX, &InvView, &ViewCone, &Fringe, &CellPatternMode, &NumberOfCells, nullptr)) {
-		std::cout << "Center=" << Center << ", Pitch=" << Pitch << ", Slope=" << Slope << ", Width=" << Width << ", Height=" << Height << ", Dpi=" << Dpi << ", FlipX=" << FlipX << ", InvView=" << InvView << ", ViewCone=" << ViewCone << ", Fringe=" << Fringe << ", CellPatternMode=" << CellPatternMode << ", NumberOfCells=" << NumberOfCells;
-		std::vector<CalibrationSubpixelCell> CSCs;
-		if (NumberOfCells) {
-			CSCs.resize(NumberOfCells);
-			LKGCtrl.GetCalibration(LKGWnd, &Center, &Pitch, &Slope, &Width, &Height, &Dpi, &FlipX, &InvView, &ViewCone, &Fringe, &CellPatternMode, &NumberOfCells, std::data(CSCs));
-			std::cout << std::endl;
-			for (auto j : CSCs) {
-				std::cout << "\tBOffsetXY=" << j.BOffsetX << ", " << j.BOffsetY << ", GOffsetXY=" << j.GOffsetX << ", " << j.GOffsetY << ", ROffsetXY=" << j.ROffsetX << ", " << j.ROffsetY << std::endl;
-			}
-		}
-		else {
-			std::cout << std::endl;
-		}
-	}
-#else
 	auto Center = 0.0f, Pitch = 0.0f;
 	auto InvView = 0;
 	auto ViewCone = 0.0f, Fringe = 0.0f;
@@ -83,48 +149,103 @@ int main()
 	auto Ri = 0, Bi = 0;
 	auto Subp = 0.0f;
 	auto Tilt = 0.0f;
+	if (LKGCtrl.GetCenterForDisplay(Index, &Center)) {
+		std::cout << "Center=" << Center << std::endl;
+	}
+	if (LKGCtrl.GetPitchForDisplay(Index, &Pitch)) {
+		std::cout << "Pitch=" << Pitch << std::endl;
+	}
+	if (LKGCtrl.GetInvViewForDisplay(Index, &InvView)) {
+		std::cout << "InvView=" << InvView << std::endl;
+	}
+	if (LKGCtrl.GetViewConeForDisplay(Index, &ViewCone)) {
+		std::cout << "ViewCone=" << ViewCone << "(" << TO_RADIAN(ViewCone) << ")" << std::endl;
+	}
+	if (LKGCtrl.GetFringeForDisplay(Index, &Fringe)) {
+		std::cout << "Fringe=" << Fringe << std::endl;
+	}
+	if (LKGCtrl.GetDisplayAspectForDisplay(Index, &DisplayAspect)) {
+		std::cout << "DisplayAspect=" << DisplayAspect << std::endl;
+	}
+	if (LKGCtrl.GetRiForDisplay(Index, &Ri) && LKGCtrl.GetBiForDisplay(Index, &Bi)) {
+		std::cout << "Ri=" << Ri << ", Bi=" << Bi << std::endl;
+	}
+	if (LKGCtrl.GetSubpForDisplay(Index, &Subp)) {
+		std::cout << "Subp=" << Subp << std::endl;
+	}
+	if (LKGCtrl.GetTiltForDisplay(Index, &Tilt)) {
+		std::cout << "Tilt=" << Tilt << std::endl;
+	}
 
-	LKGCtrl.GetCenter(LKGWnd, &Center);
-	std::cout << "Center=" << Center << std::endl;
-	LKGCtrl.GetPitch(LKGWnd, &Pitch);
-	std::cout << "Pitch=" << Pitch << std::endl;
-	LKGCtrl.GetInvView(LKGWnd, &InvView);
-	std::cout << "InvView=" << InvView << std::endl;
-	LKGCtrl.GetViewCone(LKGWnd, &ViewCone);
-	std::cout << "ViewCone=" << TO_RADIAN(ViewCone) << std::endl;
-	LKGCtrl.GetFringe(LKGWnd, &Fringe);
-	std::cout << "Fringe=" << Fringe << std::endl;
-	LKGCtrl.GetDisplayAspect(LKGWnd, &DisplayAspect);
-	std::cout << "DisplayAspect=" << DisplayAspect << std::endl;
-	LKGCtrl.GetRi(LKGWnd, &Ri);
-	LKGCtrl.GetBi(LKGWnd, &Bi);
-	std::cout << "Ri=" << Ri << ", Bi=" << Bi << std::endl;
-	LKGCtrl.GetSubp(LKGWnd, &Subp);
-	std::cout << "Subp=" << Subp << std::endl;
-	LKGCtrl.GetTilt(LKGWnd, &Tilt);
-	std::cout << "Tilt=" << Tilt << std::endl;
-#endif
-
-	//!< キルト設定
 	auto QuiltAspect = 0.0f;
 	auto QuiltX = 0, QuiltY = 0, TileX = 0, TileY = 0;
-	if (LKGCtrl.GetDefaultQuiltSettings(LKGWnd, &QuiltAspect, &QuiltX, &QuiltY, &TileX, &TileY)) {
+	if (LKGCtrl.GetDefaultQuiltSettingsForDisplay(Index, &QuiltAspect, &QuiltX, &QuiltY, &TileX, &TileY)) {
 		std::cout << "QuiltAspect=" << QuiltAspect << ", QuiltXY=" << QuiltX << " x " << QuiltY << ", TileXY=" << TileX << " x " << TileY << std::endl;
 	}
 
 	long WinX, WinY;
-	LKGCtrl.GetWindowPosition(LKGWnd, &WinX, &WinY);
-	std::cout << "WinX, Y=" << WinX << " x " << WinY << std::endl;
+	if (LKGCtrl.GetWindowPositionForDisplay(Index, &WinX, &WinY)) {
+		std::cout << "WinX, Y=" << WinX << " x " << WinY << std::endl;
+	}
 	unsigned long WinWidth, WinHeight;
-	LKGCtrl.GetWindowDimensions(LKGWnd, &WinWidth, &WinHeight);
-	std::cout << "WinWidth, Height=" << WinWidth << " x " << WinHeight << std::endl;
+	if (LKGCtrl.GetDimensionsForDisplay(Index, &WinWidth, &WinHeight)) {
+		std::cout << "WinWidth, Height=" << WinWidth << " x " << WinHeight << std::endl;
+	}
+#endif
+	//!< Glfw の初期化
+	if (!glfwInit()) {
+		std::cerr << "glfwInit() failed" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	
+#if 0
+	//!< Glfw を OpenGL の設定にする
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	auto GlfwWnd = glfwCreateWindow(1440, 2560, "Bridge SDK example", nullptr, nullptr);
+	glfwMakeContextCurrent(GlfwWnd);
+
+	//!< Glfw を OpenGL の設定(glfwMakeContextCurrent())で準備した上で、デバイスを接続していないと失敗する
+	WINDOW_HANDLE LKGWnd;
+#ifdef HAS_LIB
+	if (!instance_window_gl(&LKGWnd)) {
+		std::cerr << "InstanceWindowGL failed" << std::endl;
+	}
+#else
+	if (!LKGCtrl.InstanceWindowGL(&LKGWnd)) {
+		std::cerr << "InstanceWindowGL failed" << std::endl;
+	}
+#endif
+#else
+	//!< Vulkan サポートの有無
+	if (GLFW_FALSE == glfwVulkanSupported()) {
+		std::cerr << "Vulkan not supported" << std::endl;
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+	//!< OpenGL コンテキストを作成しない
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	auto GlfwWnd = glfwCreateWindow(1440, 2560, "Bridge SDK example", nullptr, nullptr);
+
+	WINDOW_HANDLE LKGWnd;
+#ifdef HAS_LIB
+	if (!instance_window_gl(&LKGWnd, Index)) {
+		std::cerr << "InstanceWindowGL failed" << std::endl;
+	}
+#else
+	if (!LKGCtrl.InstanceWindowGL(&LKGWnd)) {
+		std::cerr << "InstanceWindowGL failed" << std::endl;
+	}
+#endif
+#endif
+
 	glfwSetWindowPos(GlfwWnd, WinX, WinY);
 	glfwSetWindowSize(GlfwWnd, WinWidth, WinHeight);
 	{
 		int WinLeft, WinTop, WinRight, WinBottom;
 		glfwGetWindowFrameSize(GlfwWnd, &WinLeft, &WinTop, &WinRight, &WinBottom);
 		std::cout << "Window frame size (LTRB) = " << WinLeft << ", " << WinTop << ", " << WinRight << " ," << WinBottom << std::endl;
-
 		int WinX, WinY;
 		glfwGetWindowPos(GlfwWnd, &WinX, &WinY);
 		std::cout << "Window pos = " << WinX << ", " << WinY << std::endl;
@@ -137,9 +258,14 @@ int main()
 		std::cout << "Fb size = " << FBWidth << "x" << GBHeight << std::endl;
 	}
 
-	LKGCtrl.ShowWindow(LKGWnd, true);
-
+#ifdef HAS_LIB
+	//show_window(LKGWnd, true);
+	uninitialize_bridge();
+#else
+	//LKGCtrl.ShowWindow(LKGWnd, true);
 	LKGCtrl.Uninitialize();
+#endif
+
 	glfwDestroyWindow(GlfwWnd);
 	glfwTerminate();
 
@@ -256,6 +382,7 @@ int main()
 		std::wstring Serial;
 		Serial.resize(StrCount + 1);
 		LKGCtrl.GetDeviceSerial(LKGWnd, &StrCount, std::data(Serial));
+		std::wcout << "Serial=" << std::data(Serial) << std::endl;
 	}
 	//!< キャリブレーション
 	auto Center = 0.0f, Pitch = 0.0f, Slope = 0.0f;

@@ -496,7 +496,7 @@ public:
 		VERIFY_SUCCEEDED(DCL->Close());
 	}
 	virtual void UpdateViewProjectionBuffer() override {
-		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(TileXY), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}

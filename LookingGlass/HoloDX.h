@@ -602,7 +602,7 @@ public:
 		VERIFY_SUCCEEDED(DCL->Close());
 	}
 	virtual void UpdateViewProjectionBuffer() override {
-		const auto Count = (std::min)(static_cast<size_t>(LenticularBuffer.TileX * LenticularBuffer.TileY), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(TileXY), _countof(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i], ViewMatrices[i] * ProjectionMatrices[i]);
 		}
@@ -884,7 +884,7 @@ public:
 		VERIFY_SUCCEEDED(DCL->Close());
 	}
 	virtual void UpdateWorldBuffer() {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 1.0f));
 	}

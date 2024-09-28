@@ -59,7 +59,7 @@ public:
 		AnimatedTextures[0].PopulateStagingToImageCommand(CB, Frame.Header.Cols, Frame.Header.Rows, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 	}
 	virtual void UpdateWorldBuffer() override {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		//!< ディスプレースメント (Z) を顕著にしてみる (More remarkable displacement Z)
 		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, 5.0f));
@@ -103,7 +103,7 @@ public:
 		AnimatedTextures[0].PopulateStagingToImageCommand(CB, 320, 240, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
 	}
 	virtual void UpdateWorldBuffer() override {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		//!< ディスプレースメント (Z) を顕著にしてみる (More remarkable displacement Z)
 		WorldBuffer.World[0] = glm::scale(glm::mat4(1.0f), glm::vec3(X, Y, 5.0f));

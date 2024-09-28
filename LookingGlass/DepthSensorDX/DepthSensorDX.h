@@ -64,7 +64,7 @@ public:
 		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp);
 	}
 	virtual void UpdateWorldBuffer() override {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		//!< ディスプレースメント (Z) を顕著にしてみる (More remarkable displacement Z)
 		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 5.0f));
@@ -112,7 +112,7 @@ public:
 		AnimatedTextures[0].PopulateUploadToTextureCommand(DCL, Bpp);
 	}
 	virtual void UpdateWorldBuffer() override {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		//!< ディスプレースメント (Z) を顕著にしてみる (More remarkable displacement Z)
 		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 5.0f));

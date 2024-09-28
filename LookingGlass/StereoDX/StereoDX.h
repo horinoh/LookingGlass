@@ -72,7 +72,7 @@ public:
 		}
 	}
 	virtual void UpdateWorldBuffer() override {
-		float X, Y;
+		auto X = 1.0f, Y = 1.0f;
 		GetXYScaleForDevice(X, Y);
 		DirectX::XMStoreFloat4x4(&WorldBuffer.World[0], DirectX::XMMatrixScaling(X, Y, 5.0f));
 	}
