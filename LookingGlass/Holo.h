@@ -140,12 +140,12 @@ public:
 		//!< Tilt だけ CoreSDK のものを採用 [Adopt tilt value from CoreSDK]
 		//!<	Standard
 		//!<		Tilt = nan (CoreSDK)
-		//!<		Tilt = 13.943652 (BridgeSDK)
+		//!<		Tilt = -13.943652 (BridgeSDK)
 		//!<	Portrait
-		//!<		Tilt = 0.18537661f (CoreSDK)
-		//!<		Tilt = 4.045818f (BridgeSDK)
+		//!<		Tilt = -0.18537661f (CoreSDK)
+		//!<		Tilt = -4.045818f (BridgeSDK)
 		//!<	Go
-		//!<		Tilt = 0.26678094f (CoreSDK)
+		//!<		Tilt = -0.26678094f (CoreSDK)
 		//!<		Tilt = -2.10847f (BridgeSDK)
 		if (hpc_CLIERR_NOERROR == hpc_InitializeApp("Holo", hpc_LICENSE_NONCOMMERCIAL)) {
 			if (0 < hpc_GetNumDevices()) {
@@ -230,10 +230,12 @@ public:
 			}
 		}
 #endif
+		//!< デバイス毎のパラメータ (デバッグ用) [Each device parameter for debug]
 		//SetStandardParam();
 		//SetPortraitParam();
 		//SetGoParam();
 
+		//!< デバッグ出力 [Debug output]
 		{
 			//!< レンチキュラーパラメータ [Lenticular parameters]
 			LOG(std::data(std::format("Pitch = {}\n", LenticularBuffer.Pitch)));
@@ -323,21 +325,24 @@ public:
 
 	virtual void CreateProjectionMatrix(const int i) {}
 	void CreateProjectionMatrices() {
-		CreateProjectionMatrix(-1);
 		for (auto i = 0; i < TileXY; ++i) {
 			CreateProjectionMatrix(i);
 		}
 	}
 	virtual void CreateViewMatrix(const int i) {}
 	void CreateViewMatrices() {
-		CreateViewMatrix(-1);
 		for (auto i = 0; i < TileXY; ++i) {
 			CreateViewMatrix(i);
 		}
 	}
 	virtual void UpdateViewProjectionBuffer() {}
 
-	virtual bool GetXYScaleForDevice(float& X, float& Y) { X = 6.0f * 0.65f; Y = 8.0f * 0.65f; return true; }
+	virtual bool GetXYScaleForDevice(float& X, float& Y) {
+		constexpr auto Scale = 0.65f;
+		X = LenticularBuffer.TileY * Scale;
+		Y = LenticularBuffer.TileX * Scale;
+		return true;
+	}
 	float GetOffsetAngle(const int i) const { return static_cast<const float>(i) * OffsetAngleCoef - HalfViewCone; }
 
 	void SetStandardParam() {

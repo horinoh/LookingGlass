@@ -32,7 +32,7 @@ public:
 		}
 	}
 	virtual void CreateProjectionMatrix(const int i) override {
-		if (-1 == i) { ProjectionMatrices.clear(); return; }
+		if (0 == i) { ProjectionMatrices.clear(); }
 
 		//!< 左右方向にずれている角度(ラジアン)
 		const auto OffsetAngle = GetOffsetAngle(i);
@@ -45,7 +45,7 @@ public:
 		ProjectionMatrices.emplace_back(Prj);
 	}
 	virtual void CreateViewMatrix(const int i) override {
-		if (-1 == i) { ViewMatrices.clear(); return; }
+		if (0 == i) { ViewMatrices.clear(); }
 
 		const auto OffsetAngle = GetOffsetAngle(i);
 		const auto OffsetX = CameraDistance * std::tan(OffsetAngle);
