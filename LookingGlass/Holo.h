@@ -37,8 +37,10 @@ public:
 		if (!LKGCtrl.Initialize(TEXT("Holo"))) {
 			LOG(std::data(std::format("Initialize failed\n")));
 		}
-		//std::wcout << std::data(std::format("SettingsPath = {}\n", std::data(LKGCtrl.SettingsPath()))) << std::endl;
-		//std::wcout << std::data(std::format("BridgeInstallLocation = {}\n", std::data(LKGCtrl.BridgeInstallLocation(BridgeVersion)))) << std::endl;
+		std::wcout << std::data(LKGCtrl.SettingsPath()) << std::endl;
+		std::wcout << std::data(LKGCtrl.BridgeInstallLocation(BridgeVersion)) << std::endl;
+		//LOG(std::data(std::format("SettingsPath = {}\n", std::data(LKGCtrl.SettingsPath()))));
+		//LOG(std::data(std::format("BridgeInstallLocation = {}\n", std::data(LKGCtrl.BridgeInstallLocation(BridgeVersion)))));
 
 		//!< ディスプレイ取得 [Get displays]
 		int Count = 0;
@@ -60,7 +62,8 @@ public:
 						std::wstring DevName;
 						DevName.resize(StrCount + 1);
 						if (LKGCtrl.GetDeviceNameForDisplay(DisplayIndex, &StrCount, std::data(DevName))) {
-							//std::wcout << std::data(std::format("DeviceName = {}\n", std::data(DevName))) << std::endl;
+							std::wcout << std::data(DevName) << std::endl;
+							//LOG(std::data(std::format("DeviceName = {}\n", std::data(DevName))));
 						}
 					}
 					//!< シリアル [Serial]
@@ -68,8 +71,14 @@ public:
 						std::wstring Serial;
 						Serial.resize(StrCount + 1);
 						if (LKGCtrl.GetDeviceSerialForDisplay(DisplayIndex, &StrCount, std::data(Serial))) {
-							//std::wcout << std::data(std::format("Serial = {}\n", std::data(Serial))) << std::endl;
+							std::wcout << std::data(Serial) << std::endl;
+							//LOG(std::data(std::format("Serial = {}\n", std::data(Serial))));
 						}
+					}
+					//!< ハードウエア Enum
+					int HardWareEnum;
+					if (LKGCtrl.GetDeviceTypeForDisplay(DisplayIndex, &HardWareEnum)) {
+						LOG(std::data(std::format("HardWareEnum = {}\n", HardWareEnum)));
 					}
 				}
 #if false
@@ -137,21 +146,15 @@ public:
 		}
 #if true
 		//!< Tilt が CoreSDK と BridgeSDK で異なる [Tilt value is different on BridegeSDK and CoreSDK...]
-		//!< Tilt だけ CoreSDK のものを採用 [Adopt tilt value from CoreSDK]
-		//!<	Standard
-		//!<		Tilt = nan (CoreSDK)
-		//!<		Tilt = -13.943652 (BridgeSDK)
-		//!<	Portrait
-		//!<		Tilt = -0.18537661f (CoreSDK)
-		//!<		Tilt = -4.045818f (BridgeSDK)
-		//!<	Go
-		//!<		Tilt = -0.26678094f (CoreSDK)
-		//!<		Tilt = -2.10847f (BridgeSDK)
+		//!< Tilt は CoreSDK のものを採用 [Adopt tilt value from CoreSDK]
 		if (hpc_CLIERR_NOERROR == hpc_InitializeApp("Holo", hpc_LICENSE_NONCOMMERCIAL)) {
 			if (0 < hpc_GetNumDevices()) {
 				//!< とりあえず最初のやつを選択 [Select first one]
 				const auto DeviceIndex = 0;
-				LenticularBuffer.Tilt = hpc_GetDevicePropertyTilt(DeviceIndex);
+				const auto Tilt = hpc_GetDevicePropertyTilt(DeviceIndex);
+				if (!std::isnan(Tilt)) {
+					LenticularBuffer.Tilt = Tilt;
+				}
 			}
 			hpc_CloseApp();
 		}
@@ -272,11 +275,20 @@ public:
 		{
 			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている [Here Y is up, so changing tilt value to positive]
 			LenticularBuffer.Tilt = abs(LenticularBuffer.Tilt);
+			
 			//!< InvView は真偽を符号にして保持しておく [Convert truth or falsehood to sign]
 			LenticularBuffer.InvView = LenticularBuffer.InvView ? -1 : 1;
 			//!< この時点では角度が入ってくるのでラジアン変換する [Convert degree to radian]
 			//!< 都合がよいので半角にして覚えておく [Save half radian for convenience]
 			HalfViewCone = TO_RADIAN(HalfViewCone) * 0.5f;
+
+			//!< Go でセンターがずれる対策 
+			int HardWareEnum;
+			if (LKGCtrl.GetDeviceTypeForDisplay(DisplayIndex, &HardWareEnum)) {
+				if (10 == HardWareEnum) {
+					LenticularBuffer.Center *= -1.0f;
+				}
+			}
 		}
 
 		TileXY = LenticularBuffer.TileX * LenticularBuffer.TileY;
@@ -345,9 +357,10 @@ public:
 	}
 	float GetOffsetAngle(const int i) const { return static_cast<const float>(i) * OffsetAngleCoef - HalfViewCone; }
 
+	//!< HardWareEnum = , Serial = L"LKG02gh1ce45f"
 	void SetStandardParam() {
 		LenticularBuffer.Pitch = 354.5659f;
-		LenticularBuffer.Tilt = -13.943652f; // BridgeSDK の値なので上手くいかない
+		LenticularBuffer.Tilt = -13.943652f; // BridgeSDK : -13.9436522f
 		LenticularBuffer.Center = -0.19972825f;
 		LenticularBuffer.Subp = 0.00013020834f;
 
@@ -367,9 +380,10 @@ public:
 		WinWidth = 2560;
 		WinHeight = 1600;
 	}
+	//!< HardWareEnum = , Serial = L"LKG-P03996"
 	void SetPortraitParam() {
 		LenticularBuffer.Pitch = 246.866f;
-		LenticularBuffer.Tilt = -0.185377f;
+		LenticularBuffer.Tilt = -0.185377f; //!< BridgeSDK : -4.04581785f
 		LenticularBuffer.Center = 0.565845f;
 		LenticularBuffer.Subp = 0.000217014f;
 
@@ -389,9 +403,10 @@ public:
 		WinWidth = 1536; 
 		WinHeight = 2048;
 	}
+	//!< HardWareEnum = 10, Serial = L"LKG-E05304"
 	void SetGoParam() {
 		LenticularBuffer.Pitch = 234.218f;
-		LenticularBuffer.Tilt = 0.26678094f;
+		LenticularBuffer.Tilt = -0.26678094f; //!< BridgeSDK : -2.10847139f
 		LenticularBuffer.Center = 0.131987f;
 		LenticularBuffer.Subp = 0.000231481f;
 
@@ -405,7 +420,7 @@ public:
 
 		QuiltX = 4092;
 		QuiltY = 4092; 
-		HalfViewCone = 56.0f;
+		HalfViewCone = 54.0f;
 		WinX = 0; //1920
 		WinY = 0;
 		WinWidth = 1440;

@@ -45,10 +45,12 @@ public:
 		XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Quilt" / "Rocks011_1K_qs8x6.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		//XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Quilt" / "Jane_Guan_Space_Nap_qs8x6.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		//XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Quilt" / "StreetFighterII_8x6.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		//XTKTextures.emplace_back().Create(COM_PTR_GET(Device), std::filesystem::path("..") / "Asset" / "Quilt" / "Motoko_qs11x6a0.56.dds").ExecuteCopyCommand(COM_PTR_GET(Device), COM_PTR_GET(DCA), COM_PTR_GET(DCL), COM_PTR_GET(GraphicsCommandQueue), COM_PTR_GET(GraphicsFence), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		const auto RD = XTKTextures.back().Resource->GetDesc();
 		//!< ƒLƒ‹ƒg‰æ‘œ‚Ì•ªŠ„‚É‡‚í‚¹‚Ä ˆø” Column, Row ‚ðŽw’è‚·‚é‚±‚Æ [Specify Column Row to suit quilt image]
 		Holo::UpdateLenticularBuffer(8, 6, static_cast<uint32_t>(RD.Width), RD.Height);
+		//Holo::UpdateLenticularBuffer(11, 6, static_cast<uint32_t>(RD.Width), RD.Height);
 		auto& CB = ConstantBuffers[0];
 		CopyToUploadResource(COM_PTR_GET(CB.Resource), RoundUp256(sizeof(LenticularBuffer)), &LenticularBuffer);
 	}

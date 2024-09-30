@@ -46,10 +46,12 @@ public:
 		GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "Rocks011_1K_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 		//GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "Jane_Guan_Space_Nap_qs8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 		//GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "StreetFighterII_8x6.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		//GLITextures.emplace_back().Create(Device, PDMP, std::filesystem::path("..") / "Asset" / "Quilt" / "Motoko_qs11x6a0.56.dds").SubmitCopyCommand(Device, PDMP, CB, GraphicsQueue, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
 		const auto& Extent = GLITextures.back().GetGliTexture().extent(0);
 		//!< ƒLƒ‹ƒg‰æ‘œ‚Ì•ªŠ„‚É‡‚í‚¹‚Ä ˆø” Column, Row ‚ðŽw’è‚·‚é‚±‚Æ [Specify Column Row to suit quilt image]
 		Holo::UpdateLenticularBuffer(8, 6, Extent.x, Extent.y);
+		//Holo::UpdateLenticularBuffer(11, 6, Extent.x, Extent.y);
 		auto& UB = UniformBuffers[0];
 		CopyToHostVisibleDeviceMemory(Device, UB.DeviceMemory, 0, sizeof(LenticularBuffer), &LenticularBuffer);
 	}
