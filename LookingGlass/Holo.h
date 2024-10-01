@@ -274,21 +274,14 @@ public:
 		//!< 調整 [Adjustment]
 		{
 			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている [Here Y is up, so changing tilt value to positive]
-			LenticularBuffer.Tilt = abs(LenticularBuffer.Tilt);
-			
+			LenticularBuffer.Tilt *= -1.0f;
+			LenticularBuffer.Center *= -1.0f;
+
 			//!< InvView は真偽を符号にして保持しておく [Convert truth or falsehood to sign]
 			LenticularBuffer.InvView = LenticularBuffer.InvView ? -1 : 1;
 			//!< この時点では角度が入ってくるのでラジアン変換する [Convert degree to radian]
 			//!< 都合がよいので半角にして覚えておく [Save half radian for convenience]
 			HalfViewCone = TO_RADIAN(HalfViewCone) * 0.5f;
-
-			//!< Go でセンターがずれる対策 
-			int HardWareEnum;
-			if (LKGCtrl.GetDeviceTypeForDisplay(DisplayIndex, &HardWareEnum)) {
-				if (10 == HardWareEnum) {
-					LenticularBuffer.Center *= -1.0f;
-				}
-			}
 		}
 
 		TileXY = LenticularBuffer.TileX * LenticularBuffer.TileY;
@@ -357,7 +350,7 @@ public:
 	}
 	float GetOffsetAngle(const int i) const { return static_cast<const float>(i) * OffsetAngleCoef - HalfViewCone; }
 
-	//!< HardWareEnum = , Serial = L"LKG02gh1ce45f"
+	//!< HardWareEnum = 0, Serial = L"LKG02gh1ce45f"
 	void SetStandardParam() {
 		LenticularBuffer.Pitch = 354.5659f;
 		LenticularBuffer.Tilt = -13.943652f; // BridgeSDK : -13.9436522f
@@ -380,7 +373,7 @@ public:
 		WinWidth = 2560;
 		WinHeight = 1600;
 	}
-	//!< HardWareEnum = , Serial = L"LKG-P03996"
+	//!< HardWareEnum = 4, Serial = L"LKG-P03996"
 	void SetPortraitParam() {
 		LenticularBuffer.Pitch = 246.866f;
 		LenticularBuffer.Tilt = -0.185377f; //!< BridgeSDK : -4.04581785f
