@@ -12,10 +12,7 @@
 #include "../DepthSensor.h"
 
 #ifdef USE_DEPTH_SENSOR
-class DepthSensorDX : public DisplacementDX
-{
-};
-
+using DepthSensorDX = DisplacementDX;
 //!< 要深度センサ MaixSense A010 (Need depth sensor MaixSense A010)
 class DepthSensorA010DX : public DepthSensorDX, public DepthSensorA010
 {
