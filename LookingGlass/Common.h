@@ -4,6 +4,22 @@
 #include <filesystem>
 #include <array>
 
+//!< std::breakpoint() c++26
+#ifdef _WIN64
+#ifdef _DEBUG
+#define BREAKPOINT() __debugbreak()
+#else
+#define BREAKPOINT()
+#endif
+#else
+#ifdef _DEBUG
+#include <signal.h>
+#define BREAKPOINT() raise(SIGTRAP)
+#else
+#define BREAKPOINT()
+#endif
+#endif
+
 #ifdef _DEBUG
 #define LOG(x) OutputDebugStringA((x))
 #else

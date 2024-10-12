@@ -37,8 +37,8 @@
 #include "Common.h"
 
 #ifdef _DEBUG
-#define VERIFY_SUCCEEDED(x) { const auto HR = (x); if(!SUCCEEDED(HR)){ LOG(std::data(std::format("HRESULT = {:#x}\n", static_cast<UINT>(HR)))); __debugbreak(); } }
-#define VERIFY(x) if(!(x)){ __debugbreak(); }
+#define VERIFY_SUCCEEDED(x) { const auto HR = (x); if(!SUCCEEDED(HR)){ LOG(std::data(std::format("HRESULT = {:#x}\n", static_cast<UINT>(HR)))); BREAKPOINT(); } }
+#define VERIFY(x) if(!(x)){ BREAKPOINT(); }
 #else
 #define VERIFY_SUCCEEDED(x) (x)
 #define VERIFY(x) (x)

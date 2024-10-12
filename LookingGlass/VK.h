@@ -46,8 +46,8 @@ namespace Colors
 #include "Common.h"
 
 #ifdef _DEBUG
-#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ LOG(std::data(std::format("VkResult = {}\n", static_cast<int32_t>(VR)))); __debugbreak(); } }
-#define VERIFY(x) if(!(x)){ __debugbreak(); }
+#define VERIFY_SUCCEEDED(x) { const auto VR = (x); if(VK_SUCCESS != VR){ LOG(std::data(std::format("VkResult = {}\n", static_cast<int32_t>(VR)))); BREAKPOINT(); } }
+#define VERIFY(x) if(!(x)){ BREAKPOINT(); }
 #else
 #define VERIFY_SUCCEEDED(x) (x)
 #define VERIFY(x) (x)

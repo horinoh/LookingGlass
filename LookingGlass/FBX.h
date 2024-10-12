@@ -396,7 +396,7 @@ public:
 					case FbxStatus::eInvalidFile:break;
 					case FbxStatus::eSceneCheckFail:break;
 					}
-					__debugbreak();
+					//BREAKPOINT();
 				}
 				Importer->Destroy();
 			}

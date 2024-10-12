@@ -910,7 +910,7 @@ public:
 				case Microsoft::glTF::MeshMode::MESH_TRIANGLES:
 					break;
 				default:
-					__debugbreak();
+					BREAKPOINT();
 					break;
 				}
 

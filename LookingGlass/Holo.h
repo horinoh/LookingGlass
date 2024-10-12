@@ -26,7 +26,7 @@
 //#define DISPLAY_MOST_LR_QUILT
 #endif
 
-#define CHECKDIMENSION(_TileXY) if (_TileXY > TileDimensionMax) { LOG(std::data(std::format("TileX * TileY ({}) > TileDimensionMax ({})\n", _TileXY, TileDimensionMax))); __debugbreak(); }
+#define CHECKDIMENSION(_TileXY) if (_TileXY > TileDimensionMax) { LOG(std::data(std::format("TileX * TileY ({}) > TileDimensionMax ({})\n", _TileXY, TileDimensionMax))); BREAKPOINT(); }
 
 class Holo
 {
@@ -234,9 +234,9 @@ public:
 		}
 #endif
 		//!< デバイス毎のパラメータ (デバッグ用) [Each device parameter for debug]
-		//SetStandardParam();
-		//SetPortraitParam();
-		//SetGoParam();
+		//SetParam(HardWareEnum::Standard);
+		//SetParam(HardWareEnum::Portrait);
+		//SetParam(HardWareEnum::Go); 
 
 		//!< デバッグ出力 [Debug output]
 		{
@@ -350,74 +350,75 @@ public:
 	}
 	float GetOffsetAngle(const int i) const { return static_cast<const float>(i) * OffsetAngleCoef - HalfViewCone; }
 
-	//!< HardWareEnum = 0, Serial = L"LKG02gh1ce45f"
-	void SetStandardParam() {
-		LenticularBuffer.Pitch = 354.5659f;
-		LenticularBuffer.Tilt = -13.943652f; // BridgeSDK : -13.9436522f
-		LenticularBuffer.Center = -0.19972825f;
-		LenticularBuffer.Subp = 0.00013020834f;
+	enum class HardWareEnum {
+		Standard = 0,
+		Portrait = 4,
+		Go = 10,
+	};
+	void SetParam(const HardWareEnum HWE) {
+		switch (HWE) {
+		case HardWareEnum::Standard: //!< Standard, Serial = L"LKG02gh1ce45f"
+			LenticularBuffer.Pitch = 354.5659f;
+			LenticularBuffer.Tilt = -13.943652f; // BridgeSDK : -13.9436522f
+			LenticularBuffer.Center = -0.19972825f;
+			LenticularBuffer.Subp = 0.00013020834f;
 
-		LenticularBuffer.DisplayAspect = 1.6f;
+			LenticularBuffer.DisplayAspect = 1.6f;
+			LenticularBuffer.TileX = 5;
+			LenticularBuffer.TileY = 9;
+			LenticularBuffer.QuiltAspect = 1.6f;
+
+			QuiltX = 4096;
+			QuiltY = 4096;
+			HalfViewCone = 40.0f;
+			WinWidth = 2560;
+			WinHeight = 1600;
+			break;
+		case HardWareEnum::Portrait: //!< Portrait, Serial = L"LKG-P03996"
+			LenticularBuffer.Pitch = 246.866f;
+			LenticularBuffer.Tilt = -0.185377f; //!< BridgeSDK : -4.04581785f
+			LenticularBuffer.Center = 0.565845f;
+			LenticularBuffer.Subp = 0.000217014f;
+
+			LenticularBuffer.DisplayAspect = 0.75f;
+			LenticularBuffer.TileX = 8;
+			LenticularBuffer.TileY = 6;
+			LenticularBuffer.QuiltAspect = 0.75f;
+
+			QuiltX = 3360;
+			QuiltY = 3360;
+			HalfViewCone = 40.0f;
+			WinWidth = 1536;
+			WinHeight = 2048;
+			break;
+		case HardWareEnum::Go://!< Go, Serial = L"LKG-E05304"
+			LenticularBuffer.Pitch = 234.218f;
+			LenticularBuffer.Tilt = -0.26678094f; //!< BridgeSDK : -2.10847139f
+			LenticularBuffer.Center = 0.131987f;
+			LenticularBuffer.Subp = 0.000231481f;
+
+			LenticularBuffer.DisplayAspect = 0.5625f;
+			LenticularBuffer.TileX = 11;
+			LenticularBuffer.TileY = 6;
+			LenticularBuffer.QuiltAspect = 0.5625f;
+
+			QuiltX = 4092;
+			QuiltY = 4092;
+			HalfViewCone = 54.0f;
+			WinWidth = 1440;
+			WinHeight = 2560;
+			break;
+		default:
+			BREAKPOINT();
+			break;
+		}
+
 		LenticularBuffer.InvView = 1;
 		LenticularBuffer.Ri = 0;
 		LenticularBuffer.Bi = 2;
-		LenticularBuffer.TileX = 5;
-		LenticularBuffer.TileY = 9;
-		LenticularBuffer.QuiltAspect = 1.6f;
 
-		QuiltX = 4096;
-		QuiltY = 4096;
-		HalfViewCone = 40.0f;
 		WinX = 0; //1920
 		WinY = 0;
-		WinWidth = 2560;
-		WinHeight = 1600;
-	}
-	//!< HardWareEnum = 4, Serial = L"LKG-P03996"
-	void SetPortraitParam() {
-		LenticularBuffer.Pitch = 246.866f;
-		LenticularBuffer.Tilt = -0.185377f; //!< BridgeSDK : -4.04581785f
-		LenticularBuffer.Center = 0.565845f;
-		LenticularBuffer.Subp = 0.000217014f;
-
-		LenticularBuffer.DisplayAspect = 0.75f;
-		LenticularBuffer.InvView = 1;
-		LenticularBuffer.Ri = 0;
-		LenticularBuffer.Bi = 2;
-		LenticularBuffer.TileX = 8;
-		LenticularBuffer.TileY = 6;
-		LenticularBuffer.QuiltAspect = 0.75f;
-
-		QuiltX = 3360; 
-		QuiltY = 3360;
-		HalfViewCone = 40.0f;
-		WinX = 0; //1920
-		WinY = 0;
-		WinWidth = 1536; 
-		WinHeight = 2048;
-	}
-	//!< HardWareEnum = 10, Serial = L"LKG-E05304"
-	void SetGoParam() {
-		LenticularBuffer.Pitch = 234.218f;
-		LenticularBuffer.Tilt = -0.26678094f; //!< BridgeSDK : -2.10847139f
-		LenticularBuffer.Center = 0.131987f;
-		LenticularBuffer.Subp = 0.000231481f;
-
-		LenticularBuffer.DisplayAspect = 0.5625f;
-		LenticularBuffer.InvView = 1;
-		LenticularBuffer.Ri = 0;
-		LenticularBuffer.Bi = 2;
-		LenticularBuffer.TileX = 11;
-		LenticularBuffer.TileY = 6;
-		LenticularBuffer.QuiltAspect = 0.5625f;
-
-		QuiltX = 4092;
-		QuiltY = 4092; 
-		HalfViewCone = 54.0f;
-		WinX = 0; //1920
-		WinY = 0;
-		WinWidth = 1440;
-		WinHeight = 2560;
 	}
 
 protected:
