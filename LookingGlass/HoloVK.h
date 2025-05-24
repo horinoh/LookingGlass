@@ -310,18 +310,18 @@ public:
 		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 0, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DBI), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-				.offset = offsetof(DUI, DBI), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DBI)), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 1, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DII0), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DUI, DII0), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DII0)), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII0), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 2, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DII1), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DUI, DII1), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DII1)), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII1), .stride = sizeof(DUI)
 			}),
 			}, DSL);
 		vkUpdateDescriptorSetWithTemplate(Device, DS, DUT, &DUI);
@@ -363,13 +363,13 @@ public:
 		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 0, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DII), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DUI, DII), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DII)), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 1, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DBI), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.offset = offsetof(DUI, DBI), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DBI)), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DescriptorUpdateInfo, DBI), .stride = sizeof(DUI)
 			}),
 			}, DSL);
 		vkUpdateDescriptorSetWithTemplate(Device, DS, DUT, &DUI);
@@ -555,7 +555,7 @@ public:
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
 	virtual void UpdateViewProjectionBuffer() override {
-		const auto Count = (std::min)(static_cast<size_t>(TileXY), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(TileXY), std::size(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			ViewProjectionBuffer.ViewProjection[i] = ProjectionMatrices[i] * ViewMatrices[i];
 		}
@@ -641,23 +641,23 @@ public:
 		VK::CreateDescriptorUpdateTemplate(DUT, VK_PIPELINE_BIND_POINT_GRAPHICS, {
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 0, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DBI0), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-				.offset = offsetof(DUI, DBI0), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DBI0)), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(DescriptorUpdateInfo, DBI0), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 1, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DII0), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DUI, DII0), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DII0)), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII0), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 2, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DII1), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = offsetof(DUI, DII1), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DII1)), .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = offsetof(DescriptorUpdateInfo, DII1), .stride = sizeof(DUI)
 			}),
 			VkDescriptorUpdateTemplateEntry({
 				.dstBinding = 3, .dstArrayElement = 0,
-				.descriptorCount = _countof(DUI.DBI1), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.offset = offsetof(DUI, DBI1), .stride = sizeof(DUI)
+				.descriptorCount = static_cast<uint32_t>(std::size(DUI.DBI1)), .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.offset = offsetof(DescriptorUpdateInfo, DBI1), .stride = sizeof(DUI)
 			}),
 			}, DSL);
 		vkUpdateDescriptorSetWithTemplate(Device, DS, DUT, &DUI);

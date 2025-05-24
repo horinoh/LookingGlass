@@ -478,7 +478,7 @@ public:
 		} VERIFY_SUCCEEDED(vkEndCommandBuffer(CB));
 	}
 	virtual void UpdateViewProjectionBuffer() override {
-		const auto Count = (std::min)(static_cast<size_t>(TileXY), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(TileXY), std::size(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			ViewProjectionBuffer.ViewProjection[i].View = ViewMatrices[i];
 			ViewProjectionBuffer.ViewProjection[i].Projection = ProjectionMatrices[i];
@@ -511,7 +511,7 @@ public:
 		}
 	}
 
-	uint32_t GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<uint32_t>(_countof(WorldBuffer.World))); }
+	uint32_t GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<uint32_t>(std::size(WorldBuffer.World))); }
 
 	virtual float GetMeshScale() const override { return 3.0f; }
 

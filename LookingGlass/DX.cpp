@@ -253,11 +253,11 @@ void DX::CreatePipelineStateVsPsDsHsGs(COM_PTR<ID3D12PipelineState>& PST,
 	};
 
 	//!< レンダーターゲット数分だけ必要なもの
-	VERIFY(std::size(RTBDs) <= _countof(GPSD.BlendState.RenderTarget));
+	VERIFY(std::size(RTBDs) <= std::size(GPSD.BlendState.RenderTarget));
 	std::ranges::copy(RTBDs, GPSD.BlendState.RenderTarget);
 	//!< TRUE == IndependentBlendEnable の場合はレンダーターゲットの分だけ用意すること (If TRUE == IndependentBlendEnable, need NumRenderTarget elements)
 	VERIFY((false == GPSD.BlendState.IndependentBlendEnable || std::size(RTBDs) == GPSD.NumRenderTargets) && "");
-	VERIFY(GPSD.NumRenderTargets <= _countof(GPSD.RTVFormats));
+	VERIFY(GPSD.NumRenderTargets <= std::size(GPSD.RTVFormats));
 	std::ranges::copy(RTVFormats, GPSD.RTVFormats);
 
 	VERIFY((0 == GPSD.DS.BytecodeLength || 0 == GPSD.HS.BytecodeLength || GPSD.PrimitiveTopologyType == D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH) && "");

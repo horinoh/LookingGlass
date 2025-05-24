@@ -496,7 +496,7 @@ public:
 		VERIFY_SUCCEEDED(DCL->Close());
 	}
 	virtual void UpdateViewProjectionBuffer() {
-		const auto Count = (std::min)(static_cast<size_t>(TileXY), _countof(ViewProjectionBuffer.ViewProjection));
+		const auto Count = (std::min)(static_cast<size_t>(TileXY), std::size(ViewProjectionBuffer.ViewProjection));
 		for (auto i = 0; i < Count; ++i) {
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i].View, ViewMatrices[i]);
 			DirectX::XMStoreFloat4x4(&ViewProjectionBuffer.ViewProjection[i].Projection, ProjectionMatrices[i]);
@@ -525,7 +525,7 @@ public:
 		}
 	}
 
-	UINT GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<UINT>(_countof(WorldBuffer.World))); }
+	UINT GetInstanceCount() const { return (std::min)(InstanceCount, static_cast<UINT>(std::size(WorldBuffer.World))); }
 
 	virtual float GetMeshScale() const override { return 3.0f; }
 

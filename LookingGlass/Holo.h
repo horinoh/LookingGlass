@@ -270,23 +270,7 @@ public:
 		//!< デバッグ表示用 (キルト分割を減らして大きく表示、最左と最右の2パターン) [For debug]
 		LenticularBuffer.TileX = 2; LenticularBuffer.TileY = 1;
 #endif
-
-		//!< 調整 [Adjustment]
-		{
-			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている [Here Y is up, so changing tilt value to positive]
-			LenticularBuffer.Tilt *= -1.0f;
-			LenticularBuffer.Center *= -1.0f;
-
-			//!< InvView は真偽を符号にして保持しておく [Convert truth or falsehood to sign]
-			LenticularBuffer.InvView = LenticularBuffer.InvView ? -1 : 1;
-			//!< この時点では角度が入ってくるのでラジアン変換する [Convert degree to radian]
-			//!< 都合がよいので半角にして覚えておく [Save half radian for convenience]
-			HalfViewCone = TO_RADIAN(HalfViewCone) * 0.5f;
-		}
-
-		TileXY = LenticularBuffer.TileX * LenticularBuffer.TileY;
-		CHECKDIMENSION(TileXY);
-		OffsetAngleCoef = 2.0f * HalfViewCone / (TileXY - 1.0f);
+		AdjustParam();
 	}
 
 	virtual ~Holo() {
@@ -419,6 +403,24 @@ public:
 
 		WinX = 0; //1920
 		WinY = 0;
+	}
+	void AdjustParam() {
+		//!< 調整 [Adjustment]
+		{
+			//!< DX では Y が上であり、(ここでは) VK も DX に合わせて Y が上にしている為、Tilt の値を正にすることで辻褄を合わせている [Here Y is up, so changing tilt value to positive]
+			LenticularBuffer.Tilt *= -1.0f;
+			LenticularBuffer.Center *= -1.0f;
+
+			//!< InvView は真偽を符号にして保持しておく [Convert truth or falsehood to sign]
+			LenticularBuffer.InvView = LenticularBuffer.InvView ? -1 : 1;
+			//!< この時点では角度が入ってくるのでラジアン変換する [Convert degree to radian]
+			//!< 都合がよいので半角にして覚えておく [Save half radian for convenience]
+			HalfViewCone = TO_RADIAN(HalfViewCone) * 0.5f;
+		}
+
+		TileXY = LenticularBuffer.TileX * LenticularBuffer.TileY;
+		CHECKDIMENSION(TileXY);
+		OffsetAngleCoef = 2.0f * HalfViewCone / (TileXY - 1.0f);
 	}
 
 protected:

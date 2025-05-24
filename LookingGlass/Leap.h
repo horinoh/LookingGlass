@@ -113,7 +113,7 @@ public:
 			LOG(std::data(std::format("[Leap] Distortion map changed. MatrixVersion = {}\n", CurrentMatrixVersion)));
 		}
 
-		for (uint32_t i = 0; i < _countof(IE->image); ++i) {
+		for (uint32_t i = 0; i < std::size(IE->image); ++i) {
 			OnImage(i, IE->image[i]);
 			
 			const auto& Image = IE->image[i];
