@@ -114,12 +114,11 @@ void VK::OnDestroy(HWND hWnd, HINSTANCE hInstance)
 		vkDestroySwapchainKHR(Device, Swapchain, GetAllocationCallbacks()); 
 		Swapchain = VK_NULL_HANDLE;
 	}
-
-	if (VK_NULL_HANDLE != RenderFinishedSemaphore) [[likely]] {
-		vkDestroySemaphore(Device, RenderFinishedSemaphore, GetAllocationCallbacks());
+	for (auto i : RenderFinishedSemaphores) {
+		vkDestroySemaphore(Device, i, GetAllocationCallbacks());
 	}
-	if (VK_NULL_HANDLE != NextImageAcquiredSemaphore) [[likely]] {
-		vkDestroySemaphore(Device, NextImageAcquiredSemaphore, GetAllocationCallbacks());
+	for (auto i : NextImageAcquiredSemaphores) {
+		vkDestroySemaphore(Device, i, GetAllocationCallbacks());
 	}
 	if (VK_NULL_HANDLE != GraphicsFence) [[likely]] {
 		vkDestroyFence(Device, GraphicsFence, GetAllocationCallbacks());
@@ -744,12 +743,12 @@ void VK::WaitForFence(VkDevice Device, VkFence Fence)
 }
 void VK::SubmitGraphics(const uint32_t i)
 {
-	const std::array WaitSems = { NextImageAcquiredSemaphore };
+	const std::array WaitSems = { NextImageAcquiredSemaphores[i]};
 	const std::array WaitStages = { VkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT) };
 	//!< 実行するコマンドバッファ
 	const std::array CBs = { CommandBuffers[i], };
 	//!< 完了時にシグナルされるセマフォ (RenderFinishedSemaphore) -> これを待ってからプレゼントが行われる
-	const std::array SigSems = { RenderFinishedSemaphore };
+	const std::array SigSems = { RenderFinishedSemaphores[i]};
 	const std::array SIs = {
 		VkSubmitInfo({
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -763,7 +762,7 @@ void VK::SubmitGraphics(const uint32_t i)
 }
 void VK::Present() 
 {
-	const std::array WaitSems = { RenderFinishedSemaphore };
+	const std::array WaitSems = { RenderFinishedSemaphores[SwapchainImageIndex]};
 	//!< 同時に複数のプレゼントが可能だが、1つのスワップチェインからは1つのみ
 	const std::array Swapchains = { Swapchain };
 	const std::array ImageIndices = { SwapchainImageIndex };
@@ -783,7 +782,8 @@ void VK::Draw()
 {
 	WaitForFence(Device, GraphicsFence);
 
-	VERIFY_SUCCEEDED(vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, NextImageAcquiredSemaphore, VK_NULL_HANDLE, &SwapchainImageIndex));
+	const auto Index = (SwapchainImageIndex + 1) % std::size(SwapchainBackBuffers);
+	VERIFY_SUCCEEDED(vkAcquireNextImageKHR(Device, Swapchain, UINT64_MAX, NextImageAcquiredSemaphores[Index], VK_NULL_HANDLE, &SwapchainImageIndex));
 	DrawFrame(SwapchainImageIndex);
 	SubmitGraphics(SwapchainImageIndex);
 

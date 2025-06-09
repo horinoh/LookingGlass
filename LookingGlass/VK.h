@@ -67,8 +67,8 @@ public:
 		SelectPhysicalDevice(Instance);
 		CreateDevice(hWnd, hInstance);
 		CreateFence(Device);
-		CreateSemaphore(Device);
 		CreateSwapchain();
+		CreateSemaphore(Device);
 		AllocateCommandBuffer();
 		CreateGeometry();
 		CreateUniformBuffer();
@@ -131,8 +131,10 @@ public:
 			.pNext = nullptr,
 			.flags = 0
 		};
-		VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &NextImageAcquiredSemaphore));
-		VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &RenderFinishedSemaphore));
+		for(auto i=0;i< std::size(SwapchainBackBuffers); ++i) {
+			VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &NextImageAcquiredSemaphores.emplace_back()));
+			VERIFY_SUCCEEDED(vkCreateSemaphore(Dev, &SCI, GetAllocationCallbacks(), &RenderFinishedSemaphores.emplace_back()));
+		}
 	}
 
 	[[nodiscard]] virtual VkSurfaceFormatKHR SelectSurfaceFormat(VkPhysicalDevice PD, VkSurfaceKHR Surface);
@@ -1159,14 +1161,14 @@ protected:
 	uint32_t PresentQueueFamilyIndex = UINT32_MAX;
 	
 	VkFence GraphicsFence = VK_NULL_HANDLE;
-	VkSemaphore NextImageAcquiredSemaphore = VK_NULL_HANDLE;
-	VkSemaphore RenderFinishedSemaphore = VK_NULL_HANDLE;
+	std::vector<VkSemaphore> NextImageAcquiredSemaphores;
+	std::vector<VkSemaphore> RenderFinishedSemaphores;
 
 	VkExtent2D SurfaceExtent2D;
 	VkFormat ColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
 	VkSwapchainKHR Swapchain = VK_NULL_HANDLE;
-	uint32_t SwapchainImageIndex = 0;
+	uint32_t SwapchainImageIndex = (std::numeric_limits<uint32_t>::max)();
 	struct SwapchainBackBuffer
 	{
 		SwapchainBackBuffer(VkImage Img) { Image = Img; }
