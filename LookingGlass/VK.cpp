@@ -327,16 +327,21 @@ void VK::CreateDevice(HWND hWnd, HINSTANCE hInstance, const std::vector<const ch
 				.pNext = nullptr,
 				.synchronization2 = VK_TRUE
 			};
-			const VkPhysicalDeviceNestedCommandBufferFeaturesEXT PDNCBF = {
+			VkPhysicalDeviceNestedCommandBufferFeaturesEXT PDNCBF = {
 				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT,
 				.pNext = &PDS2,
 				.nestedCommandBuffer = VK_TRUE,
 				.nestedCommandBufferRendering = VK_TRUE,
 				.nestedCommandBufferSimultaneousUse = VK_TRUE
 			};
+			const VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT PDSDTHIF = {
+				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES,
+				.pNext = &PDNCBF,
+				.shaderDemoteToHelperInvocation = VK_TRUE
+			};
 			const VkDeviceCreateInfo DCI = {
 				.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-				.pNext = &PDNCBF,
+				.pNext = &PDSDTHIF,
 				.flags = 0,
 				.queueCreateInfoCount = static_cast<uint32_t>(std::size(DQCIs)), .pQueueCreateInfos = std::data(DQCIs),
 				.enabledLayerCount = 0, .ppEnabledLayerNames = nullptr,
