@@ -1,4 +1,6 @@
 #include "Holo.h"
 
-//#pragma comment(lib, "bridge_inproc.lib")
+#ifdef USE_BRIDGE_SDK
+#pragma comment(lib, "bridge_inproc.lib")
+#endif
 #pragma comment(lib, "HoloPlayCore.lib")

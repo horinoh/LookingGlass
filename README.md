@@ -13,12 +13,12 @@
 
 ### [LookingGlassBridgeSDK](https://lookingglassfactory.com/software/looking-glass-bridge)
 - ここでは、環境変数 LKG_SDK_PATH を作成し、インストール先を指定した
-- DLL の場所を環境変数 Path に通しておく
+- DLL の場所 (LKG_SDK_PATH) を環境変数 Path に通しておく
 - 使用、以下のいずれか
     - .lib は無いようなので、Controller クラスを使用する
         - 内部で GetProcAddress() を使用している
     - 自前で ($(LKG_SDK_PATH)\bridge_inproc.dllから) .lib を作成する 
-        - Developer PowerShell for VS2022 を起動
+        - Developer PowerShell for VS を起動
         - 関数名を調べる
             ~~~
             $dumpbin /EXPORTS bridge_inproc.dll > exports.def
